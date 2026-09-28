@@ -1,6 +1,6 @@
 /* Registro de actuaciones: modo sin conexión.
    Solo guarda en caché el código de la aplicación (nunca datos: los datos no pasan por la red). */
-const CACHE='registro-inspeccion-v1';
+const CACHE='registro-inspeccion-v2';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon-180.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

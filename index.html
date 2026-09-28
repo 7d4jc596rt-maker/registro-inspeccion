@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://lexislacioneducativa.wordpress.com; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#006aa8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -132,6 +132,36 @@
 }
 .panelbody p{font-size:13px;line-height:1.5}.panelbody p:first-child{margin-top:0}
 
+/* ===== Versión 2 ===== */
+.home-block{margin-bottom:18px}
+.home-block>summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 17px;cursor:pointer;list-style:none}
+.home-block>summary::-webkit-details-marker{display:none}
+.home-block[open]>summary{border-bottom:1px solid var(--line)}
+.home-block-title{font-size:15px;font-weight:700;color:var(--accent);margin-right:auto}
+.home-block>summary .special-arrow{transition:transform .15s ease}
+.home-block[open]>summary .special-arrow{transform:rotate(90deg)}
+.home-block>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.home-grid{align-items:start}
+.home-sub{font-size:13px;color:var(--accent);margin:0 0 8px}
+.clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.note-text{white-space:pre-wrap;font-size:13px;line-height:1.5;max-height:280px;overflow:auto;margin:6px 0 8px;overflow-wrap:anywhere}
+.event.note{border-left-color:#7a5cc4;background:#f6f2fc}
+.meta-line{font-size:12px;color:var(--muted)}
+.update-list{display:grid;gap:8px;margin-bottom:10px}
+.update-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-left:3px solid #7ab3d9;background:#f5fbff;border-radius:0 8px 8px 0;padding:8px 10px}
+.update-item b{font-size:12px;color:var(--accent)}
+.update-add{display:grid;grid-template-columns:160px 1fr auto;gap:8px;align-items:start}
+.update-add .textarea{min-height:60px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.section-head h3{margin:0!important}
+.menu-count{display:inline-block;min-width:20px;padding:1px 6px;border-radius:999px;background:rgba(0,0,0,.08);font-size:11px;text-align:center;margin-left:4px}
+.center-menu-button[aria-pressed="true"] .menu-count{background:rgba(255,255,255,.28)}
+.cards.cards5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:900px){.cards.cards5{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.update-add{grid-template-columns:1fr}.cards.cards5{grid-template-columns:1fr 1fr}.home-block>summary .btn{flex:none}}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--text)}
+@media(max-width:600px){.center-head-actions{gap:6px}.center-head-actions .btn{padding:7px 10px;font-size:12px}.center-identity h1{font-size:21px}}
+
 </style>
 </head>
 <body>
@@ -140,7 +170,7 @@
   <div class="gate-head"><div class="gate-seal" aria-hidden="true"></div><h1>Registro de actuaciones</h1><p>Inspección educativa, curso 2026/27</p></div>
   <div id="gateBody" class="gate-body"><div class="gate-working" role="status"><span class="spinner" aria-hidden="true"></span>Cargando…</div></div>
  </div>
- <p class="gate-foot">Los datos se guardan cifrados con AES-256. Sin tu contraseña no se pueden leer.</p>
+ <p class="gate-foot">Los datos se guardan cifrados con AES-256. Sin tu contraseña no se pueden leer.<br><span id="appVersion"></span></p>
  <input id="gFile" type="file" hidden>
 </div>
 <div class="app" id="appShell" hidden>
@@ -338,63 +368,6 @@ function nav(view){document.querySelectorAll('.nav button[data-view]').forEach(b
 document.querySelectorAll('.nav button[data-view]').forEach(b=>b.onclick=()=>nav(b.dataset.view));
 function layout(title,sub,buttons=''){return `<div class="top"><div class="title"><h1>${title}</h1><p>${sub}</p></div><div class="actions">${buttons}</div></div>`}
 function render(view='dashboard'){if(view==='dashboard')dashboard(); if(view==='registro')registro(); if(view==='centros')centros(); if(view==='visitas')visitas(); if(view==='seguimiento')seguimiento(); if(view==='especiales')especiales(); if(view==='datos')datos();}
-const LEGAL_UPDATES = {
- 'LEI':[
-  ['LEI 6/2025, do 23 de decembro','Protección da saúde das persoas menores e prevención das condutas adictivas. (DOG, 07/01/2026).','https://www.xunta.gal/dog/Publicados/2026/20260107/AnuncioC3B0-231225-0003_gl.html']
- ],
- 'REAL DECRETO':[
-  ['REAL DECRETO 636/2026, do 29 de xullo','Estándares de competencias profesionais de diversas familias profesionais. (BOE, 30/07/2026).','https://www.boe.es/boe/dias/2026/07/30/pdfs/BOE-A-2026-16551.pdf'],
-  ['REAL DECRETO 587/2026, do 15 de xullo','Curso de especialización de FP de Grao Medio en montaxe integral e mantemento de bicicletas e vehículos de mobilidade persoal. (BOE, 21/07/2026).','https://www.boe.es/boe/dias/2026/07/21/pdfs/BOE-A-2026-15852.pdf'],
-  ['REAL DECRETO 588/2026, do 15 de xullo','Curso de especialización de FP de Grao Superior en desenvolvemento de equipos e sistemas electrónicos. (BOE, 21/07/2026).','https://www.boe.es/boe/dias/2026/07/21/pdfs/BOE-A-2026-15853.pdf']
- ],
- 'DECRETO':[
-  ['DECRETO 86/2026, do 27 de xullo','Cesamento e nomeamento de membros do Consello Escolar de Galicia. (DOG, 06/08/2026).','https://www.xunta.gal/dog/Publicados/2026/20260806/AnuncioG0761-290726-0002_gl.pdf'],
-  ['DECRETO 68/2026, do 15 de xuño','Festas da Comunidade Autónoma de Galicia do calendario laboral para 2027. (DOG, 02/07/2026).','https://www.xunta.gal/dog/Publicados/2026/20260702/AnuncioG0767-250626-0001_gl.pdf'],
-  ['DECRETO 20/2026, do 9 de marzo','Ordenación xeral da formación profesional do sistema educativo de Galicia. (DOG, 25/03/2026).','https://www.xunta.gal/dog/Publicados/2026/20260325/AnuncioG0761-110326-0004_gl.pdf']
- ],
- 'ORDE':[
-  ['ORDE do 17 de setembro de 2026','Compensacións de gastos do transporte escolar de carácter individual. (DOG, 23/09/2026).','https://www.xunta.gal/dog/Publicados/2026/20260923/AnuncioG0759-150926-0005_gl.pdf'],
-  ['ORDE do 10 de setembro de 2026','Cambio de domicilio do centro privado Afundación da Coruña. (DOG, 22/09/2026).','https://www.xunta.gal/dog/Publicados/2026/20260922/AnuncioG0761-110926-0003_gl.pdf'],
-  ['ORDE do 11 de setembro de 2026','Modificación da autorización do Coruña British School e cambio de domicilio. (DOG, 22/09/2026).','https://www.xunta.gal/dog/Publicados/2026/20260922/AnuncioG0761-110926-0005_gl.pdf']
- ],
- 'INSTRUCIÓN':[
-  ['INSTRUCIÓNS · Bibliotecas escolares','Organización e funcionamento das bibliotecas escolares no curso 2026/27.','https://www.edu.xunta.gal/portal/node/50611'],
-  ['INSTRUCIÓN 1/2026, do 1 de xuño','Funcionamento dos comedores escolares de xestión directa no curso 2026/27.','https://www.edu.xunta.gal/centros/ceipmanuelrespino/system/files/u29/Instrucion_1-2026_XD_0.pdf'],
-  ['INSTRUCIÓNS · Dotación excepcional','Dotación con carácter excepcional de recursos de persoal docente nos centros docentes públicos.','https://www.edu.xunta.gal/portal/node/50232']
- ]
-};
-let refreshedLegalUpdates=null,legalSourceDate='25/09/2026',legalRefreshMessage='';
-const LEGAL_SOURCE_BASE='https://lexislacioneducativa.wordpress.com/publicacions-do-';
-function legalUpdatesPanel(){
- const cols=Object.entries(refreshedLegalUpdates||LEGAL_UPDATES).map(([type,items])=>`<div class="legal-col"><h3>${esc(type)}</h3>${items.map(x=>`<div class="legal-item"><b>${x[2]?`<a href="${esc(x[2])}" target="_blank" rel="noopener noreferrer">${esc(x[0])}</a>`:esc(x[0])}</b>${esc(x[1])}</div>`).join('')}${items.length<3?`<div class="legal-item muted">No hay más entradas que empiecen por ${esc(type)} en las publicaciones de 2026 ni en las de 2025.</div>`:''}</div>`).join('');
- return `<div id="legalUpdatesPanel" class="panel" style="margin-top:18px"><div class="panelhead"><h2>Últimas publicaciones normativas</h2><div class="legal-head-actions"><span class="legal-source">Fuentes: <a href="${LEGAL_SOURCE_BASE}2026/" target="_blank" rel="noopener noreferrer">2026</a> · <a href="${LEGAL_SOURCE_BASE}2025/" target="_blank" rel="noopener noreferrer">2025</a></span><button id="legalRefreshButton" type="button" class="btn small" onclick="refreshLegalSources()">↻ Recargar fuente</button></div></div><div class="panelbody"><p class="muted" style="font-size:12px;margin:0 0 10px">Última actualización de la fuente: ${esc(legalSourceDate)}</p><p id="legalRefreshStatus" class="legal-refresh-status muted" role="status">${esc(legalRefreshMessage)}</p><div class="notice" style="margin-bottom:12px">Las tres últimas entradas de cada tipo: primero las publicaciones de 2026 y, si no son suficientes, se completan con las de 2025. Los títulos se muestran en su versión oficial en gallego.</div><div class="legal-grid">${cols}</div></div></div>`;
-}
-function parseLegalSource(html){
- const doc=new DOMParser().parseFromString(html,'text/html');
- const heading=[...doc.querySelectorAll('h2,h3,h4')].find(x=>/Disposicións de recente publicación/i.test(x.textContent));
- if(!heading)throw Error('No se encontró la lista de publicaciones.');
- let list=heading.nextElementSibling;
- while(list&&!list.matches('ul'))list=list.nextElementSibling;
- if(!list)throw Error('No se encontró el listado de la fuente.');
- const updated=heading.parentElement.textContent.match(/Última actualización:\s*(\d{1,2}) de ([a-záéíóúñ]+) de (\d{4})/i);
- const months={xaneiro:1,febreiro:2,marzo:3,abril:4,maio:5,xuño:6,xullo:7,agosto:8,setembro:9,outubro:10,novembro:11,decembro:12};
- const publicationDate=updated&&months[updated[2].toLowerCase()]?`${updated[1].padStart(2,'0')}/${String(months[updated[2].toLowerCase()]).padStart(2,'0')}/${updated[3]}`:null;
- const entries=[...list.querySelectorAll(':scope > li')].map(li=>{const a=li.querySelector('a[href]');if(!a)return null;const title=a.textContent.trim(),body=li.textContent.trim();const type=/^REAL DECRETO\b/i.test(title)?'REAL DECRETO':/^DECRETO\b/i.test(title)?'DECRETO':/^LEI\b/i.test(title)?'LEI':/^ORDE\b/i.test(title)?'ORDE':/^INSTRUCI[ÓO]N(?:S|ES)?\b/i.test(title)?'INSTRUCIÓN':null;const href=/^INSTRUCIÓN 1\/2026\b/i.test(title)&&/comedores escolares/i.test(body)?'https://www.edu.xunta.gal/centros/ceipmanuelrespino/system/files/u29/Instrucion_1-2026_XD_0.pdf':a.href;return type?{type,item:[title,body.slice(body.indexOf(title)+title.length).trim().replace(/^[,.:\s]+/,'')||'Consultar publicación.',href]}:null}).filter(Boolean);
- if(entries.length<5)throw Error('La fuente no devolvió suficientes publicaciones.');
- return {publicationDate,entries};
-}
-async function refreshLegalSources(){
- const btn=document.getElementById('legalRefreshButton'),status=document.getElementById('legalRefreshStatus');
- if(!btn||!status)return;btn.disabled=true;status.textContent='Consultando las publicaciones de 2026 y 2025…';
- try{
-  const pages=await Promise.all([2026,2025].map(async year=>{const r=await fetch(`${LEGAL_SOURCE_BASE}${year}/?actualizar=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw Error(`La fuente de ${year} respondió ${r.status}.`);return parseLegalSource(await r.text())}));
-  const next={};for(const type of Object.keys(LEGAL_UPDATES))next[type]=[...pages[0].entries,...pages[1].entries].filter(x=>x.type===type).slice(0,3).map(x=>x.item);
-  refreshedLegalUpdates=next;
-  if(pages[0].publicationDate)legalSourceDate=pages[0].publicationDate;
-  legalRefreshMessage='Publicaciones recargadas desde la fuente.';
-  document.getElementById('legalUpdatesPanel').outerHTML=legalUpdatesPanel();
- }catch(e){legalRefreshMessage='La fuente no permite la consulta directa desde la aplicación. Puedes abrirla en los enlaces 2026 y 2025.';status.textContent=legalRefreshMessage;btn.disabled=false}
-}
 const DEADLINES = [
  ['2026-09-15','Hasta el 15/09/2026','Finalizar la incorporación gradual del alumnado de 4.º de infantil','Centros con 4.º de educación infantil · Orden 4/06/2026, art. 4.3','https://www.xunta.gal/dog/Publicados/2026/20260615/AnuncioG0761-050626-0001_gl.pdf'],
  ['2026-09-30','Antes de finalizar septiembre','Entregar las programaciones didácticas a Inspección','Dirección de los centros docentes · Orden 4/06/2026, art. 4.2','https://www.xunta.gal/dog/Publicados/2026/20260615/AnuncioG0761-050626-0001_gl.pdf'],
@@ -584,11 +557,6 @@ function newManualDeadline(){
  });
 }
 function deleteManualDeadline(id){if(!confirm('¿Eliminar este plazo manual?'))return;db.manualDeadlines=(db.manualDeadlines||[]).filter(x=>x.id!==id);save();dashboard()}
-function homeRequestsPanel(){
- const items=db.petitionsRequirements||[];
- const centerName=id=>db.centers.find(c=>c.id===id)?.name||'Centro no registrado';
- return `<details class="panel home-request-details"><summary><span>Peticiones y requerimientos</span><span class="pill">${items.length} ${items.length===1?'registro':'registros'}</span><span class="special-arrow" aria-hidden="true">▶</span></summary><div class="panelbody"><div class="toolbar"><input id="homeRequestSearch" class="input" type="search" placeholder="Buscar por centro" aria-label="Buscar peticiones y requerimientos por centro" oninput="filterHomeRequests()"><label style="display:flex;align-items:center;gap:6px;font-size:13px"><input id="homeRequestPendingOnly" type="checkbox" onchange="filterHomeRequests()"> Sólo pendientes</label></div><div class="home-request-list" id="homeRequestList">${[...items].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>`<div class="event home-request-row ${x.finalizada?'finalized':''}" data-finished="${!!x.finalizada}" data-center="${esc(centerName(x.centerId).toLocaleLowerCase('es'))}"><b>${esc(x.type||'Petición')} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div><strong>${esc(centerName(x.centerId))}</strong> · ${esc(x.subject||'Sin asunto')}</div>${x.details?`<p>${esc(x.details)}</p>`:''}${db.centers.some(c=>c.id===x.centerId)?`<button class="btn small" type="button" onclick="centerDetail('${x.centerId}','peticiones')">Ver ficha</button>`:''}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div><div id="homeRequestNoResults" class="empty" hidden>No hay resultados para ese centro.</div></div></details>`;
-}
 function filterHomeRequests(){
  const q=(document.getElementById('homeRequestSearch')?.value||'').trim().toLocaleLowerCase('es');
  const onlyPending=!!document.getElementById('homeRequestPendingOnly')?.checked;
@@ -596,71 +564,12 @@ function filterHomeRequests(){
  rows.forEach(row=>{row.hidden=(!!q&&!row.dataset.center.includes(q))||(onlyPending&&row.dataset.finished==='true');if(!row.hidden)visible++});
  const empty=document.getElementById('homeRequestNoResults');if(empty){empty.hidden=!rows.length||(!q&&!onlyPending)||visible>0;empty.textContent='No hay resultados con los filtros seleccionados.';}
 }
-function dashboard(){
- const pendingActions=db.actions.filter(x=>!x.finalizada).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
- const pending=pendingActions.length;
- const oldestPending=pendingActions.slice(0,3);
- const newestPending=pendingActions.slice(-3).reverse();
- const today=new Date().toISOString().slice(0,10);
- const next=db.visits.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
- const last=db.visits.filter(x=>x.date<today).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
- const actionEvents=items=>items.map(a=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')} · ${esc(a.center||'Sin centro')}</b><div>${esc(a.subject)}</div><p>${esc(a.action||a.details||'')}</p><button class="btn small" onclick="finishActionFromHome('${a.id}')">Marcar como finalizada</button></div>`).join('')||'<div class="empty">No hay actuaciones pendientes.</div>';
- document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
- `<div class="cards"><div class="card link" role="button" tabindex="0" onclick="nav('registro')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('registro')}"><div class="metric">${db.actions.length}</div><div class="label">Actuaciones registradas</div></div><div class="card link" role="button" tabindex="0" onclick="nav('registro')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('registro')}"><div class="metric">${pending}</div><div class="label">Actuaciones pendientes</div></div><div class="card link" role="button" tabindex="0" onclick="nav('centros')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('centros')}"><div class="metric">${db.centers.length}</div><div class="label">Centros registrados</div></div><div class="card link" role="button" tabindex="0" onclick="nav('visitas')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('visitas')}"><div class="metric">${db.visits.length}</div><div class="label">Visitas planificadas</div></div></div>`+homeRequestsPanel()+calendarPanel()+legalUpdatesPanel()+
- `<div class="grid2">`+
- `<div class="panel"><div class="panelhead"><h2>Visitas</h2><button class="btn small" onclick="nav('visitas')">Ver visitas</button></div><div class="panelbody">`+
- `<h3 style="font-size:13px;color:var(--accent);margin:0 0 8px">Próximas visitas</h3>${next.length?next.map(v=>`<div class="kpi" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:12px">${date(v.date)}</b><div class="muted" style="font-size:11px">${esc(v.center)}</div></div><span class="pill">${esc(v.month||'')}</span></div>`).join(''):'<div class="empty">No hay visitas próximas.</div>'}`+
- `<div style="border-top:1px solid var(--line);margin:16px 0 12px"></div><h3 style="font-size:13px;color:var(--accent);margin:0 0 8px">Últimas visitas realizadas</h3>${last.length?last.map(v=>`<div class="kpi" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:12px">${date(v.date)}</b><div class="muted" style="font-size:11px">${esc(v.center)}</div></div><span class="pill ok">Realizada</span></div>`).join(''):'<div class="empty">No hay visitas realizadas.</div>'}</div></div>`+
- `<div class="panel"><div class="panelhead"><h2>Actuaciones pendientes</h2><button class="btn small" onclick="nav('registro')">Ver registro</button></div><div class="panelbody"><h3 style="font-size:13px;color:var(--accent);margin:0 0 10px">Las 3 más antiguas</h3><div class="timeline">${actionEvents(oldestPending)}</div><div style="border-top:1px solid var(--line);margin:16px 0 12px"></div><h3 style="font-size:13px;color:var(--accent);margin:0 0 10px">Las 3 más recientes</h3><div class="timeline">${actionEvents(newestPending)}</div></div></div>`+
- `</div>`;
-}
-function registro(){
- document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" placeholder="Buscar asunto, centro, alumno..." oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option><option>Correo electrónico</option><option>Teléfono</option><option>Presencial</option><option>REXEL</option><option>Otro</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0">Pendientes</option><option value="1">Finalizadas</option></select><button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Alumno/a</th><th>Asunto</th><th>Detalles</th><th>Actuación</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`; filterActions();
-}
 let currentFilteredActions=[];
-function filterActions(){let q=(document.getElementById('rsearch')?.value||'').toLowerCase(), t=document.getElementById('rtype')?.value||'', s=document.getElementById('rstatus')?.value||''; let a=db.actions.filter(x=>!q||[x.center,x.student,x.subject,x.details,x.action].join(' ').toLowerCase().includes(q)).filter(x=>!t||x.mode===t).filter(x=>s===''||String(x.finalizada?1:0)===s).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)); currentFilteredActions=a; document.getElementById('actionRows').innerHTML=a.map(x=>`<tr><td>${date(x.date)}<br><span class="muted">${esc(x.time||'')}</span></td><td>${esc(x.mode)}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><b>${esc(x.subject)}</b></td><td>${esc(x.details)}</td><td>${esc(x.action)}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td>${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small" onclick="editAction('${x.id}')">Editar</button> <button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`).join('')||'<tr><td colspan="9" class="empty">No hay resultados.</td></tr>'}
-
-function finishAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;save();filterActions();}
+function finishAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;x.updatedAt=new Date().toISOString();save();filterActions();}
 function deleteAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==id);save();filterActions();}
-function finishActionFromHome(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;save();dashboard();}
+function finishActionFromHome(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;x.updatedAt=new Date().toISOString();save();dashboard();}
 function homeBtn(){return `<button class="btn" onclick="nav('dashboard')">← Volver a Inicio</button>`}
-function actionForm(x={}){return `<div class="formgrid"><div class="field"><label>Fecha</label><input id="fdate" class="input" type="date" value="${esc(iso(x.date)||new Date().toISOString().slice(0,10))}"></div><div class="field"><label>Hora</label><input id="ftime" class="input" type="time" value="${esc(x.time||'')}"></div><div class="field"><label>Medio de comunicación</label><select id="fmode" class="select"><option ${x.mode==='Correo electrónico'?'selected':''}>Correo electrónico</option><option ${x.mode==='Teléfono'?'selected':''}>Teléfono</option><option ${x.mode==='Presencial'?'selected':''}>Presencial</option><option ${x.mode==='REXEL'?'selected':''}>REXEL</option><option ${x.mode==='Otro'?'selected':''}>Otro</option></select></div><div class="field"><label>Centro</label><select id="fcenter" class="select"><option value="">— Sin centro —</option>${db.centers.map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div><div class="field"><label>Alumno/a</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div><div class="field"><label>Asunto</label><input id="fsubject" class="input" style="width:100%" value="${esc(x.subject)}"></div><div class="field full"><label>Detalles</label><textarea id="fdetails" class="textarea">${esc(x.details)}</textarea></div><div class="field full"><label>Actuación realizada / respuesta</label><textarea id="faction" class="textarea">${esc(x.action)}</textarea></div><div class="field"><label><input id="ffinal" type="checkbox" ${x.finalizada?'checked':''}> Actuación finalizada</label></div></div>`}
-function newAction(){openModal('Nueva actuación',actionForm(),()=>{db.actions.push({id:uid(),date:document.getElementById('fdate').value,time:document.getElementById('ftime').value,mode:document.getElementById('fmode').value,center:document.getElementById('fcenter').value,student:document.getElementById('fstudent').value,subject:document.getElementById('fsubject').value,details:document.getElementById('fdetails').value,action:document.getElementById('faction').value,finalizada:document.getElementById('ffinal').checked});save();closeModal();registro();});}
-function editAction(id){let x=db.actions.find(a=>a.id===id);openModal('Editar actuación',actionForm(x),()=>{Object.assign(x,{date:document.getElementById('fdate').value,time:document.getElementById('ftime').value,mode:document.getElementById('fmode').value,center:document.getElementById('fcenter').value,student:document.getElementById('fstudent').value,subject:document.getElementById('fsubject').value,details:document.getElementById('fdetails').value,action:document.getElementById('faction').value,finalizada:document.getElementById('ffinal').checked});save();closeModal();registro();});}
-function centros(){document.getElementById('main').innerHTML=layout('Centros','Ficha básica y actividad asociada a cada centro',homeBtn()+`<button class="btn primary" onclick="newCenter()">+ Nuevo centro</button><input id="csearch" class="input" placeholder="Buscar centro o concello" oninput="filterCenters()">`)+`<div class="centergrid" id="centerGrid"></div>`;filterCenters()}
-function filterCenters(){let q=(document.getElementById('csearch')?.value||'').toLowerCase();let cs=db.centers.filter(c=>!q||(c.name+' '+c.town).toLowerCase().includes(q));document.getElementById('centerGrid').innerHTML=cs.map(c=>`<div class="center" onclick="centerDetail('${c.id}','datos')"><h3>${esc(c.name)}</h3><p>${esc(c.town)} · ${esc(c.code)}</p><p>${esc(c.director||'Dirección no registrada')}</p><p>${db.actions.filter(a=>a.center===c.name).length} actuaciones · ${db.visits.filter(v=>v.center===c.name).length} visitas</p></div>`).join('')||'<div class="empty">No hay centros.</div>'}
 let activeCenterTab='datos';
-function showCenterTab(tab){
- if(!['datos','actuaciones','visitas','peticiones','seguimiento','otros'].includes(tab))return;
- activeCenterTab=tab;
- document.querySelectorAll('.center-menu-button').forEach(button=>{
-  const selected=button.dataset.tab===tab;
-  button.setAttribute('aria-pressed',String(selected));
- });
- document.querySelectorAll('.center-section').forEach(panel=>{panel.hidden=panel.dataset.tab!==tab});
- const content=document.getElementById('centerContent');if(content)content.scrollTop=0;
-}
-function centerDetail(id,tab=activeCenterTab){
- const c=db.centers.find(x=>x.id===id);if(!c)return;
- const allActs=db.actions.filter(a=>a.center===c.name);
- const pending=allActs.filter(a=>!a.finalizada).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
- const acts=[...allActs].sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||''))).slice(0,12);
- const centerVisits=db.visits.filter(v=>v.center===c.name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- const centerRequests=db.petitionsRequirements.filter(x=>x.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- const field=(label,value)=>`<div><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
- const tabs=[['datos','Datos del centro'],['actuaciones','Actuaciones'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['otros','Otros datos'],['peticiones','Peticiones y requerimientos']];
- const menuButtons=tabs.map(([key,label])=>`<button id="center-menu-${key}" class="center-menu-button" type="button" data-tab="${key}" aria-controls="center-panel-${key}" aria-pressed="${key===tab}" onclick="showCenterTab('${key}')">${label}</button>`).join('');
- const leadership=(cls,label,value)=>`<div class="leadership-role ${cls}"><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
- const empty=(col,row)=>`<div class="leadership-empty" style="grid-column:${col};grid-row:${row}" aria-hidden="true"></div>`;
- const data=`<h3>Información del centro</h3><dl class="center-data-list">${field('Código',c.code)}${field('Dirección postal',c.address)}${field('Concello',c.town)}${field('Teléfono',c.phone)}${field('Correo electrónico',c.email)}</dl><h3>Equipo directivo</h3><dl class="center-leadership">${leadership('leadership-direction','Dirección',c.director)}${leadership('leadership-primary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${leadership('leadership-secondary','Jefatura de estudios · Secundaria',c.headSecondary)}${leadership('leadership-adults','Jefatura de estudios · Adultos',c.headAdults)}${leadership('leadership-secretary','Secretaría',c.secretary)}${leadership('leadership-vice','Vicedirección',c.vice)}${empty(1,2)}${empty(1,3)}${empty(3,2)}${empty(3,3)}${empty(4,2)}${empty(4,3)}</dl>`;
- const pendingRows=pending.map(a=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')} · ${esc(a.mode||'')}</b><div>${esc(a.subject)}</div><p>${esc(a.action||a.details||'')}</p><button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button></div>`).join('')||'<div class="empty">No hay actuaciones pendientes en este centro.</div>';
- const latestRows=acts.map(a=>`<div class="event"><b>${date(a.date)} · ${esc(a.mode)} · ${a.finalizada?'Finalizada':'Pendiente'}</b><div>${esc(a.subject)}</div><p>${esc(a.action||a.details)}</p>${a.finalizada?'':`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`}</div>`).join('')||'<div class="empty">Sin actuaciones.</div>';
- const actions=`<h3>Actuaciones pendientes (${pending.length})</h3><div class="timeline">${pendingRows}</div><h3>Últimas actuaciones (${acts.length})</h3><div class="timeline">${latestRows}</div>`;
- const visits=`<h3>Registro de visitas (${centerVisits.length})</h3><div class="timeline">${centerVisits.map(v=>`<div class="event"><b>${date(v.date)}</b><div>${esc(v.obs||v.notes||v.observations||'Visita al centro')}</div><button class="btn small" type="button" onclick="editVisitFromCenter('${v.id}','${c.id}')">Editar</button></div>`).join('')||'<div class="empty">No hay visitas registradas en este centro.</div>'}</div>`;
- const requests=`<h3>Peticiones y requerimientos (${centerRequests.length})</h3><div class="timeline">${centerRequests.map(x=>`<div class="event"><b>${esc(x.type)} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div>${esc(x.subject)}</div><p>${esc(x.details||'')}</p><button class="btn small" type="button" onclick="editCenterRequest('${x.id}','${c.id}')">Editar</button> ${x.finalizada?'':`<button class="btn small" type="button" onclick="finishCenterRequest('${x.id}','${c.id}')">Marcar como finalizado</button>`}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div>`;
- document.getElementById('main').innerHTML=`<header class="center-fixed-head"><div class="center-identity-row"><div class="center-identity"><h1>${esc(c.name)}</h1><span>${esc(c.town)} · código ${esc(c.code)}</span></div><div class="center-head-actions"><button class="btn" onclick="nav('centros')">Volver</button><button class="btn primary" onclick="editCenter('${c.id}')">Editar datos</button><button class="btn primary" onclick="newActionForCenter('${c.id}')">+ Actuación</button><button class="btn primary" onclick="newVisitForCenter('${c.id}')">+ Visita</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Petición')">+ Petición</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Requerimiento')">+ Requerimiento</button></div></div></header><div class="panel center-workspace"><nav class="center-menu" aria-label="Secciones de la ficha">${menuButtons}</nav><div class="center-content" id="centerContent"><section id="center-panel-datos" class="center-section" role="region" aria-labelledby="center-menu-datos" data-tab="datos" ${tab==='datos'?'':'hidden'}>${data}</section><section id="center-panel-actuaciones" class="center-section" role="region" aria-labelledby="center-menu-actuaciones" data-tab="actuaciones" ${tab==='actuaciones'?'':'hidden'}>${actions}</section><section id="center-panel-visitas" class="center-section" role="region" aria-labelledby="center-menu-visitas" data-tab="visitas" ${tab==='visitas'?'':'hidden'}>${visits}</section><section id="center-panel-seguimiento" class="center-section" role="region" aria-labelledby="center-menu-seguimiento" data-tab="seguimiento" ${tab==='seguimiento'?'':'hidden'}><h3>Seguimiento</h3>${centerFollowupPanel(c)}</section><section id="center-panel-otros" class="center-section" role="region" aria-labelledby="center-menu-otros" data-tab="otros" ${tab==='otros'?'':'hidden'}><h3>Otros datos del centro</h3><div class="center-extra-grid">${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}${centerSpecialCard(c,'Días no lectivos','Días no lectivos')}</div></section><section id="center-panel-peticiones" class="center-section" role="region" aria-labelledby="center-menu-peticiones" data-tab="peticiones" ${tab==='peticiones'?'':'hidden'}>${requests}</section></div></div>`;
- activeCenterTab=tab;
-}
 function centerRequestForm(x){return `<div class="formgrid"><div class="field"><label>Tipo</label><input class="input" value="${esc(x.type)}" readonly></div><div class="field"><label>Fecha</label><input id="requestDate" type="date" class="input" value="${esc(x.date||'')}"></div><div class="field full"><label>Asunto</label><input id="requestSubject" class="input" style="width:100%" value="${esc(x.subject||'')}"></div><div class="field full"><label>Detalles</label><textarea id="requestDetails" class="textarea">${esc(x.details||'')}</textarea></div><div class="field full"><label><input id="requestFinished" type="checkbox" ${x.finalizada?'checked':''}> Finalizado</label></div></div>`}
 function newCenterRequest(cid,type){
  const c=db.centers.find(x=>x.id===cid);if(!c||!['Petición','Requerimiento'].includes(type))return;
@@ -679,7 +588,7 @@ function editCenterRequest(id,cid){
 }
 function finishCenterRequest(id,cid){
  const item=db.petitionsRequirements.find(x=>x.id===id&&x.centerId===cid);if(!item)return;
- item.finalizada=true;save();centerDetail(cid,'peticiones');
+ item.finalizada=true;item.updatedAt=new Date().toISOString();save();centerDetail(cid,'peticiones');
 }
 function newActionForCenter(id){const c=db.centers.find(x=>x.id===id);if(c)newActionFor(c.name)}
 const ORIENTATION_FIELDS=['PT','PTC','AL','ALC'];
@@ -752,19 +661,8 @@ function centerFollowupPanel(c){
  const documents=`<div class="tablewrap"><table class="table"><thead><tr><th>Centro</th>${fields.map(f=>`<th>${esc(f)}</th>`).join('')}</tr></thead><tbody><tr><td><b>${esc(c.name)}</b></td>${fields.map(f=>{let na=followNA(c.id,f),hasDate=!!iso(row[f]),state=na?'na':(hasDate?'done':'pending');return `<td class="follow-cell ${state}"><input type="date" class="input" style="min-width:120px" value="${esc(iso(row[f]))}" data-cid="${esc(c.id)}" data-field="${encodeURIComponent(f)}" onchange="setFollowFromInput(this)" oninput="setFollowFromInput(this)" ${na?'disabled':''}><label class="na-toggle"><input type="checkbox" data-cid="${esc(c.id)}" data-field="${encodeURIComponent(f)}" onchange="setFollowNAFromInput(this)" ${na?'checked':''}> N/A</label></td>`}).join('')}</tr></tbody></table></div>`;
  return `<div style="margin-bottom:12px"><button class="btn small" onclick="nav('seguimiento')">Ver seguimiento general</button></div><h3>Documentos</h3>${documents}<h3>Faltas profesorado</h3>${absenceTable([c])}`;
 }
-function centerForm(c){return `<div class="formgrid"><div class="field full"><label>Nombre del centro</label><input class="input" id="cname" value="${esc(c.name||'')}"></div><div class="field"><label>Código</label><input class="input" id="ccode" value="${esc(c.code||'')}"></div><div class="field"><label>Concello</label><input class="input" id="ctown" value="${esc(c.town||'')}"></div><div class="field"><label>Teléfono</label><input class="input" id="cphone" value="${esc(c.phone||'')}"></div><div class="field"><label>Correo electrónico</label><input class="input" id="cemail" value="${esc(c.email||'')}"></div><div class="field full"><label>Dirección postal</label><input class="input" style="width:100%" id="caddress" value="${esc(c.address||'')}"></div><div class="field"><label>Director/a</label><input class="input" id="cdirector" value="${esc(c.director||'')}"></div><div class="field"><label>Secretario/a</label><input class="input" id="csecretary" value="${esc(c.secretary||'')}"></div><div class="field"><label>Jefatura de estudios · Primaria</label><input class="input" id="cheadPrimary" value="${esc(c.headPrimary??c.head??'')}"></div><div class="field"><label>Jefatura de estudios · Secundaria</label><input class="input" id="cheadSecondary" value="${esc(c.headSecondary||'')}"></div><div class="field"><label>Jefatura de estudios · Adultos</label><input class="input" id="cheadAdults" value="${esc(c.headAdults||'')}"></div><div class="field"><label>Vicedirección</label><input class="input" id="cvice" value="${esc(c.vice||'')}"></div></div>`}
-function newCenter(){
- openModal('Nuevo centro',centerForm({}),()=>{
-  const name=document.getElementById('cname').value.trim(),code=document.getElementById('ccode').value.trim();
-  if(!name||!code){alert('Indica el nombre y el código del centro.');return;}
-  if(db.centers.some(c=>String(c.code)===code)){alert('Ya existe un centro con ese código.');return;}
-  const c={id:code,code,name,town:document.getElementById('ctown').value.trim(),phone:document.getElementById('cphone').value.trim(),email:document.getElementById('cemail').value.trim(),address:document.getElementById('caddress').value.trim(),director:document.getElementById('cdirector').value.trim(),secretary:document.getElementById('csecretary').value.trim(),headPrimary:document.getElementById('cheadPrimary').value.trim(),headSecondary:document.getElementById('cheadSecondary').value.trim(),headAdults:document.getElementById('cheadAdults').value.trim(),vice:document.getElementById('cvice').value.trim()};
-  db.centers.push(c);db.followup[c.id]={};save();closeModal();centerDetail(c.id,'datos');
- });
-}
-function editCenter(id){let c=db.centers.find(x=>x.id===id);let oldName=c.name;openModal('Editar ficha del centro',centerForm(c),()=>{Object.assign(c,{name:document.getElementById('cname').value,code:document.getElementById('ccode').value,town:document.getElementById('ctown').value,phone:document.getElementById('cphone').value,address:document.getElementById('caddress').value,email:document.getElementById('cemail').value,director:document.getElementById('cdirector').value,secretary:document.getElementById('csecretary').value,headPrimary:document.getElementById('cheadPrimary').value,headSecondary:document.getElementById('cheadSecondary').value,headAdults:document.getElementById('cheadAdults').value,vice:document.getElementById('cvice').value});if(oldName!==c.name){db.actions.forEach(a=>{if(a.center===oldName)a.center=c.name});db.visits.forEach(v=>{if(v.center===oldName)v.center=c.name})}save();closeModal();centerDetail(id);})}
 function deleteActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==aid);save();centerDetail(cid)}
-function finishActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(x){x.finalizada=true;save();centerDetail(cid)}}
+function finishActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(x){x.finalizada=true;x.updatedAt=new Date().toISOString();save();centerDetail(cid)}}
 function newActionFor(center){newAction();setTimeout(()=>{let e=document.getElementById('fcenter');if(e)e.value=center},0)}
 function visitas(){document.getElementById('main').innerHTML=layout('Visitas','Planificación anual de visitas a centros',homeBtn()+`<button class="btn primary" onclick="newVisit()">+ Nueva visita</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="vsearch" class="input" placeholder="Buscar centro" oninput="renderVisitsTable()"><select id="vmonth" class="select" onchange="renderVisitsTable()"><option value="">Todos los meses</option>${['SEP','OCT','NOV','DIC','ENE','FEB','MAR','ABR','MAY','JUN'].map(m=>`<option>${m}</option>`).join('')}</select><button class="btn" type="button" onclick="exportVisitsMonthPDF()">Exportar PDF del mes</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Mes</th><th>Centro</th><th>Observaciones</th><th></th></tr></thead><tbody id="visitRows"></tbody></table></div></div></div>`;renderVisitsTable()}
 function renderVisitsTable(){let q=(document.getElementById('vsearch')?.value||'').toLowerCase(),m=document.getElementById('vmonth')?.value||'';let a=db.visits.filter(x=>!q||x.center.toLowerCase().includes(q)).filter(x=>!m||x.month===m).sort((a,b)=>a.date.localeCompare(b.date));document.getElementById('visitRows').innerHTML=a.map(x=>`<tr><td>${date(x.date)}</td><td>${esc(x.month)}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.obs)}</td><td><button class="btn small" onclick="editVisit('${x.id}')">Editar</button> <button class="btn small danger" type="button" title="Eliminar visita" aria-label="Eliminar visita" onclick="deleteVisit('${x.id}')">🗑️</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No hay visitas.</td></tr>'}
@@ -964,8 +862,6 @@ function deleteSpecialRecord(name,rowIndex){
 }
 function openModal(title,body,onSave){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('show');document.getElementById('modalSave').textContent='Guardar';document.getElementById('modalSave').onclick=onSave}
 function closeModal(){document.getElementById('modal').classList.remove('show')}
-function exportFilteredActionsCSV(){let rows=[['Fecha','Hora','Medio','Centro','Alumno/a','Asunto','Detalles','Actuación','Finalizada'],...currentFilteredActions.map(x=>[x.date,x.time,x.mode,x.center,x.student,x.subject,x.details,x.action,x.finalizada?'Sí':'No'])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');download(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),'registro-actuaciones-resultados.csv')}
-function exportCSV(kind){let rows=[];if(kind==='actions'){rows=[['Fecha','Hora','Medio','Centro','Alumno/a','Asunto','Detalles','Actuación','Finalizada'],...db.actions.map(x=>[x.date,x.time,x.mode,x.center,x.student,x.subject,x.details,x.action,x.finalizada?'Sí':'No'])]}else{rows=[['Centro',...db.followupFields.map(f=>'Documentos · '+f),...ABSENCE_MONTHS.map(m=>'Faltas profesorado · '+m)],...db.centers.map(c=>[c.name,...db.followupFields.map(f=>followNA(c.id,f)?'N/A':(db.followup[c.id]?.[f]||'')),...ABSENCE_MONTHS.map(m=>db.teacherAbsenceDates?.[c.id]?.[m]||'')])]}let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');download(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),kind==='actions'?'registro-actuaciones.csv':'seguimiento.csv')}
 function download(blob,name){if(window.__vault)return window.__vault.deliver(blob,name);let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 
 /* ================= Añadidos de la versión web cifrada ================= */
@@ -977,7 +873,7 @@ function ensureShape(){
  if(!db.specials||typeof db.specials!=='object')db.specials=JSON.parse(JSON.stringify(SEED.specials));
  if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
  db.centers.forEach(c=>{if(!db.followup[c.id])db.followup[c.id]={}});
- migrateSpecialTables();applyOrientationCatalog();
+ migrateSpecialTables();applyOrientationCatalog();migrateV2();
 }
 window.__coreGetDb=()=>db;
 window.__coreReplaceData=d=>{db=d;ensureShape();closeModal();nav('dashboard')};
@@ -1021,12 +917,15 @@ function datos(){
  </div>
  <div class="grid2">
   <div class="panel"><div class="panelhead"><h2>Importar</h2></div><div class="panelbody">
-   <p><b>Desde Notion.</b> En Notion, abre la base de datos, menú «···» › Exportar › formato «Markdown y CSV». Descomprime el ZIP y elige aquí el archivo .csv. Podrás indicar qué columna corresponde a cada campo.</p>
-   <button class="btn primary" onclick="importNotionStart()">Importar CSV de Notion…</button>
+   <p><b>Desde Notion, carpeta completa</b> (recomendado). En Notion: menú «···» › Exportar › «Markdown y CSV» con «Incluir subpáginas». Descomprime el ZIP y elige aquí la carpeta resultante. Importa centros, actuaciones con el texto de sus páginas y notas. ${v.ios?'<b>Hazlo desde el ordenador</b>: el iPhone no permite elegir carpetas.':''}</p>
+   <button class="btn primary" onclick="importNotionFolderStart()">Importar carpeta de Notion…</button>
+   <p style="margin-top:16px"><b>Un CSV suelto.</b> Para tablas sencillas: podrás indicar qué columna corresponde a cada campo.</p>
+   <button class="btn" onclick="importNotionStart()">Importar CSV…</button>
    <p style="margin-top:16px"><b>Desde la versión anterior.</b> Restaura una copia JSON guardada con la versión 30. Sustituye todos los datos actuales.</p>
    <button class="btn" onclick="document.getElementById('importFile').click()">Restaurar copia JSON…</button>
    <input id="importFile" type="file" accept="application/json,.json" hidden onchange="importJSON(event)">
    <input id="notionFile" type="file" accept=".csv,text/csv" hidden onchange="importNotionFile(event)">
+   <input id="notionFolder" type="file" webkitdirectory multiple hidden onchange="importNotionFolderFiles(event)">
   </div></div>
   <div class="panel"><div class="panelhead"><h2>Exportar</h2></div><div class="panelbody">
    <div class="toolbar"><button class="btn" onclick="exportCSV('actions')">Actuaciones (CSV)</button><button class="btn" onclick="exportCSV('followup')">Seguimiento (CSV)</button></div>
@@ -1035,13 +934,15 @@ function datos(){
   </div></div>
  </div>
  <div class="panel"><div class="panelhead"><h2>Contenido del registro</h2></div><div class="panelbody">
-  <div class="cards" style="margin-bottom:12px">
+  <div class="cards cards5" style="margin-bottom:12px">
    <div class="card"><div class="metric">${db.actions.length}</div><div class="label">Actuaciones</div></div>
    <div class="card"><div class="metric">${db.centers.length}</div><div class="label">Centros</div></div>
    <div class="card"><div class="metric">${db.visits.length}</div><div class="label">Visitas</div></div>
+   <div class="card"><div class="metric">${(db.centerNotes||[]).length}</div><div class="label">Notas de centros</div></div>
    <div class="card"><div class="metric">${specialsTotal}</div><div class="label">Registros en otros datos</div></div>
   </div>
   <button class="btn danger" onclick="resetData()">Vaciar el registro…</button>
+  <p class="muted" style="font-size:12px;margin-top:14px">Versión de la aplicación: ${esc(v.version||'')}</p>
  </div></div>`;
 }
 function exportJSON(){
@@ -1096,6 +997,7 @@ const IMPORT_TARGETS={
   ['action','Actuación realizada / respuesta',['actuacion','respuesta','accion','resolucion','medida']],
   ['finalizada','Finalizada',['finaliz','estado','status','hecho','done','complet','cerrad']]]},
  centers:{label:'Centros',fields:[
+  ['tipo','Tipo',['tipo']],
   ['name','Nombre del centro',['nombre','centro','name']],
   ['code','Código',['codigo','code','cod']],
   ['town','Concello',['concello','ayuntamiento','municipio','localidad','town']],
@@ -1182,7 +1084,7 @@ function timeFrom(raw){
 }
 function parseDone(v){return /^(s[ií]|yes|true|1|x|✓|✔|hecho|done|finaliz|complet|terminad|cerrad|resuelt|listo)/i.test(normTxt(v).replace(/^[^a-z0-9✓✔]+/,''))||/^(✓|✔)/.test(String(v).trim())}
 function normMode(v){
- const n=normTxt(v);if(!n)return ['Otro',''];
+ const n=normTxt(v);if(!n)return ['',''];
  if(/correo|mail|e-mail/.test(n))return ['Correo electrónico',''];
  if(/telef|llamad|movil|tlf/.test(n))return ['Teléfono',''];
  if(/rexel/.test(n))return ['REXEL',''];
@@ -1205,7 +1107,7 @@ function runNotionImport(){
  const resolveCenter=raw=>{
   const v=String(raw||'').split(/,\s*(?=[A-ZÁÉÍÓÚ])/)[0].trim();if(!v)return '';
   const c=findCenter(v);if(c)return c.name;
-  if(createCenters){const id=uid();db.centers.push({id,code:'',name:v,town:'',phone:'',email:'',address:'',director:'',secretary:''});db.followup[id]={};newCenters++;return v}
+  if(createCenters){const id=uid();db.centers.push({id,code:'',tipo:'',docUrl:'',name:v,town:'',phone:'',email:'',address:'',director:'',secretary:''});db.followup[id]={};newCenters++;return v}
   return v;
  };
  if(target==='centers'){
@@ -1216,7 +1118,8 @@ function runNotionImport(){
    const vals=Object.fromEntries(IMPORT_TARGETS.centers.fields.map(([k])=>[k,get(row,k)]));
    if(ex){if(updateCenters){let ch=false;for(const [k,v] of Object.entries(vals))if(v&&!ex[k]){ex[k]=v;ch=true}if(ch)updated++;else skipped++}else skipped++;continue}
    let id=code||uid();if(db.centers.some(c=>c.id===id))id=uid();
-   db.centers.push({id,code,name,town:vals.town,phone:vals.phone,email:vals.email,address:vals.address,director:vals.director,secretary:vals.secretary});
+   const fullName=vals.tipo&&!normTxt(name).startsWith(normTxt(vals.tipo)+' ')?vals.tipo+' '+name:name;
+   db.centers.push({id,code,name:fullName,tipo:vals.tipo,docUrl:'',town:vals.town,phone:vals.phone,email:vals.email,address:vals.address,director:vals.director,secretary:vals.secretary});
    db.followup[id]={};created++;
   }
  }else if(target==='actions'){
@@ -1230,7 +1133,7 @@ function runNotionImport(){
    const key=normTxt([d,center,subject].join('|'));
    if(skipDup&&seen.has(key)){skipped++;continue}
    seen.add(key);
-   db.actions.push({id:uid(),date:d,time:get(row,'time')||timeFrom(rawDate),mode,center,student:get(row,'student'),subject,details,action:get(row,'action'),finalizada:map.finalizada!==undefined&&parseDone(get(row,'finalizada'))});
+   db.actions.push({id:uid(),date:d,time:get(row,'time')||timeFrom(rawDate),mode,center,student:get(row,'student'),subject,details,action:get(row,'action'),finalizada:map.finalizada!==undefined&&parseDone(get(row,'finalizada')),createdAt:localIso(d,get(row,'time')||timeFrom(rawDate))||nowIso(),updatedAt:'',updates:[],source:'csv'});
    created++;
   }
  }else{
@@ -1249,6 +1152,439 @@ function runNotionImport(){
  nav(target==='actions'?'registro':target==='centers'?'centros':'visitas');
 }
 
+/* ======================= VERSIÓN 2 ======================= */
+const APP_TIPOS=['IES','CEIP','CPI','CRA','EEI','CPR','CFEA','CEE','CIFP','EOI','EPA','CMUS','CEEPI','EASD','Otro'];
+const ACTION_MODES=['Correo electrónico','Teléfono','Presencial','REXEL','Otro'];
+function nowIso(){return new Date().toISOString()}
+function todayIso(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function dateTime(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?esc(v):d.toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function localIso(d,t){if(!d)return '';const x=new Date(`${d}T${t||'00:00'}`);return isNaN(x)?'':x.toISOString()}
+function stopEv(e){e.preventDefault();e.stopPropagation()}
+function migrateV2(){
+ if(!Array.isArray(db.centerNotes))db.centerNotes=[];
+ db.actions.forEach(a=>{if(!Array.isArray(a.updates))a.updates=[];if(a.createdAt===undefined)a.createdAt='';if(a.updatedAt===undefined)a.updatedAt=''});
+ db.centers.forEach(c=>{
+  if(!c.tipo){const m=String(c.name||'').match(/^([A-Z]{2,6})\s/);if(m&&APP_TIPOS.includes(m[1]))c.tipo=m[1]}
+  if(c.docUrl===undefined)c.docUrl='';
+ });
+}
+
+/* ---------- Inicio: bloques desplegables ---------- */
+function homeBlock(key,title,headExtra,body){
+ const open=window.__vault?.ui?window.__vault.ui('home.'+key,true)!==false:true;
+ return `<details class="panel home-block" data-block="${key}" ${open?'open':''} ontoggle="homeBlockToggle(this)"><summary><span class="home-block-title">${title}</span>${headExtra}<span class="special-arrow" aria-hidden="true">▶</span></summary><div class="panelbody">${body}</div></details>`;
+}
+function homeBlockToggle(el){window.__vault?.setUi?.('home.'+el.dataset.block,el.open)}
+function homeRequestsPanel(){
+ const items=db.petitionsRequirements||[];
+ const centerName=id=>db.centers.find(c=>c.id===id)?.name||'Centro no registrado';
+ const body=`<div class="toolbar"><input id="homeRequestSearch" class="input" type="search" placeholder="Buscar por centro" aria-label="Buscar peticiones y requerimientos por centro" oninput="filterHomeRequests()"><label style="display:flex;align-items:center;gap:6px;font-size:13px"><input id="homeRequestPendingOnly" type="checkbox" onchange="filterHomeRequests()"> Solo pendientes</label></div><div class="home-request-list" id="homeRequestList">${[...items].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>`<div class="event home-request-row ${x.finalizada?'finalized':''}" data-finished="${!!x.finalizada}" data-center="${esc(centerName(x.centerId).toLocaleLowerCase('es'))}"><b>${esc(x.type||'Petición')} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div><strong>${esc(centerName(x.centerId))}</strong> · ${esc(x.subject||'Sin asunto')}</div>${x.details?`<p>${esc(x.details)}</p>`:''}${db.centers.some(c=>c.id===x.centerId)?`<button class="btn small" type="button" onclick="centerDetail('${x.centerId}','peticiones')">Ver ficha</button>`:''}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div><div id="homeRequestNoResults" class="empty" hidden>No hay resultados para ese centro.</div>`;
+ return homeBlock('requests','Peticiones y requerimientos',`<span class="pill">${items.length} ${items.length===1?'registro':'registros'}</span>`,body);
+}
+function calendarBlock(){
+ const html=calendarPanel();
+ const head='<div class="panel"><div class="panelhead"><h2>Calendario de plazos · 2026/27</h2><button class="btn small primary" onclick="newManualDeadline()">+ Añadir plazo</button></div><div class="panelbody">';
+ if(!html.startsWith(head)||!html.endsWith('</div></div>'))return html;
+ return homeBlock('calendar','Calendario de plazos · 2026/27',`<button class="btn small primary" onclick="stopEv(event);newManualDeadline()">+ Añadir plazo</button>`,html.slice(head.length,-12));
+}
+function actionMeta(a){const n=(a.updates||[]).length;return n?` · ${n} ${n===1?'actualización':'actualizaciones'}`:''}
+function dashboard(){
+ const pendingActions=db.actions.filter(x=>!x.finalizada).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+ const pending=pendingActions.length;
+ const today=todayIso();
+ const next=db.visits.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+ const last=db.visits.filter(x=>x.date&&x.date<today).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+ const actionEvents=items=>items.map(a=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> <button class="btn small" onclick="finishActionFromHome('${a.id}')">Marcar como finalizada</button></div>`).join('')||'<div class="empty">No hay actuaciones pendientes.</div>';
+ const card=(n,label,view)=>`<div class="card link" role="button" tabindex="0" onclick="nav('${view}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('${view}')}"><div class="metric">${n}</div><div class="label">${label}</div></div>`;
+ const visitRow=(v,pill)=>`<div class="kpi" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:12px">${date(v.date)}</b><div class="muted" style="font-size:11px">${esc(v.center)}</div></div>${pill}</div>`;
+ const visitsBody=`<h3 class="home-sub">Próximas visitas</h3>${next.map(v=>visitRow(v,`<span class="pill">${esc(v.month||'')}</span>`)).join('')||'<div class="empty">No hay visitas próximas.</div>'}<h3 class="home-sub" style="margin-top:18px">Últimas visitas realizadas</h3>${last.map(v=>visitRow(v,'<span class="pill ok">Realizada</span>')).join('')||'<div class="empty">No hay visitas realizadas.</div>'}`;
+ const pendingBody=`<h3 class="home-sub">Las 3 más antiguas</h3><div class="timeline">${actionEvents(pendingActions.slice(0,3))}</div><h3 class="home-sub" style="margin-top:18px">Las 3 más recientes</h3><div class="timeline">${actionEvents(pendingActions.slice(-3).reverse())}</div>`;
+ document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
+ `<div class="cards">${card(db.actions.length,'Actuaciones registradas','registro')}${card(pending,'Actuaciones pendientes','registro')}${card(db.centers.length,'Centros registrados','centros')}${card(db.visits.length,'Visitas planificadas','visitas')}</div>`+
+ homeRequestsPanel()+calendarBlock()+
+ `<div class="grid2 home-grid">`+
+ homeBlock('visits','Visitas',`<button class="btn small" onclick="stopEv(event);nav('visitas')">Ver visitas</button>`,visitsBody)+
+ homeBlock('pending','Actuaciones pendientes',`<span class="pill ${pending?'warn':''}">${pending}</span><button class="btn small" onclick="stopEv(event);nav('registro')">Ver registro</button>`,pendingBody)+
+ `</div>`;
+}
+
+/* ---------- Registro de actuaciones ---------- */
+function registro(){
+ document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0">Pendientes</option><option value="1">Finalizadas</option></select><button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Alumno/a</th><th>Asunto</th><th>Detalles</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
+ filterActions();
+}
+function registroForCenter(name){nav('registro');const i=document.getElementById('rsearch');if(i){i.value=name;filterActions()}}
+function filterActions(){
+ const q=normTxt(document.getElementById('rsearch')?.value||''),t=document.getElementById('rtype')?.value||'',s=document.getElementById('rstatus')?.value||'';
+ const a=db.actions.filter(x=>!q||normTxt([x.center,x.student,x.subject,x.details,x.action,...(x.updates||[]).map(u=>u.text)].join(' ')).includes(q))
+  .filter(x=>!t||(t==='__none'?!x.mode:x.mode===t)).filter(x=>s===''||String(x.finalizada?1:0)===s)
+  .sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+ currentFilteredActions=a;
+ const c=document.getElementById('rcount');if(c)c.textContent=`${a.length} ${a.length===1?'actuación':'actuaciones'}`;
+ document.getElementById('actionRows').innerHTML=a.map(x=>{
+  const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
+  return `<tr><td>${date(x.date)}<br><span class="muted">${esc(x.time||'')}</span></td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><b>${esc(x.subject)}</b></td><td><div class="clamp">${esc(x.details)}</div></td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small" onclick="editAction('${x.id}')">Abrir</button> <button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
+}
+
+/* ---------- Formulario de actuación: fechas e historial ---------- */
+let formUpdates=[];
+function actionForm(x={},warnings=[]){
+ formUpdates=(x.updates||[]).map(u=>({...u}));
+ const centerKnown=!x.center||db.centers.some(c=>c.name===x.center);
+ const meta=x.id?`<div class="meta-line">Registrada: ${x.createdAt?dateTime(x.createdAt):'sin dato'} · Última modificación: ${x.updatedAt?dateTime(x.updatedAt):'sin cambios'}${x.source==='notion'?' · Importada de Notion':''}</div>`:'<div class="meta-line">La fecha de registro se anotará automáticamente al guardar.</div>';
+ return `${warnings.length?`<div class="notice warn-notice" style="margin:0 0 14px">${warnings.map(esc).join('<br>')}</div>`:''}${meta}
+ <div class="formgrid" style="margin-top:12px">
+  <div class="field"><label for="fdate">Fecha de la actuación</label><input id="fdate" class="input" type="date" value="${esc(x.date||todayIso())}"></div>
+  <div class="field"><label for="ftime">Hora</label><input id="ftime" class="input" type="time" value="${esc(x.time||'')}"></div>
+  <div class="field"><label for="fmode">Medio de comunicación</label><select id="fmode" class="select"><option value="" ${!x.mode?'selected':''}>Sin especificar</option>${ACTION_MODES.map(m=>`<option ${x.mode===m?'selected':''}>${m}</option>`).join('')}</select></div>
+  <div class="field"><label for="fcenter">Centro</label><select id="fcenter" class="select"><option value="">— Sin centro —</option>${centerKnown?'':`<option value="${esc(x.center)}" selected>${esc(x.center)} (no registrado)</option>`}${[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+  <div class="field"><label for="fstudent">Alumno/a</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
+  <div class="field"><label for="fsubject">Asunto</label><input id="fsubject" class="input" style="width:100%" value="${esc(x.subject)}"></div>
+  <div class="field full"><label for="fdetails">Detalles</label><textarea id="fdetails" class="textarea">${esc(x.details)}</textarea></div>
+  <div class="field full"><label for="faction">Actuación realizada / respuesta</label><textarea id="faction" class="textarea">${esc(x.action)}</textarea></div>
+  <div class="field full"><label>Actualizaciones</label><div id="fUpdates" class="update-list"></div>
+   <div class="update-add"><input id="fuDate" class="input" type="date" value="${todayIso()}" aria-label="Fecha de la actualización"><textarea id="fuText" class="textarea" placeholder="Qué ha cambiado: respuesta recibida, nueva gestión, cierre…" aria-label="Texto de la actualización"></textarea><button type="button" class="btn" onclick="addFormUpdate()">Añadir actualización</button></div></div>
+  <div class="field full"><label class="gate-check"><input id="ffinal" type="checkbox" ${x.finalizada?'checked':''}> Actuación finalizada</label></div>
+ </div>`;
+}
+function renderFormUpdates(){
+ const box=document.getElementById('fUpdates');if(!box)return;
+ box.innerHTML=[...formUpdates].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(u=>`<div class="update-item"><div><b>${date(u.date)}</b><div class="note-text">${esc(u.text)}</div></div><button type="button" class="btn small danger" aria-label="Eliminar actualización" onclick="removeFormUpdate('${u.id}')">🗑️</button></div>`).join('')||'<p class="muted" style="font-size:12px;margin:0 0 8px">Sin actualizaciones.</p>';
+}
+function addFormUpdate(){
+ const t=document.getElementById('fuText'),d=document.getElementById('fuDate');
+ if(!t.value.trim()){t.focus();return}
+ formUpdates.push({id:uid(),date:d.value||todayIso(),text:t.value.trim(),createdAt:nowIso()});
+ t.value='';renderFormUpdates();
+}
+function removeFormUpdate(id){if(!confirm('¿Eliminar esta actualización?'))return;formUpdates=formUpdates.filter(u=>u.id!==id);renderFormUpdates()}
+function readActionForm(){
+ if(document.getElementById('fuText')?.value.trim())addFormUpdate();
+ const v=id=>document.getElementById(id).value;
+ return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),details:v('fdetails'),action:v('faction'),finalizada:document.getElementById('ffinal').checked,updates:formUpdates};
+}
+function newAction(prefill={},warnings=[]){
+ openModal('Nueva actuación',actionForm(prefill,warnings),()=>{
+  const data=readActionForm();
+  db.actions.push({id:uid(),createdAt:nowIso(),updatedAt:'',...data});
+  save();closeModal();registro();
+ });
+ renderFormUpdates();
+}
+function editAction(id){
+ const x=db.actions.find(a=>a.id===id);if(!x)return;
+ openModal('Actuación',actionForm(x),()=>{Object.assign(x,readActionForm(),{updatedAt:nowIso()});save();closeModal();registro()});
+ renderFormUpdates();
+}
+
+/* ---------- Pegar actuación preparada por Claude ---------- */
+const PASTE_KEYS={'fecha':'date','fecha de la actuacion':'date','hora':'time','medio':'mode','medio de comunicacion':'mode','centro':'center','codigo':'code','codigo del centro':'code','alumno/a':'student','alumno':'student','alumna':'student','alumnado':'student','asunto':'subject','detalles':'details','actuacion realizada':'action','actuacion realizada / respuesta':'action','respuesta':'action','estado':'status','finalizada':'status'};
+function parsePastedAction(text){
+ const out={};let cur=null;
+ for(const raw of String(text).replace(/\r/g,'').split('\n')){
+  if(/^\s*```/.test(raw))continue;
+  const line=raw.replace(/^\s*[-*>]+\s*/,'').replace(/\*\*/g,'');
+  const m=line.match(/^([A-Za-zÁÉÍÓÚÜáéíóúüñÑ/ .]{3,40}):\s*(.*)$/);
+  const key=m&&PASTE_KEYS[normTxt(m[1]).replace(/\s+/g,' ')];
+  if(key){cur=key;out[key]=m[2].trim();continue}
+  if(!cur&&normTxt(line)==='actuacion')continue;
+  if(cur==='details'||cur==='action')out[cur]=(out[cur]?out[cur]+'\n':'')+raw.trimEnd();
+ }
+ for(const k in out)out[k]=String(out[k]).replace(/^\n+|\s+$/g,'');
+ return out;
+}
+function matchCenter(name,code){
+ if(code){const c=db.centers.find(c=>String(c.code).trim()===String(code).trim());if(c)return c}
+ const n=normTxt(name).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();if(!n)return null;
+ const bare=s=>normTxt(s).replace(/[^a-z0-9 ]/g,' ').replace(/\b(ies|ceip|cpi|cra|eei|cpr|cfea|cee|cifp|eoi|epa|plurilingue|de|do|da|das|dos|o|a)\b/g,' ').replace(/\s+/g,' ').trim();
+ return db.centers.find(c=>normTxt(c.name).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()===n)
+  ||db.centers.find(c=>bare(c.name)&&bare(c.name)===bare(name))
+  ||db.centers.filter(c=>bare(c.name)&&(bare(c.name).includes(bare(name))||bare(name).includes(bare(c.name)))).sort((a,b)=>b.name.length-a.name.length)[0]||null;
+}
+function claudeInstructions(){
+ const centers=[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`- ${c.name}${c.code?` (${c.code})`:''}`).join('\n');
+ return `Cuando te pida preparar una actuación para mi aplicación de registro, devuélvela SOLO en este formato, dentro de un bloque de código y sin texto adicional dentro del bloque. Usa solo iniciales para el alumnado.
+
+ACTUACIÓN
+Fecha: DD/MM/AAAA
+Hora: HH:MM (vacío si no se indica)
+Medio: Correo electrónico | Teléfono | Presencial | REXEL | Otro
+Centro: nombre exacto de la lista de abajo
+Código: código del centro
+Alumno/a: iniciales o vacío
+Asunto: una sola línea
+Detalles: texto; puede ocupar varias líneas
+Actuación realizada: texto; puede ocupar varias líneas
+Estado: Pendiente | Finalizada
+
+Mis centros:
+${centers||'- (todavía no hay centros registrados)'}`;
+}
+async function copyClaudeInstructions(){
+ const text=claudeInstructions();
+ try{await navigator.clipboard.writeText(text);alert('Instrucciones copiadas. Pégalas al principio de tu conversación con Claude.')}
+ catch{const t=document.getElementById('pasteText');if(t){t.value=text;t.select()}alert('No se pudo copiar automáticamente: las instrucciones están en el cuadro de texto; selecciónalas y cópialas.')}
+}
+async function pasteFromClipboard(){
+ try{const t=await navigator.clipboard.readText();document.getElementById('pasteText').value=t}
+ catch{alert('El navegador no ha dado acceso al portapapeles. Mantén pulsado el cuadro de texto y elige «Pegar».');document.getElementById('pasteText').focus()}
+}
+function pasteActionStart(){
+ openModal('Pegar actuación de Claude',`<p style="margin-top:0">Pega aquí el bloque que te ha preparado Claude. Se abrirá el formulario relleno para que lo revises antes de guardar.</p>
+ <div class="toolbar"><button type="button" class="btn" onclick="pasteFromClipboard()">Pegar del portapapeles</button><button type="button" class="btn" onclick="copyClaudeInstructions()">Copiar instrucciones para Claude</button></div>
+ <textarea id="pasteText" class="textarea" style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="ACTUACIÓN&#10;Fecha: 28/09/2026&#10;Hora: 10:30&#10;Medio: Teléfono&#10;Centro: …&#10;Asunto: …&#10;Detalles: …"></textarea>
+ <p class="muted" style="font-size:12px">Las instrucciones incluyen el formato y la lista de tus centros (nombre y código) para que Claude los escriba igual que en la aplicación.</p>`,()=>{
+  const p=parsePastedAction(document.getElementById('pasteText').value);
+  if(!p.subject&&!p.details&&!p.action){alert('No reconozco el formato. Comprueba que el texto tenga líneas como «Asunto: …» o «Detalles: …».');return}
+  const warnings=[];
+  const d=p.date?parseDateAny(p.date):'';if(p.date&&!d)warnings.push(`No he entendido la fecha «${p.date}»: revísala.`);
+  const time=p.time?timeFrom(p.time):'';
+  let mode='',details=p.details||'';
+  if(p.mode){const exact=ACTION_MODES.find(m=>normTxt(m)===normTxt(p.mode));if(exact)mode=exact;else{const [m,note]=normMode(p.mode);mode=m;if(note)warnings.push(`El medio «${p.mode}» se ha registrado como «Otro».`)}}
+  const c=matchCenter(p.center,p.code);
+  if((p.center||p.code)&&!c)warnings.push(`No encuentro el centro «${p.center||p.code}»: elígelo en la lista.`);
+  newAction({date:d||todayIso(),time,mode,center:c?c.name:'',student:p.student||'',subject:p.subject||'',details,action:p.action||'',finalizada:/finaliz|cerrad|^s[ií]$/i.test(normTxt(p.status||''))},warnings);
+ });
+ document.getElementById('modalSave').textContent='Continuar';
+}
+
+/* ---------- Centros: tipo, PDF y notas ---------- */
+function centros(){
+ const tipos=[...new Set(db.centers.map(c=>c.tipo).filter(Boolean))].sort();
+ document.getElementById('main').innerHTML=layout('Centros','Ficha básica y actividad asociada a cada centro',homeBtn()+`<button class="btn primary" onclick="newCenter()">+ Nuevo centro</button>`)+
+ `<div class="toolbar"><input id="csearch" class="input" type="search" placeholder="Buscar centro, concello o código" oninput="filterCenters()"><select id="ctipo" class="select" onchange="filterCenters()"><option value="">Todos los tipos</option>${tipos.map(t=>`<option>${esc(t)}</option>`).join('')}</select><span id="ccount" class="pill"></span></div><div class="centergrid" id="centerGrid"></div>`;
+ filterCenters();
+}
+function filterCenters(){
+ const q=normTxt(document.getElementById('csearch')?.value||''),t=document.getElementById('ctipo')?.value||'';
+ const cs=db.centers.filter(c=>!q||normTxt([c.name,c.town,c.code].join(' ')).includes(q)).filter(c=>!t||c.tipo===t).sort((a,b)=>a.name.localeCompare(b.name,'es'));
+ const cc=document.getElementById('ccount');if(cc)cc.textContent=`${cs.length} ${cs.length===1?'centro':'centros'}`;
+ document.getElementById('centerGrid').innerHTML=cs.map(c=>{
+  const acts=db.actions.filter(a=>a.center===c.name),pend=acts.filter(a=>!a.finalizada).length,notes=db.centerNotes.filter(n=>n.centerId===c.id).length;
+  return `<div class="center" role="button" tabindex="0" onclick="centerDetail('${c.id}','datos')" onkeydown="if(event.key==='Enter'){centerDetail('${c.id}','datos')}"><h3>${esc(c.name)}</h3><p>${c.tipo?`<span class="pill">${esc(c.tipo)}</span> `:''}${esc(c.town)}${c.code?' · '+esc(c.code):''}</p><p>${acts.length} actuaciones${pend?` (${pend} pendientes)`:''} · ${db.visits.filter(v=>v.center===c.name).length} visitas · ${notes} notas</p></div>`}).join('')||'<div class="empty">No hay centros con esos criterios.</div>';
+}
+function centerForm(c){
+ const f=(id,label,val,full=false,extra='')=>`<div class="field ${full?'full':''}"><label for="${id}">${label}</label><input class="input" style="width:100%" id="${id}" value="${esc(val||'')}" ${extra}></div>`;
+ return `<div class="formgrid">
+  ${f('cname','Nombre completo del centro',c.name,true,'placeholder="Por ejemplo: IES Antonio Fraguas Fraguas"')}
+  <div class="field"><label for="ctipo2">Tipo</label><input class="input" style="width:100%" id="ctipo2" list="tiposList" value="${esc(c.tipo||'')}"><datalist id="tiposList">${APP_TIPOS.map(t=>`<option value="${t}">`).join('')}</datalist></div>
+  ${f('ccode','Código',c.code)}${f('ctown','Concello',c.town)}${f('cphone','Teléfono',c.phone)}${f('cemail','Correo electrónico',c.email)}
+  ${f('caddress','Dirección postal',c.address,true)}
+  ${f('cdoc','Enlace al PDF de características (AbalarBox)',c.docUrl,true,'type="url" inputmode="url" placeholder="https://boxabalar.edu.xunta.gal/…"')}
+  ${f('cdirector','Director/a',c.director)}${f('csecretary','Secretario/a',c.secretary)}
+  ${f('cheadPrimary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${f('cheadSecondary','Jefatura de estudios · Secundaria',c.headSecondary)}
+  ${f('cheadAdults','Jefatura de estudios · Adultos',c.headAdults)}${f('cvice','Vicedirección',c.vice)}
+ </div>`;
+}
+function readCenterForm(){
+ const v=id=>document.getElementById(id).value.trim();
+ return {name:v('cname'),tipo:v('ctipo2'),code:v('ccode'),town:v('ctown'),phone:v('cphone'),email:v('cemail'),address:v('caddress'),docUrl:v('cdoc'),director:v('cdirector'),secretary:v('csecretary'),headPrimary:v('cheadPrimary'),headSecondary:v('cheadSecondary'),headAdults:v('cheadAdults'),vice:v('cvice')};
+}
+function validCenter(d,selfId){
+ if(!d.name){alert('Indica el nombre del centro.');return false}
+ if(d.code&&db.centers.some(c=>String(c.code)===d.code&&c.id!==selfId)){alert('Ya existe otro centro con ese código.');return false}
+ if(d.docUrl&&!/^https?:\/\//i.test(d.docUrl)){alert('El enlace al PDF debe empezar por https://');return false}
+ return true;
+}
+function newCenter(){
+ openModal('Nuevo centro',centerForm({}),()=>{
+  const d=readCenterForm();if(!validCenter(d,null))return;
+  let id=d.code||uid();if(db.centers.some(c=>c.id===id))id=uid();
+  db.centers.push({id,...d});db.followup[id]={};save();closeModal();centerDetail(id,'datos');
+ });
+}
+function editCenter(id){
+ const c=db.centers.find(x=>x.id===id);if(!c)return;const oldName=c.name;
+ openModal('Editar ficha del centro',centerForm(c),()=>{
+  const d=readCenterForm();if(!validCenter(d,id))return;
+  Object.assign(c,d);
+  if(oldName!==c.name){db.actions.forEach(a=>{if(a.center===oldName)a.center=c.name});db.visits.forEach(v=>{if(v.center===oldName)v.center=c.name})}
+  save();closeModal();centerDetail(id);
+ });
+}
+function noteForm(n){return `<div class="formgrid"><div class="field"><label for="ndate">Fecha</label><input id="ndate" type="date" class="input" style="width:100%" value="${esc(n.date||'')}"></div><div class="field"><label for="ntitle">Título</label><input id="ntitle" class="input" style="width:100%" value="${esc(n.title||'')}"></div><div class="field full"><label for="ntext">Nota</label><textarea id="ntext" class="textarea" style="min-height:220px">${esc(n.text||'')}</textarea></div></div>`}
+function readNoteForm(){return {date:document.getElementById('ndate').value,title:document.getElementById('ntitle').value.trim(),text:document.getElementById('ntext').value}}
+function newCenterNote(cid){
+ const c=db.centers.find(x=>x.id===cid);if(!c)return;
+ openModal('Nueva nota · '+c.name,noteForm({date:todayIso()}),()=>{const d=readNoteForm();if(!d.title&&!d.text.trim()){alert('Escribe un título o el texto de la nota.');return}db.centerNotes.push({id:uid(),centerId:cid,...d,createdAt:nowIso(),updatedAt:''});save();closeModal();centerDetail(cid,'notas')});
+}
+function editCenterNote(id,cid){
+ const n=db.centerNotes.find(x=>x.id===id);if(!n)return;
+ openModal('Editar nota',noteForm(n),()=>{Object.assign(n,readNoteForm(),{updatedAt:nowIso()});save();closeModal();centerDetail(cid,'notas')});
+}
+function deleteCenterNote(id,cid){if(!confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.'))return;db.centerNotes=db.centerNotes.filter(n=>n.id!==id);save();centerDetail(cid,'notas')}
+function showCenterTab(tab){
+ if(!['datos','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))return;
+ activeCenterTab=tab;
+ document.querySelectorAll('.center-menu-button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===tab)));
+ document.querySelectorAll('.center-section').forEach(p=>{p.hidden=p.dataset.tab!==tab});
+ const content=document.getElementById('centerContent');if(content)content.scrollTop=0;
+}
+function centerDetail(id,tab=activeCenterTab){
+ const c=db.centers.find(x=>x.id===id);if(!c)return;
+ if(!['datos','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))tab='datos';
+ const allActs=db.actions.filter(a=>a.center===c.name);
+ const pending=allActs.filter(a=>!a.finalizada).sort((a,b)=>((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||'')));
+ const acts=[...allActs].sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||''))).slice(0,15);
+ const centerVisits=db.visits.filter(v=>v.center===c.name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const centerRequests=db.petitionsRequirements.filter(x=>x.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const notes=db.centerNotes.filter(n=>n.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const field=(label,value)=>`<div><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
+ const tabs=[['datos','Datos del centro'],['actuaciones','Actuaciones'],['notas','Notas del centro'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['otros','Otros datos'],['peticiones','Peticiones y requerimientos']];
+ const counts={actuaciones:allActs.length,notas:notes.length,visitas:centerVisits.length,peticiones:centerRequests.length};
+ const menuButtons=tabs.map(([key,label])=>`<button id="center-menu-${key}" class="center-menu-button" type="button" data-tab="${key}" aria-controls="center-panel-${key}" aria-pressed="${key===tab}" onclick="showCenterTab('${key}')">${label}${counts[key]?` <span class="menu-count">${counts[key]}</span>`:''}</button>`).join('');
+ const leadership=(cls,label,value)=>`<div class="leadership-role ${cls}"><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
+ const empty=(col,row)=>`<div class="leadership-empty" style="grid-column:${col};grid-row:${row}" aria-hidden="true"></div>`;
+ const doc=c.docUrl?`<a class="btn small" href="${esc(c.docUrl)}" target="_blank" rel="noopener noreferrer">Abrir PDF de características</a>`:`<span class="muted">Sin enlace. Añádelo en «Editar datos».</span>`;
+ const data=`<h3>Información del centro</h3><dl class="center-data-list">${field('Tipo',c.tipo)}${field('Código',c.code)}${field('Dirección postal',c.address)}${field('Concello',c.town)}${field('Teléfono',c.phone)}${field('Correo electrónico',c.email)}<div><dt>Características del centro</dt><dd>${doc}</dd></div></dl><h3>Equipo directivo</h3><dl class="center-leadership">${leadership('leadership-direction','Dirección',c.director)}${leadership('leadership-primary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${leadership('leadership-secondary','Jefatura de estudios · Secundaria',c.headSecondary)}${leadership('leadership-adults','Jefatura de estudios · Adultos',c.headAdults)}${leadership('leadership-secretary','Secretaría',c.secretary)}${leadership('leadership-vice','Vicedirección',c.vice)}${empty(1,2)}${empty(1,3)}${empty(3,2)}${empty(3,3)}${empty(4,2)}${empty(4,3)}</dl>`;
+ const ev=(a,withFinish)=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> ${withFinish&&!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`;
+ const actions=`<h3>Actuaciones pendientes (${pending.length})</h3><div class="timeline">${pending.map(a=>ev(a,true)).join('')||'<div class="empty">No hay actuaciones pendientes en este centro.</div>'}</div><h3>Últimas actuaciones (${acts.length} de ${allActs.length})</h3><div class="timeline">${acts.map(a=>ev(a,true)).join('')||'<div class="empty">Sin actuaciones.</div>'}</div>${allActs.length?`<button class="btn" onclick="registroForCenter(${esc(JSON.stringify(c.name))})">Ver todas en el registro</button>`:''}`;
+ const notesHtml=`<div class="section-head"><h3>Notas del centro (${notes.length})</h3><button class="btn small primary" onclick="newCenterNote('${c.id}')">+ Añadir nota</button></div><div class="timeline">${notes.map(n=>`<div class="event note"><b>${n.date?date(n.date):'Sin fecha'}${n.title?' · '+esc(n.title):''}${n.source==='notion'?' · <span class="muted">Notion</span>':''}</b><div class="note-text">${esc(n.text)}</div><button class="btn small" onclick="editCenterNote('${n.id}','${c.id}')">Editar</button> <button class="btn small danger" aria-label="Eliminar nota" onclick="deleteCenterNote('${n.id}','${c.id}')">🗑️</button></div>`).join('')||'<div class="empty">Sin notas. Aquí puedes guardar comentarios y observaciones generales sobre el centro.</div>'}</div>`;
+ const visits=`<h3>Registro de visitas (${centerVisits.length})</h3><div class="timeline">${centerVisits.map(v=>`<div class="event"><b>${date(v.date)}</b><div>${esc(v.obs||v.notes||v.observations||'Visita al centro')}</div><button class="btn small" type="button" onclick="editVisitFromCenter('${v.id}','${c.id}')">Editar</button></div>`).join('')||'<div class="empty">No hay visitas registradas en este centro.</div>'}</div>`;
+ const requests=`<h3>Peticiones y requerimientos (${centerRequests.length})</h3><div class="timeline">${centerRequests.map(x=>`<div class="event"><b>${esc(x.type)} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div>${esc(x.subject)}</div><p>${esc(x.details||'')}</p><button class="btn small" type="button" onclick="editCenterRequest('${x.id}','${c.id}')">Editar</button> ${x.finalizada?'':`<button class="btn small" type="button" onclick="finishCenterRequest('${x.id}','${c.id}')">Marcar como finalizado</button>`}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div>`;
+ const sec=(key,html)=>`<section id="center-panel-${key}" class="center-section" role="region" aria-labelledby="center-menu-${key}" data-tab="${key}" ${tab===key?'':'hidden'}>${html}</section>`;
+ document.getElementById('main').innerHTML=`<header class="center-fixed-head"><div class="center-identity-row"><div class="center-identity"><h1>${esc(c.name)}</h1><span>${esc(c.town)}${c.code?' · código '+esc(c.code):''}</span></div><div class="center-head-actions"><button class="btn" onclick="nav('centros')">Volver</button><button class="btn" onclick="editCenter('${c.id}')">Editar datos</button>${c.docUrl?`<a class="btn" href="${esc(c.docUrl)}" target="_blank" rel="noopener noreferrer">Características (PDF)</a>`:''}<button class="btn primary" onclick="newActionForCenter('${c.id}')">+ Actuación</button><button class="btn primary" onclick="newCenterNote('${c.id}')">+ Nota</button><button class="btn primary" onclick="newVisitForCenter('${c.id}')">+ Visita</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Petición')">+ Petición</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Requerimiento')">+ Requerimiento</button></div></div></header><div class="panel center-workspace"><nav class="center-menu" aria-label="Secciones de la ficha">${menuButtons}</nav><div class="center-content" id="centerContent">${sec('datos',data)}${sec('actuaciones',actions)}${sec('notas',notesHtml)}${sec('visitas',visits)}${sec('seguimiento',`<h3>Seguimiento</h3>${centerFollowupPanel(c)}`)}${sec('otros',`<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}${centerSpecialCard(c,'Días no lectivos','Días no lectivos')}</div>`)}${sec('peticiones',requests)}</div></div>`;
+ activeCenterTab=tab;
+}
+
+/* ---------- Exportación CSV ---------- */
+function actionsCsvRows(list){
+ return [['Fecha actuación','Hora','Medio','Centro','Alumno/a','Asunto','Detalles','Actuación','Actualizaciones','Finalizada','Registrada','Última modificación'],
+  ...list.map(x=>[x.date,x.time,x.mode,x.center,x.student,x.subject,x.details,x.action,(x.updates||[]).map(u=>`${u.date}: ${u.text}`).join(' | '),x.finalizada?'Sí':'No',x.createdAt||'',x.updatedAt||''])];
+}
+function csvBlob(rows){return new Blob(['\ufeff'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n')],{type:'text/csv;charset=utf-8'})}
+function exportFilteredActionsCSV(){download(csvBlob(actionsCsvRows(currentFilteredActions)),'registro-actuaciones-filtrado.csv')}
+function exportCSV(kind){
+ if(kind==='actions')return download(csvBlob(actionsCsvRows(db.actions)),'registro-actuaciones.csv');
+ const rows=[['Centro',...db.followupFields.map(f=>'Documentos · '+f),...ABSENCE_MONTHS.map(m=>'Faltas profesorado · '+m)],...db.centers.map(c=>[c.name,...db.followupFields.map(f=>followNA(c.id,f)?'N/A':(db.followup[c.id]?.[f]||'')),...ABSENCE_MONTHS.map(m=>db.teacherAbsenceDates?.[c.id]?.[m]||'')])];
+ download(csvBlob(rows),'seguimiento.csv');
+}
+
+/* ---------- Importación de la carpeta completa de Notion ---------- */
+const stripNotionId=n=>String(n).replace(/\.(md|csv)$/i,'').replace(/_all$/i,'').replace(/\s+[0-9a-f]{32}$/i,'').trim();
+const normTitle=s=>normTxt(s).replace(/[^a-z0-9]/g,'');
+const baseName=p=>p.split('/').pop();
+const dirName=p=>p.split('/').slice(0,-1).join('/');
+function cleanNotionMd(text){
+ let L=String(text).replace(/\r/g,'').split('\n'),title='';
+ if(L[0]&&/^#\s+/.test(L[0])){title=L[0].replace(/^#\s+/,'').trim();L=L.slice(1)}
+ while(L.length&&!L[0].trim())L.shift();
+ const props={};let i=0;
+ while(i<L.length&&i<12&&/^[^:\n\[\]]{1,40}:\s/.test(L[i])&&!/^https?:/i.test(L[i])){const m=L[i].match(/^([^:]{1,40}):\s*(.*)$/);props[normTxt(m[1])]=m[2].trim();i++}
+ if(i&&(i===L.length||!L[i].trim()))L=L.slice(i);
+ const body=L.filter(l=>!/^\s*\[[^\]]*\]\([^)]*\.(md|csv)\)\s*$/i.test(l))
+  .map(l=>l.replace(/\[([^\]]*)\]\([^)]*\.(md|csv)\)/gi,'$1').replace(/\[([^\]]*)\]\((https?:[^)]*)\)/gi,'$1 ($2)'))
+  .join('\n').replace(/\n{3,}/g,'\n\n').trim();
+ return {title,props,body};
+}
+function colIndex(headers,names){
+ const h=headers.map(x=>normTxt(x));
+ for(const n of names){const i=h.indexOf(n);if(i>=0)return i}
+ for(const n of names){const i=h.findIndex(x=>x.includes(n));if(i>=0)return i}
+ return -1;
+}
+function importNotionFolderStart(){const i=document.getElementById('notionFolder');i.value='';i.click()}
+async function importNotionFolderFiles(e){
+ const files=[...e.target.files];if(!files.length)return;
+ try{
+  const plan=await buildNotionPlan(files);if(!plan)return;
+  window.__notionPlan=plan;
+  openModal('Importar carpeta de Notion',notionPlanHTML(plan),runNotionPlan);
+  document.getElementById('modalSave').textContent='Importar';
+ }catch(err){console.error(err);alert('No se pudo leer la carpeta: '+(err.message||err))}
+}
+async function buildNotionPlan(files){
+ const map=new Map();files.forEach(f=>map.set(f.webkitRelativePath||f.name,f));
+ const paths=[...map.keys()],depth=p=>p.split('/').length;
+ const csvs=paths.filter(p=>/\.csv$/i.test(p));
+ if(!csvs.length){alert('En esa carpeta no hay ningún CSV exportado de Notion.');return null}
+ const minD=Math.min(...csvs.map(depth)),top=csvs.filter(p=>depth(p)===minD);
+ const rootCsv=top.find(p=>/_all\.csv$/i.test(p))||top[0];
+ const rootTitle=stripNotionId(baseName(rootCsv));
+ const dbFolder=(dirName(rootCsv)?dirName(rootCsv)+'/':'')+rootTitle;
+ const rows=parseCSV(await map.get(rootCsv).text());
+ if(rows.length<2){alert('El CSV principal no tiene filas.');return null}
+ const H=rows[0].map(h=>String(h).trim());
+ const ci={tipo:colIndex(H,['tipo']),nombre:colIndex(H,['nombre','name']),code:colIndex(H,['codigo','cod','code']),town:colIndex(H,['localidad','concello','municipio','ayuntamiento','localid']),phone:colIndex(H,['telf','telefono','tlf','phone']),email:colIndex(H,['correo','email','mail'])};
+ if(ci.nombre<0)ci.nombre=0;
+ const inside=paths.filter(p=>p.startsWith(dbFolder+'/'));
+ const childDirs=[...new Set(inside.map(p=>p.slice(dbFolder.length+1).split('/')).filter(s=>s.length>1).map(s=>s[0]))];
+ const plan={rootTitle,centers:[],attachments:0};
+ const g=(r,i)=>i>=0?cleanNotion(r[i]??''):'';
+ for(const r of rows.slice(1)){
+  const title=g(r,ci.nombre);if(!title)continue;
+  const tipo=g(r,ci.tipo),code=g(r,ci.code).replace(/\s/g,'');
+  const entry={title,tipo,code,name:[tipo,title].filter(Boolean).join(' '),town:g(r,ci.town),phone:g(r,ci.phone),email:g(r,ci.email),actions:[],notes:[],include:!!(tipo||code)};
+  const nt=normTitle(title);
+  const dir=childDirs.find(d=>normTitle(d)===nt)||childDirs.find(d=>normTitle(d).startsWith(nt)||nt.startsWith(normTitle(d)));
+  const pageMd=inside.find(p=>dirName(p)===dbFolder&&/\.md$/i.test(p)&&normTitle(stripNotionId(baseName(p)))===nt);
+  if(pageMd){const m=cleanNotionMd(await map.get(pageMd).text());if(m.body)entry.notes.push({title:'Página del centro en Notion',date:'',text:m.body})}
+  if(dir){
+   const base=dbFolder+'/'+dir+'/';
+   const own=inside.filter(p=>p.startsWith(base));
+   plan.attachments+=own.filter(p=>!/\.(md|csv)$/i.test(p)).length;
+   const mds=own.filter(p=>/\.md$/i.test(p)),used=new Set();
+   const skip=p=>normTitle(stripNotionId(baseName(p)))==='caracteristicasdelcentro';
+   let dbCsvs=own.filter(p=>/\.csv$/i.test(p));
+   dbCsvs=dbCsvs.filter(p=>/_all\.csv$/i.test(p)||!dbCsvs.includes(p.replace(/\.csv$/i,'_all.csv')));
+   for(const cp of dbCsvs){
+    const dbT=normTitle(stripNotionId(baseName(cp))),rs=parseCSV(await map.get(cp).text());if(rs.length<2)continue;
+    const h=rs[0].map(x=>String(x).trim()),iN=Math.max(0,colIndex(h,['nombre','name','asunto','titulo'])),iC=colIndex(h,['creado','created','fecha','date']),iT=colIndex(h,['etiquetas','tags']);
+    for(const row of rs.slice(1)){
+     const subj=cleanNotion(row[iN]??'');if(!subj&&!row.some(v=>String(v).trim()))continue;
+     const created=iC>=0?cleanNotion(row[iC]):'',tags=iT>=0?cleanNotion(row[iT]):'';
+     const extras=h.map((col,i)=>i!==iN&&i!==iC&&i!==iT&&cleanNotion(row[i])?`${col}: ${cleanNotion(row[i])}`:'').filter(Boolean);
+     const cand=mds.filter(p=>!used.has(p)&&normTitle(stripNotionId(baseName(p)))===normTitle(subj));
+     const md=cand.find(p=>normTitle(baseName(dirName(p))).startsWith(dbT))||cand[0];
+     let body='';if(md){used.add(md);body=cleanNotionMd(await map.get(md).text()).body}
+     const d=parseDateAny(created),t=timeFrom(created);
+     entry.actions.push({date:d,time:t,createdAt:localIso(d,t),subject:subj||'(sin título)',details:[body,tags?'Etiquetas: '+tags:'',extras.join('\n')].filter(Boolean).join('\n\n')});
+    }
+   }
+   for(const p of mds){
+    if(used.has(p)||skip(p))continue;
+    const m=cleanNotionMd(await map.get(p).text());
+    if(!m.body&&!m.title)continue;
+    const created=m.props['creado']||m.props['created']||m.props['fecha']||'';
+    entry.notes.push({title:m.title||stripNotionId(baseName(p)),date:parseDateAny(created),text:m.body});
+   }
+  }
+  plan.centers.push(entry);
+ }
+ if(!plan.centers.length){alert('No he encontrado centros en el CSV principal.');return null}
+ return plan;
+}
+function notionPlanHTML(plan){
+ const ta=plan.centers.reduce((s,c)=>s+c.actions.length,0),tn=plan.centers.reduce((s,c)=>s+c.notes.length,0);
+ return `<p style="margin-top:0">Base de datos: <b>${esc(plan.rootTitle)}</b>. Se han encontrado <b>${plan.centers.length}</b> filas, <b>${ta}</b> actuaciones y <b>${tn}</b> notas.</p>
+ <div class="notice" style="margin-bottom:12px">Las actuaciones se importan como <b>finalizadas</b>, con la fecha y hora de «Creado» como fecha de registro y de actuación. «Características del centro» no se importa. Si un centro ya existe (mismo código), solo se completan sus datos vacíos y no se duplican las actuaciones ya importadas.${plan.attachments?(plan.attachments===1?' Hay 1 adjunto (imagen, PDF…) que no se importa.':` Hay ${plan.attachments} adjuntos (imágenes, PDF…) que no se importan.`):''}</div>
+ <p class="muted" style="font-size:12px">Desmarca las filas que no sean centros.</p>
+ <div class="tablewrap" style="max-height:48vh"><table class="table"><thead><tr><th></th><th>Centro</th><th>Código</th><th>Actuaciones</th><th>Notas</th><th>Estado</th></tr></thead><tbody>${plan.centers.map((c,i)=>{const ex=c.code&&db.centers.some(x=>String(x.code)===c.code);return `<tr><td><input type="checkbox" id="np_${i}" ${c.include?'checked':''} aria-label="Importar ${esc(c.name)}"></td><td><b>${esc(c.name)}</b><br><span class="muted">${esc(c.town)}</span></td><td>${esc(c.code||'—')}</td><td>${c.actions.length}</td><td>${c.notes.length}</td><td>${ex?'<span class="pill">Ya existe</span>':'<span class="pill ok">Nuevo</span>'}</td></tr>`}).join('')}</tbody></table></div>`;
+}
+function runNotionPlan(){
+ const plan=window.__notionPlan;if(!plan)return;
+ let nc=0,uc=0,na=0,nn=0,dup=0;
+ plan.centers.forEach((e,i)=>{
+  if(!document.getElementById('np_'+i)?.checked)return;
+  let c=(e.code&&db.centers.find(x=>String(x.code)===e.code))||db.centers.find(x=>normTxt(x.name)===normTxt(e.name));
+  if(!c){let id=e.code||uid();if(db.centers.some(x=>x.id===id))id=uid();c={id,code:e.code,name:e.name,tipo:e.tipo,town:e.town,phone:e.phone,email:e.email,address:'',docUrl:'',director:'',secretary:''};db.centers.push(c);db.followup[id]={};nc++}
+  else{let ch=false;for(const k of ['tipo','town','phone','email','code'])if(e[k]&&!c[k]){c[k]=e[k];ch=true}if(ch)uc++}
+  const seen=new Set(db.actions.filter(a=>a.center===c.name).map(a=>normTxt((a.date||'')+'|'+(a.time||'')+'|'+a.subject)));
+  for(const a of e.actions){
+   const k=normTxt((a.date||'')+'|'+(a.time||'')+'|'+a.subject);if(seen.has(k)){dup++;continue}seen.add(k);
+   db.actions.push({id:uid(),date:a.date,time:a.time,mode:'',center:c.name,student:'',subject:a.subject,details:a.details,action:'',finalizada:true,createdAt:a.createdAt||nowIso(),updatedAt:'',updates:[],source:'notion'});na++;
+  }
+  const seenN=new Set(db.centerNotes.filter(n=>n.centerId===c.id).map(n=>normTxt(n.title+'|'+n.text.slice(0,200))));
+  for(const n of e.notes){
+   const k=normTxt(n.title+'|'+n.text.slice(0,200));if(seenN.has(k)){dup++;continue}seenN.add(k);
+   db.centerNotes.push({id:uid(),centerId:c.id,date:n.date||'',title:n.title,text:n.text,createdAt:nowIso(),updatedAt:'',source:'notion'});nn++;
+  }
+ });
+ save();closeModal();window.__notionPlan=null;
+ alert(`Importación terminada.\n\nCentros nuevos: ${nc}${uc?`\nCentros completados: ${uc}`:''}\nActuaciones importadas: ${na}\nNotas importadas: ${nn}${dup?`\nOmitidas por estar ya registradas: ${dup}`:''}`);
+ nav('centros');
+}
+
 ensureShape();
 nav('dashboard');
 </script>
@@ -1262,6 +1598,7 @@ nav('dashboard');
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en AbalarBox»
    ================================================================ */
+const APP_VERSION='2.0 (28/09/2026)';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -1312,7 +1649,7 @@ function parseFile(text){
 /* ---------- Estado ---------- */
 const S={key:null,salt:null,iter:ITER,id:null,handle:null,name:DEFAULT_NAME,rev:0,baseRev:0,dirty:false,pending:false,
  saving:null,timer:null,lastSaved:null,lastDevice:null,error:'',needPerm:false,conflict:null,unlocked:false,remembered:false,
- autolock:15,lastActivity:Date.now(),dismissedRev:0,data:null};
+ autolock:15,lastActivity:Date.now(),dismissedRev:0,data:null,ui:{}};
 
 async function saveCache(text,h,pending){
  await idb.set('cache',{text,id:h.id,rev:h.rev,baseRev:S.baseRev,pending,savedAt:h.savedAt,device:h.device,name:S.name});
@@ -1650,6 +1987,7 @@ async function setRemember(on){
  if(on)await idb.set('key',{key:S.key,salt:S.salt,id:S.id});else await idb.del('key');
  S.remembered=on;window.__coreRefreshDatos&&window.__coreRefreshDatos();
 }
+async function setUi(k,v){S.ui[k]=v;const s=(await idb.get('settings'))||{};s.ui=S.ui;await idb.set('settings',s)}
 async function setAutolock(min){S.autolock=min;const s=(await idb.get('settings'))||{};s.autolock=min;await idb.set('settings',s)}
 async function lock(){
  if(S.saving||S.dirty)await flushNow();
@@ -1676,9 +2014,9 @@ function setStatus(){
 /* ---------- API para la aplicación ---------- */
 window.__vaultPersist=persist;
 window.__vault={
- persist,deliver,exportToCloud,linkFile,lock,changePassword,setRemember,setAutolock,downloadEncrypted,
+ persist,deliver,exportToCloud,setUi,ui:(k,def)=>k in S.ui?S.ui[k]:def,linkFile,lock,changePassword,setRemember,setAutolock,downloadEncrypted,
  saveNow:async()=>{S.dirty=true;await flushNow();window.__coreRefreshDatos&&window.__coreRefreshDatos()},
- info:()=>({name:S.name,linked:!!S.handle,canLink:CAN_FS,lastSaved:S.lastSaved,device:S.lastDevice,thisDevice:DEVICE,rev:S.rev,pending:S.pending,remembered:S.remembered,autolock:S.autolock,ios:IS_IOS})
+ info:()=>({name:S.name,linked:!!S.handle,canLink:CAN_FS,lastSaved:S.lastSaved,device:S.lastDevice,thisDevice:DEVICE,rev:S.rev,pending:S.pending,remembered:S.remembered,autolock:S.autolock,ios:IS_IOS,version:APP_VERSION})
 };
 
 window.addEventListener('beforeunload',e=>{if(S.unlocked&&(S.dirty||S.saving)){e.preventDefault();e.returnValue=''}});
@@ -1690,7 +2028,8 @@ $('vaultLock').onclick=lock;
 (async()=>{
  if(!window.isSecureContext||!crypto.subtle){gate('<p class="gate-msg bad">Este navegador no permite el cifrado en esta página. Ábrela con Chrome o Edge, o desde su dirección https.</p>');return}
  await idb.open();
- const s=(await idb.get('settings'))||{};if(typeof s.autolock==='number')S.autolock=s.autolock;
+ const s=(await idb.get('settings'))||{};if(typeof s.autolock==='number')S.autolock=s.autolock;if(s.ui&&typeof s.ui==='object')S.ui=s.ui;
+ $('appVersion')&&($('appVersion').textContent='Versión '+APP_VERSION);
  if(!idb.db&&IS_IOS)console.warn('Sin IndexedDB: la copia local no estará disponible');
  startScreen();
  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Sin modo sin conexión',e));
