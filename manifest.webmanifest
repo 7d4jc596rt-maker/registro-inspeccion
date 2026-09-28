@@ -1,0 +1,14 @@
+{
+ "name": "Registro de actuaciones · Inspección educativa",
+ "short_name": "Inspección",
+ "lang": "es",
+ "start_url": "./index.html",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#006aa8",
+ "theme_color": "#006aa8",
+ "icons": [
+  {"src": "icon-180.png", "sizes": "180x180", "type": "image/png"},
+  {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+ ]
+}
