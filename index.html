@@ -172,6 +172,21 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 .course-bar .muted{font-size:12px}
 .center-data-list.char-list dd{white-space:pre-wrap;line-height:1.45}
 .char-list .char-wide{grid-column:1/-1}
+.center-content{min-width:0}#centerFicha{min-width:0;max-width:100%}
+.ficha-meta{font-size:12.5px;color:var(--muted,#667);margin:2px 0 14px;overflow-wrap:anywhere}
+.ficha-body h4.fo-h{margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #007bc4;color:#004f7e;font-size:15px;letter-spacing:.02em}
+.ficha-body h5.fo-sub{margin:14px 0 6px;font-size:13px;color:#004f7e;letter-spacing:.03em}
+.ficha-body p.fo-p{margin:4px 0;line-height:1.45;white-space:pre-wrap}
+.ficha-body p.fo-note{font-size:12px;color:var(--muted,#667);line-height:1.4;margin:6px 0}
+.ficha-body .tablewrap{overflow-x:auto;max-width:100%;max-height:none;margin:4px 0 8px}
+.ficha-body table.fo-table{border-collapse:collapse;width:100%;font-size:13px}
+.ficha-body table.fo-table th,.ficha-body table.fo-table td{border:1px solid #d5dde5;padding:5px 8px;vertical-align:top;text-align:left;white-space:pre-wrap}
+.ficha-body table.fo-table th{background:#eef4f9;font-weight:700}
+.ficha-body table.fo-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.ficha-body table.fo-table tr.tot td{font-weight:700;background:#f6f8fa}
+.ficha-body dl.fo-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:8px 18px;margin:4px 0 8px}
+.ficha-body dl.fo-kv dt{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#667)}
+.ficha-body dl.fo-kv dd{margin:1px 0 0;font-weight:600;overflow-wrap:anywhere}
 .dir-extra{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
 .dir-extra a{color:var(--accent)}
 .dir-obs{white-space:pre-wrap}
@@ -937,6 +952,8 @@ function datos(){
    <p><b>Desde Notion, carpeta completa</b> (recomendado). En Notion: menú «···» › Exportar › «Markdown y CSV» con «Incluir subpáginas». Descomprime el ZIP y elige aquí la carpeta resultante. Importa centros, personal, características por curso, actuaciones, visitas y notas. ${v.ios?'<b>Hazlo desde el ordenador</b>: el iPhone no permite elegir carpetas.':''}</p>
    <button class="btn primary" onclick="importNotionFolderStart()">Importar carpeta de Notion…</button>
    <button class="btn danger" onclick="deleteNotionImported()">Eliminar lo importado de Notion…</button>
+   <p style="margin-top:16px"><b>Fichas oficiales de los centros.</b> En el generador de fichas, elige tu nombre y pulsa «Xerar todas as fichas (.zip)». Elige aquí ese ZIP (o una o varias fichas .odt sueltas). Cada ficha se guarda en su centro, por curso escolar, según el código. No modifica ningún otro dato.</p>
+   <button class="btn primary" onclick="importFichasStart('')">Importar fichas oficiales…</button>
    <p style="margin-top:16px"><b>Un CSV suelto.</b> Para tablas sencillas: podrás indicar qué columna corresponde a cada campo.</p>
    <button class="btn" onclick="importNotionStart()">Importar CSV…</button>
    <p style="margin-top:16px"><b>Desde la versión anterior.</b> Restaura una copia JSON guardada con la versión 30. Sustituye todos los datos actuales.</p>
@@ -1125,7 +1142,7 @@ function runNotionImport(){
  const resolveCenter=raw=>{
   const v=String(raw||'').split(/,\s*(?=[A-ZÁÉÍÓÚ])/)[0].trim();if(!v)return '';
   const c=findCenter(v);if(c)return c.name;
-  if(createCenters){const id=uid();db.centers.push({id,code:'',tipo:'',docUrl:'',name:v,town:'',phone:'',email:'',address:'',director:'',secretary:''});db.followup[id]={};newCenters++;return v}
+  if(createCenters){const id=uid();db.centers.push({id,code:'',tipo:'',name:v,town:'',phone:'',email:'',address:'',director:'',secretary:''});db.followup[id]={};newCenters++;return v}
   return v;
  };
  if(target==='centers'){
@@ -1137,7 +1154,7 @@ function runNotionImport(){
    if(ex){if(updateCenters){let ch=false;for(const [k,v] of Object.entries(vals))if(v&&!ex[k]){ex[k]=v;ch=true}if(ch)updated++;else skipped++}else skipped++;continue}
    let id=code||uid();if(db.centers.some(c=>c.id===id))id=uid();
    const fullName=vals.tipo&&!normTxt(name).startsWith(normTxt(vals.tipo)+' ')?vals.tipo+' '+name:name;
-   db.centers.push({id,code,name:fullName,tipo:vals.tipo,docUrl:'',town:vals.town,phone:vals.phone,email:vals.email,address:vals.address,director:vals.director,secretary:vals.secretary});
+   db.centers.push({id,code,name:fullName,tipo:vals.tipo,town:vals.town,phone:vals.phone,email:vals.email,address:vals.address,director:vals.director,secretary:vals.secretary});
    db.followup[id]={};created++;
   }
  }else if(target==='actions'){
@@ -1198,7 +1215,7 @@ function migrateV2(){
  db.actions.forEach(a=>{if(!Array.isArray(a.updates))a.updates=[];if(a.createdAt===undefined)a.createdAt='';if(a.updatedAt===undefined)a.updatedAt=''});
  db.centers.forEach(c=>{
   if(!c.tipo){const m=String(c.name||'').match(/^([A-Z]{2,6})\s/);if(m&&APP_TIPOS.includes(m[1]))c.tipo=m[1]}
-  if(c.docUrl===undefined)c.docUrl='';
+  if('docUrl' in c)delete c.docUrl;
  });
 }
 
@@ -1405,7 +1422,6 @@ function centerForm(c){
   ${f('ccode','Código',c.code)}${f('ctown','Concello',c.town)}${f('cphone','Teléfono',c.phone)}${f('cemail','Correo electrónico',c.email,false,'type="email"')}
   ${f('cemail2','Otro correo',c.email2,false,'type="email"')}
   ${f('caddress','Dirección postal',c.address,true)}
-  ${f('cdoc','Enlace al PDF de características (AbalarBox)',c.docUrl,true,'type="url" inputmode="url" placeholder="https://boxabalar.edu.xunta.gal/…"')}
   <h4 class="field full form-sub">Equipo directivo</h4>
   ${f('cdirector','Director/a',c.director)}${f('cdirExt','Extensión (dirección)',c.directorExt,false,'inputmode="tel"')}
   ${f('cdirMobile','Móvil (dirección)',c.directorMobile,false,'type="tel" inputmode="tel"')}${f('csecretary','Secretario/a',c.secretary)}
@@ -1418,12 +1434,11 @@ function centerForm(c){
 }
 function readCenterForm(){
  const v=id=>document.getElementById(id).value.trim();
- return {name:v('cname'),tipo:v('ctipo2'),code:v('ccode'),town:v('ctown'),phone:v('cphone'),email:v('cemail'),address:v('caddress'),docUrl:v('cdoc'),director:v('cdirector'),secretary:v('csecretary'),headPrimary:v('cheadPrimary'),headSecondary:v('cheadSecondary'),headAdults:v('cheadAdults'),vice:v('cvice'),email2:v('cemail2'),directorExt:v('cdirExt'),directorMobile:v('cdirMobile'),directorObs:document.getElementById('cdirObs').value.trim(),orientacion:v('corient'),conserje:v('cconserje')};
+ return {name:v('cname'),tipo:v('ctipo2'),code:v('ccode'),town:v('ctown'),phone:v('cphone'),email:v('cemail'),address:v('caddress'),director:v('cdirector'),secretary:v('csecretary'),headPrimary:v('cheadPrimary'),headSecondary:v('cheadSecondary'),headAdults:v('cheadAdults'),vice:v('cvice'),email2:v('cemail2'),directorExt:v('cdirExt'),directorMobile:v('cdirMobile'),directorObs:document.getElementById('cdirObs').value.trim(),orientacion:v('corient'),conserje:v('cconserje')};
 }
 function validCenter(d,selfId){
  if(!d.name){alert('Indica el nombre del centro.');return false}
  if(d.code&&db.centers.some(c=>String(c.code)===d.code&&c.id!==selfId)){alert('Ya existe otro centro con ese código.');return false}
- if(d.docUrl&&!/^https?:\/\//i.test(d.docUrl)){alert('El enlace al PDF debe empezar por https://');return false}
  return true;
 }
 function newCenter(){
@@ -1454,7 +1469,7 @@ function editCenterNote(id,cid){
 }
 function deleteCenterNote(id,cid){if(!confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.'))return;db.centerNotes=db.centerNotes.filter(n=>n.id!==id);save();centerDetail(cid,'notas')}
 function showCenterTab(tab){
- if(!['datos','caracteristicas','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))return;
+ if(!['datos','caracteristicas','ficha','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))return;
  activeCenterTab=tab;
  document.querySelectorAll('.center-menu-button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===tab)));
  document.querySelectorAll('.center-section').forEach(p=>{p.hidden=p.dataset.tab!==tab});
@@ -1480,8 +1495,8 @@ function centerVisitsHTML(c){
 }
 function setCenterCourse(cid,kind,val){
  centerCourseSel[cid+'.'+kind]=val;const c=db.centers.find(x=>x.id===cid);if(!c)return;
- const box={act:'centerActsCourse',vis:'centerVisitsCourse',char:'centerChar'}[kind],fn={act:centerActsHTML,vis:centerVisitsHTML,char:centerCharHTML}[kind];
- const el=document.getElementById(box);if(el){el.innerHTML=fn(c);document.getElementById({act:'cActCourse',vis:'cVisCourse',char:'cCharCourse'}[kind])?.focus()}
+ const box={act:'centerActsCourse',vis:'centerVisitsCourse',char:'centerChar',ficha:'centerFicha'}[kind],fn={act:centerActsHTML,vis:centerVisitsHTML,char:centerCharHTML,ficha:centerFichaHTML}[kind];
+ const el=document.getElementById(box);if(el){el.innerHTML=fn(c);document.getElementById({act:'cActCourse',vis:'cVisCourse',char:'cCharCourse',ficha:'cFichaCourse'}[kind])?.focus()}
 }
 
 /* ---------- Ficha: características del centro por curso ---------- */
@@ -1518,29 +1533,216 @@ function editCharacteristics(cid,k){
   centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'caracteristicas');
  });
 }
+
+/* ---------- Ficha oficial del centro (importada del generador de fichas) ---------- */
+function fichaCourses(c){return Object.keys(c.fichaOficial||{}).sort().reverse()}
+function centerFichaHTML(c){
+ const store=c.fichaOficial||{},have=fichaCourses(c);
+ const courses=[...new Set([currentCourse(),...have])].sort().reverse();
+ let k=centerCourseSel[c.id+'.ficha']||(store[currentCourse()]?currentCourse():(have[0]||currentCourse()));if(!courses.includes(k))k=currentCourse();
+ const f=store[k];
+ const sel=`<select id="cFichaCourse" class="select" aria-label="Curso escolar" onchange="setCenterCourse('${c.id}','ficha',this.value)">${courses.map(x=>`<option value="${x}" ${x===k?'selected':''}>Curso ${x}${x===currentCourse()?' (actual)':''}${store[x]?'':' · sin ficha'}</option>`).join('')}</select>`;
+ const btns=f?`<div class="toolbar" style="margin:0"><button class="btn small" onclick="copyFichaText('${c.id}','${k}')">Copiar como texto</button><button class="btn small danger" onclick="deleteFicha('${c.id}','${k}')">Eliminar</button></div>`:`<button class="btn small primary" onclick="importFichasStart('${c.id}')">Importar fichas…</button>`;
+ const head=`<div class="section-head"><h3 style="margin:0">Ficha oficial del centro · curso ${k}</h3>${btns}</div><div class="course-bar"><label for="cFichaCourse">Curso</label>${sel}</div>`;
+ if(!f)return head+`<div class="empty">No hay ficha oficial para el curso ${k}.${have.length?` Hay ficha de ${have.join(', ')}; consúltala en el desplegable.`:' En el generador de fichas, pulsa «Xerar todas as fichas (.zip)» e impórtalo aquí o en «Datos y seguridad».'}</div>`;
+ return head+`<p class="ficha-meta">Ficha con fecha ${esc(f.date||'—')} · importada el ${esc(date(String(f.importedAt||'').slice(0,10)))}${f.file?' · '+esc(f.file):''}</p><div class="ficha-body">${fichaBlocksHTML(f.blocks||[])}</div>`;
+}
+const FICHA_TEL=/^(\+34\s?)?[6789]\d{2}[\s-]?\d{3}[\s-]?\d{3}$/;
+function fichaBlocksHTML(blocks){
+ return blocks.map(b=>{
+  if(b.t==='h')return `<h4 class="fo-h">${esc(b.x)}</h4>`;
+  if(b.t==='s')return `<h5 class="fo-sub">${esc(b.x)}</h5>`;
+  if(b.t==='p')return `<p class="${b.n?'fo-note':'fo-p'}">${esc(b.x)}</p>`;
+  if(b.t==='kv')return `<dl class="fo-kv">${b.rows.map(([a,v])=>`<div><dt>${esc(a.replace(/:\s*$/,''))}</dt><dd>${fichaValueHTML(a,v)}</dd></div>`).join('')}</dl>`;
+  if(b.t==='tb'){
+   return `<div class="tablewrap"><table class="fo-table">${b.rows.map((r,i)=>{
+    const tag=i===0&&b.head?'th':'td',tot=r.some(x=>/^total\b/i.test(x.x));
+    return `<tr${tot&&i?' class="tot"':''}>${r.map(x=>`<${tag}${x.cs>1?` colspan="${x.cs}"`:''}${x.rs>1?` rowspan="${x.rs}"`:''}${tag==='td'&&/^[\d.,]+$/.test(x.x)&&!FICHA_TEL.test(x.x)?' class="num"':''}>${tag==='td'&&FICHA_TEL.test(x.x)?`<a href="tel:${esc(x.x.replace(/[^\d+]/g,''))}">${esc(x.x)}</a>`:esc(x.x)}</${tag}>`).join('')}</tr>`}).join('')}</table></div>`;
+  }
+  return '';
+ }).join('');
+}
+function fichaValueHTML(label,v){
+ if(/correo/i.test(label)&&/^\S+@\S+$/.test(v))return `<a href="mailto:${esc(v)}">${esc(v)}</a>`;
+ if(/tel/i.test(label)&&/\d/.test(v))return `<a href="tel:${esc(v.replace(/[^\d+]/g,''))}">${esc(v)}</a>`;
+ return esc(v);
+}
+function fichaText(c,k){
+ const f=c.fichaOficial?.[k];if(!f)return '';
+ const out=[`FICHA OFICIAL · ${c.name} · curso ${k} (${f.date||''})`];
+ (f.blocks||[]).forEach(b=>{
+  if(b.t==='h')out.push('',b.x.toUpperCase());
+  else if(b.t==='s')out.push('',b.x);
+  else if(b.t==='p')out.push(b.x);
+  else if(b.t==='kv')b.rows.forEach(([a,v])=>out.push(`${a.replace(/:\s*$/,'')}: ${v}`));
+  else if(b.t==='tb')b.rows.forEach(r=>out.push(r.map(x=>x.x.replace(/\n/g,' · ')).join('\t')));
+ });
+ return out.join('\n');
+}
+async function copyFichaText(cid,k){
+ const c=db.centers.find(x=>x.id===cid);if(!c)return;const t=fichaText(c,k);
+ try{await navigator.clipboard.writeText(t);alert('Ficha copiada. Puedes pegarla en un documento o en tu conversación con Claude.')}
+ catch(e){openModal('Ficha como texto',`<textarea class="textarea" style="width:100%;min-height:50vh" readonly>${esc(t)}</textarea>`,closeModal)}
+}
+function deleteFicha(cid,k){
+ const c=db.centers.find(x=>x.id===cid);if(!c?.fichaOficial?.[k])return;
+ if(!confirm(`¿Eliminar la ficha oficial del curso ${k} de ${c.name}? Puedes volver a importarla desde el ZIP del generador.`))return;
+ delete c.fichaOficial[k];if(!Object.keys(c.fichaOficial).length)delete c.fichaOficial;save();centerDetail(cid,'ficha');
+}
+
+/* Lectura de ZIP y ODT sin bibliotecas externas */
+function zipList(buf){
+ const u=new Uint8Array(buf),dv=new DataView(buf);let e=-1;
+ for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--){if(dv.getUint32(i,true)===0x06054b50){e=i;break}}
+ if(e<0)throw new Error('El archivo no es un ZIP válido.');
+ const n=dv.getUint16(e+10,true);let off=dv.getUint32(e+16,true);const out=[];
+ for(let k=0;k<n;k++){
+  if(dv.getUint32(off,true)!==0x02014b50)break;
+  const flag=dv.getUint16(off+8,true),method=dv.getUint16(off+10,true),csize=dv.getUint32(off+20,true),nlen=dv.getUint16(off+28,true),xlen=dv.getUint16(off+30,true),clen=dv.getUint16(off+32,true),loc=dv.getUint32(off+42,true);
+  const nb=u.subarray(off+46,off+46+nlen);let name;try{name=new TextDecoder(flag&0x800?'utf-8':'utf-8',{fatal:true}).decode(nb)}catch(_){name=String.fromCharCode(...nb)}
+  const start=loc+30+dv.getUint16(loc+26,true)+dv.getUint16(loc+28,true);
+  out.push({name,method,data:u.subarray(start,start+csize)});off+=46+nlen+xlen+clen;
+ }
+ return out;
+}
+async function zipRead(entry){
+ if(entry.method===0)return entry.data;
+ if(entry.method!==8)throw new Error('Formato de compresión no admitido.');
+ if(typeof DecompressionStream==='undefined')throw new Error('Este navegador no puede descomprimir archivos. Actualiza el navegador (en el iPhone, iOS 16.4 o posterior).');
+ const st=new Blob([entry.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+ return new Uint8Array(await new Response(st).arrayBuffer());
+}
+function odtNodeText(n){
+ let t='';
+ for(const ch of n.childNodes){
+  if(ch.nodeType===3){t+=ch.nodeValue;continue}
+  if(ch.nodeType!==1)continue;
+  const ln=ch.localName;
+  if(ln==='s')t+=' '.repeat(Number(ch.getAttribute('text:c')||ch.getAttributeNS?.('urn:oasis:names:tc:opendocument:xmlns:text:1.0','c')||1));
+  else if(ln==='tab')t+=' ';
+  else if(ln==='line-break')t+='\n';
+  else if(ln==='frame'||ln==='note'||ln==='annotation')continue;
+  else t+=odtNodeText(ch);
+ }
+ return t;
+}
+function odtParas(n){
+ const r=[];
+ (function walk(x){for(const ch of x.childNodes){if(ch.nodeType!==1)continue;if(ch.localName==='p'||ch.localName==='h'){const t=odtNodeText(ch).replace(/[ \t\u00a0]+/g,' ').trim();if(t)r.push(t)}else if(ch.localName!=='table')walk(ch)}})(n);
+ return r;
+}
+function odtTable(tb){
+ const rows=[];
+ (function walk(x){for(const ch of x.childNodes){if(ch.nodeType!==1)continue;
+  if(ch.localName==='table-row'){const r=[];for(const cell of ch.childNodes){if(cell.nodeType!==1||cell.localName!=='table-cell')continue;
+    const g=a=>Number(cell.getAttribute('table:'+a)||1),ps=[...cell.getElementsByTagName('*')].filter(e=>e.localName==='p');
+    r.push({x:odtParas(cell).join('\n'),cs:g('number-columns-spanned'),rs:g('number-rows-spanned'),hd:ps.length>0&&ps.every(e=>/Head/.test(e.getAttribute('text:style-name')||''))})}
+   if(r.length)rows.push(r)}
+  else if(/^table-(header-rows|rows|row-group)$/.test(ch.localName))walk(ch)}})(tb);
+ return rows;
+}
+function parseFichaODT(xml){
+ const doc=new DOMParser().parseFromString(xml,'application/xml');
+ const body=[...doc.getElementsByTagName('*')].find(n=>n.localName==='text'&&n.parentNode?.localName==='body');
+ if(!body)throw new Error('No se encuentra el texto del documento.');
+ const blocks=[],meta={};
+ const isCaps=t=>t.length<70&&/[A-ZÁÉÍÓÚÑ]/.test(t)&&t===t.toUpperCase()&&!/^\*/.test(t)&&!/:/.test(t);
+ (function walk(x){for(const n of x.childNodes){if(n.nodeType!==1)continue;const ln=n.localName;
+  if(ln==='p'||ln==='h'){const t=odtNodeText(n).replace(/[ \t\u00a0]+/g,' ').trim();if(!t)continue;
+   if(!blocks.length&&!meta.started&&/^INFORME$/i.test(t))continue;
+   const st=n.getAttribute('text:style-name')||'';
+   if(/SectionOfficial/.test(st)||(/^\d+\.\s/.test(t)&&isCaps(t.replace(/^\d+\.\s*/,''))))blocks.push({t:'h',x:t});
+   else if(/SubOfficial/.test(st)||isCaps(t))blocks.push({t:'s',x:t});
+   else blocks.push({t:'p',x:t,n:/^(Note|Muted)/.test(st)||/^\*|^AVISO/i.test(t)});}
+  else if(ln==='table'){const rows=odtTable(n).filter(r=>r.some(c=>c.x));if(!rows.length)continue;
+   const kv=rows.every(r=>r.length===2&&/:\s*$/.test(r[0].x));
+   if(kv){const pairs=rows.map(r=>[r[0].x,r[1].x]);pairs.forEach(([a,v])=>{meta[a.replace(/:\s*$/,'').trim().toUpperCase()]=v});
+    if(pairs.some(([a])=>/^ASUNTO/i.test(a)))continue;
+    blocks.push({t:'kv',rows:pairs});}
+   else{const styled=rows.some(r=>r.some(c=>c.hd));const head=styled?rows[0].every(c=>c.hd||!c.x):(rows.length>1&&!rows[0].some(c=>/^\d/.test(c.x))&&rows.slice(1).some(r=>r.some(c=>/^\d+$/.test(c.x))));
+    blocks.push({t:'tb',head,rows:rows.map(r=>r.map(({x,cs,rs})=>({x,cs,rs})))});}}
+  else if(ln==='list'||ln==='section'||ln==='list-item')walk(n);}})(body);
+ const cm=String(meta['CENTRO']||'').match(/^\s*(\d{6,9})\s*[-–·]\s*(.+)$/);
+ return {code:cm?cm[1]:'',name:cm?cm[2].trim():String(meta['CENTRO']||'').trim(),course:normCourse(meta['CURSO']||'')||'',date:meta['DATA']||'',inspector:meta['INSPECTOR/A']||'',blocks};
+}
+async function fichaFromODT(bytes,file){
+ const ents=zipList(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
+ const ce=ents.find(e=>e.name==='content.xml');if(!ce)throw new Error('No parece una ficha ODT.');
+ const f=parseFichaODT(new TextDecoder('utf-8').decode(await zipRead(ce)));f.file=file;return f;
+}
+function importFichasStart(returnCid){
+ window.__fichaReturn=returnCid||'';
+ let i=document.getElementById('fichasFile');
+ if(!i){i=document.createElement('input');i.type='file';i.id='fichasFile';i.multiple=true;i.hidden=true;i.accept='.zip,.odt,application/zip,application/vnd.oasis.opendocument.text';i.onchange=importFichasFiles;document.body.appendChild(i)}
+ i.value='';i.click();
+}
+async function importFichasFiles(e){
+ const files=[...e.target.files];if(!files.length)return;
+ const fichas=[],errors=[];
+ for(const file of files){
+  try{
+   const bytes=new Uint8Array(await file.arrayBuffer());
+   if(/\.odt$/i.test(file.name)){fichas.push(await fichaFromODT(bytes,file.name));continue}
+   for(const en of zipList(bytes.buffer)){
+    if(!/\.odt$/i.test(en.name)||/(^|\/)(__MACOSX|\.)/.test(en.name))continue;
+    const nm=en.name.split('/').pop();
+    try{fichas.push(await fichaFromODT(await zipRead(en),nm))}catch(err){errors.push(nm+': '+err.message)}
+   }
+  }catch(err){errors.push(file.name+': '+err.message)}
+ }
+ if(!fichas.length){alert('No se ha podido leer ninguna ficha.'+(errors.length?'\n\n'+errors.slice(0,5).join('\n'):''));return}
+ const byCode=new Map(db.centers.filter(c=>c.code).map(c=>[String(c.code).trim(),c]));
+ const byName=new Map(db.centers.map(c=>[normTxt(c.name),c]));
+ let plan=fichas.map(f=>{
+  const c=(f.code&&byCode.get(f.code))||byName.get(normTxt(f.name))||null;
+  const course=f.course||currentCourse();
+  return {f,course,cid:c?.id||'',cname:c?.name||'',prev:c?.fichaOficial?.[course]||null};
+ }).filter((p,i,arr)=>!p.cid||!arr.slice(i+1).some(q=>q.cid===p.cid&&q.course===p.course))
+  .sort((a,b)=>(!!b.cid-!!a.cid)||a.f.name.localeCompare(b.f.name,'es'));
+ window.__fichaPlan=plan;
+ const ok=plan.filter(p=>p.cid).length;
+ openModal('Importar fichas oficiales',`<p style="margin-top:0">Se han leído <b>${fichas.length}</b> ${fichas.length===1?'ficha':'fichas'}. <b>${ok}</b> ${ok===1?'corresponde':'corresponden'} a centros de tu registro.</p>
+ <div class="notice" style="margin-bottom:12px">Cada ficha se guarda en el apartado «Ficha oficial» de su centro, en el curso que indica. Si ese centro ya tiene ficha de ese curso, se sustituye. No se modifica ningún otro dato del centro.</div>
+ ${errors.length?`<div class="notice warn-notice" style="margin-bottom:12px">No se han podido leer: ${esc(errors.join(' · '))}</div>`:''}
+ <div class="tablewrap" style="max-height:48vh"><table class="table"><thead><tr><th></th><th>Ficha</th><th>Código</th><th>Curso</th><th>Centro en tu registro</th><th>Estado</th></tr></thead><tbody>${plan.map((p,i)=>`<tr><td><input type="checkbox" id="fp_${i}" ${p.cid?'checked':'disabled'} aria-label="Importar ${esc(p.f.name)}"></td><td>${esc(p.f.name)}</td><td>${esc(p.f.code||'—')}</td><td>${esc(p.course)}</td><td>${p.cid?esc(p.cname):'<span class="muted">No está en tu registro</span>'}</td><td>${!p.cid?'<span class="muted">Se omite</span>':p.prev?`Sustituye la del ${esc(p.prev.date||'')}`:'Nueva'}</td></tr>`).join('')}</tbody></table></div>
+ ${plan.length>ok?'<p class="muted" style="font-size:12px">Los centros que no están en tu registro se omiten. Si quieres incluir alguno, créalo en «Centros» con su código y vuelve a importar.</p>':''}`,runFichaPlan);
+ document.getElementById('modalSave').textContent='Importar';
+}
+function runFichaPlan(){
+ const plan=window.__fichaPlan;if(!plan)return;let n=0,r=0;
+ plan.forEach((p,i)=>{
+  if(!p.cid||!document.getElementById('fp_'+i)?.checked)return;
+  const c=db.centers.find(x=>x.id===p.cid);if(!c)return;
+  if(!c.fichaOficial||typeof c.fichaOficial!=='object')c.fichaOficial={};
+  if(c.fichaOficial[p.course])r++;else n++;
+  c.fichaOficial[p.course]={date:p.f.date,importedAt:nowIso(),file:p.f.file||'',inspector:p.f.inspector||'',blocks:p.f.blocks};
+ });
+ window.__fichaPlan=null;save();closeModal();
+ alert(`Fichas importadas: ${n} ${n===1?'nueva':'nuevas'}${r?` y ${r} ${r===1?'sustituida':'sustituidas'}`:''}. Las encontrarás en cada centro, en «Ficha oficial».`);
+ if(window.__fichaReturn&&db.centers.some(c=>c.id===window.__fichaReturn))centerDetail(window.__fichaReturn,'ficha');else if(document.getElementById('fichasFile')&&document.querySelector('#main .top h1')?.textContent==='Datos y seguridad')nav('datos');
+}
 function centerDetail(id,tab=activeCenterTab){
  const c=db.centers.find(x=>x.id===id);if(!c)return;
- if(!['datos','caracteristicas','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))tab='datos';
+ if(!['datos','caracteristicas','ficha','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))tab='datos';
  const allActs=db.actions.filter(a=>a.center===c.name);
  const pending=allActs.filter(a=>!a.finalizada).sort((a,b)=>((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||'')));
   const centerVisits=db.visits.filter(v=>v.center===c.name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const centerRequests=db.petitionsRequirements.filter(x=>x.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const notes=db.centerNotes.filter(n=>n.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const field=(label,value)=>`<div><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
- const tabs=[['datos','Datos del centro'],['caracteristicas','Características del centro'],['actuaciones','Actuaciones'],['notas','Notas del centro'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['otros','Otros datos'],['peticiones','Peticiones y requerimientos']];
- const counts={actuaciones:allActs.length,notas:notes.length,visitas:centerVisits.length,peticiones:centerRequests.length};
+ const tabs=[['datos','Datos del centro'],['caracteristicas','Características del centro'],['ficha','Ficha oficial'],['actuaciones','Actuaciones'],['notas','Notas del centro'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['otros','Otros datos'],['peticiones','Peticiones y requerimientos']];
+ const counts={ficha:Object.keys(c.fichaOficial||{}).length,actuaciones:allActs.length,notas:notes.length,visitas:centerVisits.length,peticiones:centerRequests.length};
  const menuButtons=tabs.map(([key,label])=>`<button id="center-menu-${key}" class="center-menu-button" type="button" data-tab="${key}" aria-controls="center-panel-${key}" aria-pressed="${key===tab}" onclick="showCenterTab('${key}')">${label}${counts[key]?` <span class="menu-count">${counts[key]}</span>`:''}</button>`).join('');
  const leadership=(cls,label,value)=>`<div class="leadership-role ${cls}"><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
  const empty=(col,row)=>`<div class="leadership-empty" style="grid-column:${col};grid-row:${row}" aria-hidden="true"></div>`;
- const doc=c.docUrl?`<a class="btn small" href="${esc(c.docUrl)}" target="_blank" rel="noopener noreferrer">Abrir PDF de características</a>`:`<span class="muted">Sin enlace. Añádelo en «Editar datos».</span>`;
- const data=`<h3>Información del centro</h3><dl class="center-data-list">${field('Tipo',c.tipo)}${field('Código',c.code)}${field('Dirección postal',c.address)}${field('Concello',c.town)}${field('Teléfono',c.phone)}${field('Correo electrónico',c.email)}${field('Otro correo',c.email2)}<div><dt>PDF de características</dt><dd>${doc}</dd></div></dl><h3>Equipo directivo</h3><dl class="center-leadership"><div class="leadership-role leadership-direction"><dt>Dirección</dt><dd>${esc(c.director||'—')}${c.directorExt?`<span class="dir-extra">Extensión: ${esc(c.directorExt)}</span>`:''}${c.directorMobile?`<span class="dir-extra">Móvil: <a href="tel:${esc(String(c.directorMobile).replace(/[^\d+]/g,''))}">${esc(c.directorMobile)}</a></span>`:''}${c.directorObs?`<span class="dir-extra dir-obs">${esc(c.directorObs)}</span>`:''}</dd></div>${leadership('leadership-primary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${leadership('leadership-secondary','Jefatura de estudios · Secundaria',c.headSecondary)}${leadership('leadership-adults','Jefatura de estudios · Adultos',c.headAdults)}${leadership('leadership-secretary','Secretaría',c.secretary)}${leadership('leadership-vice','Vicedirección',c.vice)}${empty(1,2)}${empty(1,3)}${empty(3,2)}${empty(3,3)}${empty(4,2)}${empty(4,3)}</dl><h3 class="after-block">Otro personal</h3><dl class="center-data-list">${field('Orientación',c.orientacion)}${field('Conserje',c.conserje)}</dl>`;
+ const data=`<h3>Información del centro</h3><dl class="center-data-list">${field('Tipo',c.tipo)}${field('Código',c.code)}${field('Dirección postal',c.address)}${field('Concello',c.town)}${field('Teléfono',c.phone)}${field('Correo electrónico',c.email)}${field('Otro correo',c.email2)}</dl><h3>Equipo directivo</h3><dl class="center-leadership"><div class="leadership-role leadership-direction"><dt>Dirección</dt><dd>${esc(c.director||'—')}${c.directorExt?`<span class="dir-extra">Extensión: ${esc(c.directorExt)}</span>`:''}${c.directorMobile?`<span class="dir-extra">Móvil: <a href="tel:${esc(String(c.directorMobile).replace(/[^\d+]/g,''))}">${esc(c.directorMobile)}</a></span>`:''}${c.directorObs?`<span class="dir-extra dir-obs">${esc(c.directorObs)}</span>`:''}</dd></div>${leadership('leadership-primary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${leadership('leadership-secondary','Jefatura de estudios · Secundaria',c.headSecondary)}${leadership('leadership-adults','Jefatura de estudios · Adultos',c.headAdults)}${leadership('leadership-secretary','Secretaría',c.secretary)}${leadership('leadership-vice','Vicedirección',c.vice)}${empty(1,2)}${empty(1,3)}${empty(3,2)}${empty(3,3)}${empty(4,2)}${empty(4,3)}</dl><h3 class="after-block">Otro personal</h3><dl class="center-data-list">${field('Orientación',c.orientacion)}${field('Conserje',c.conserje)}</dl>`;
  const ev=(a,withFinish)=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> ${withFinish&&!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`;
  const actions=`<h3>Actuaciones pendientes (${pending.length})</h3><div class="timeline">${pending.map(a=>ev(a,true)).join('')||'<div class="empty">No hay actuaciones pendientes en este centro.</div>'}</div><div id="centerActsCourse">${centerActsHTML(c)}</div>`;
  const notesHtml=`<div class="section-head"><h3>Notas del centro (${notes.length})</h3><button class="btn small primary" onclick="newCenterNote('${c.id}')">+ Añadir nota</button></div><div class="timeline">${notes.map(n=>`<div class="event note"><b>${n.date?date(n.date):'Sin fecha'}${n.title?' · '+esc(n.title):''}${n.source==='notion'?' · <span class="muted">Notion</span>':''}</b><div class="note-text">${esc(n.text)}</div><button class="btn small" onclick="editCenterNote('${n.id}','${c.id}')">Editar</button> <button class="btn small danger" aria-label="Eliminar nota" onclick="deleteCenterNote('${n.id}','${c.id}')">🗑️</button></div>`).join('')||'<div class="empty">Sin notas. Aquí puedes guardar comentarios y observaciones generales sobre el centro.</div>'}</div>`;
  const visits=`<div id="centerVisitsCourse">${centerVisitsHTML(c)}</div>`;
  const requests=`<h3>Peticiones y requerimientos (${centerRequests.length})</h3><div class="timeline">${centerRequests.map(x=>`<div class="event"><b>${esc(x.type)} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div>${esc(x.subject)}</div><p>${esc(x.details||'')}</p><button class="btn small" type="button" onclick="editCenterRequest('${x.id}','${c.id}')">Editar</button> ${x.finalizada?'':`<button class="btn small" type="button" onclick="finishCenterRequest('${x.id}','${c.id}')">Marcar como finalizado</button>`}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div>`;
  const sec=(key,html)=>`<section id="center-panel-${key}" class="center-section" role="region" aria-labelledby="center-menu-${key}" data-tab="${key}" ${tab===key?'':'hidden'}>${html}</section>`;
- document.getElementById('main').innerHTML=`<header class="center-fixed-head"><div class="center-identity-row"><div class="center-identity"><h1>${esc(c.name)}</h1><span>${esc(c.town)}${c.code?' · código '+esc(c.code):''}</span></div><div class="center-head-actions"><button class="btn" onclick="nav('centros')">Volver</button><button class="btn" onclick="editCenter('${c.id}')">Editar datos</button>${c.docUrl?`<a class="btn" href="${esc(c.docUrl)}" target="_blank" rel="noopener noreferrer">Características (PDF)</a>`:''}<button class="btn primary" onclick="newActionForCenter('${c.id}')">+ Actuación</button><button class="btn primary" onclick="newCenterNote('${c.id}')">+ Nota</button><button class="btn primary" onclick="newVisitForCenter('${c.id}')">+ Visita</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Petición')">+ Petición</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Requerimiento')">+ Requerimiento</button></div></div></header><div class="panel center-workspace"><nav class="center-menu" aria-label="Secciones de la ficha">${menuButtons}</nav><div class="center-content" id="centerContent">${sec('datos',data)}${sec('caracteristicas',`<div id="centerChar">${centerCharHTML(c)}</div>`)}${sec('actuaciones',actions)}${sec('notas',notesHtml)}${sec('visitas',visits)}${sec('seguimiento',`<h3>Seguimiento</h3>${centerFollowupPanel(c)}`)}${sec('otros',`<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}${centerSpecialCard(c,'Días no lectivos','Días no lectivos')}</div>`)}${sec('peticiones',requests)}</div></div>`;
+ document.getElementById('main').innerHTML=`<header class="center-fixed-head"><div class="center-identity-row"><div class="center-identity"><h1>${esc(c.name)}</h1><span>${esc(c.town)}${c.code?' · código '+esc(c.code):''}</span></div><div class="center-head-actions"><button class="btn" onclick="nav('centros')">Volver</button><button class="btn" onclick="editCenter('${c.id}')">Editar datos</button><button class="btn primary" onclick="newActionForCenter('${c.id}')">+ Actuación</button><button class="btn primary" onclick="newCenterNote('${c.id}')">+ Nota</button><button class="btn primary" onclick="newVisitForCenter('${c.id}')">+ Visita</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Petición')">+ Petición</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Requerimiento')">+ Requerimiento</button></div></div></header><div class="panel center-workspace"><nav class="center-menu" aria-label="Secciones de la ficha">${menuButtons}</nav><div class="center-content" id="centerContent">${sec('datos',data)}${sec('caracteristicas',`<div id="centerChar">${centerCharHTML(c)}</div>`)}${sec('ficha',`<div id="centerFicha">${centerFichaHTML(c)}</div>`)}${sec('actuaciones',actions)}${sec('notas',notesHtml)}${sec('visitas',visits)}${sec('seguimiento',`<h3>Seguimiento</h3>${centerFollowupPanel(c)}`)}${sec('otros',`<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}${centerSpecialCard(c,'Días no lectivos','Días no lectivos')}</div>`)}${sec('peticiones',requests)}</div></div>`;
  activeCenterTab=tab;
 }
 
@@ -1809,7 +2011,7 @@ function runNotionPlan(){
   if(!document.getElementById('np_'+i)?.checked)return;
   const src={...e,...e.staff};
   let c=(e.code&&db.centers.find(x=>String(x.code)===e.code))||db.centers.find(x=>normTxt(x.name)===normTxt(e.name));
-  if(!c){let id=e.code||uid();if(db.centers.some(x=>x.id===id))id=uid();c={id,name:e.name,address:'',docUrl:'',caracteristicas:{}};NOTION_CENTER_FIELDS.forEach(k=>{c[k]=src[k]||''});db.centers.push(c);db.followup[id]={};nc++}
+  if(!c){let id=e.code||uid();if(db.centers.some(x=>x.id===id))id=uid();c={id,name:e.name,address:'',caracteristicas:{}};NOTION_CENTER_FIELDS.forEach(k=>{c[k]=src[k]||''});db.centers.push(c);db.followup[id]={};nc++}
   else{let ch=false;for(const k of NOTION_CENTER_FIELDS)if(src[k]&&!String(c[k]||'').trim()){c[k]=src[k];ch=true}if(ch)uc++}
   if(!c.caracteristicas||typeof c.caracteristicas!=='object')c.caracteristicas={};
   for(const [k,f] of Object.entries(e.chars)){
@@ -1861,7 +2063,7 @@ nav('dashboard');
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en AbalarBox»
    ================================================================ */
-const APP_VERSION='3.0 (29/09/2026)';
+const APP_VERSION='3.1 (29/09/2026)';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
