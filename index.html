@@ -192,6 +192,28 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 .dir-obs{white-space:pre-wrap}
 h3.after-block{margin-top:22px}
 .form-sub{margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.cards.cards1{grid-template-columns:minmax(0,320px)}
+.dot-head{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);flex-wrap:wrap}
+.dot-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;border:1px solid #c9d6e3;border-radius:10px}
+.dot-table{border-collapse:collapse;font-size:13px;min-width:100%;background:var(--panel)}
+.dot-table th,.dot-table td{border:1px solid #d5dfea;padding:6px 7px;text-align:center;white-space:nowrap}
+.dot-table thead th{background:#1f3864;color:#fff;font-weight:700;line-height:1.15}
+.dot-table thead th span{font-weight:500;font-size:11px;opacity:.85}
+.dot-table .dot-label{text-align:left;background:#ddebf7;color:#172033;font-weight:700;position:sticky;left:0;z-index:1}
+.dot-table thead .dot-label{background:#1f3864}
+.dot-table .dot-units{background:#f2f4f7;font-weight:700}
+.dot-table .dot-total{background:#f2f4f7;font-weight:700}
+.dot-table .dot-diff td{font-weight:700}
+.dot-table td.dot-neg{background:#f8cbad;color:#c00000}
+.dot-table td.dot-pos{background:#c6efce;color:#006100}
+.dot-legend{font-size:12px;color:var(--muted);margin:8px 0 0}
+.dot-neg-t{color:#c00000;font-weight:700}.dot-pos-t{color:#006100;font-weight:700}
+.dot-notes{margin-top:8px;font-size:13px}
+@media(max-width:600px){.dot-table{font-size:12px}.dot-table tbody .dot-label{white-space:normal;min-width:96px;max-width:110px;font-size:11.5px;line-height:1.2}}
+.dot-table.dot-form{min-width:0}.dot-table.dot-form input.dot-in{width:54px!important;min-width:0;max-width:54px;padding:4px;text-align:center;font-size:14px}
+.dot-form td{padding:3px}
+.subject-link{background:none;border:0;padding:0;margin:0;font:inherit;font-weight:700;color:var(--accent);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(0,123,196,.35);text-underline-offset:2px}.subject-link:hover{text-decoration-color:currentColor}
+.event .subject-link{display:block;margin:2px 0 6px}
 </style>
 </head>
 <body>
@@ -226,7 +248,7 @@ h3.after-block{margin-top:22px}
 <div class="modal" id="modal"><div class="modalbox"><div class="modalhead"><b id="modalTitle">Nueva actuación</b><button class="close" onclick="closeModal()" aria-label="Cerrar">×</button></div><div class="modalbody" id="modalBody"></div><div class="modalfoot"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="modalSave">Guardar</button></div></div></div>
 <div class="modal vdlg" id="vdlg" role="dialog" aria-modal="true" aria-labelledby="vdlgTitle"><div class="modalbox"><div class="modalhead"><b id="vdlgTitle"></b></div><div class="modalbody" id="vdlgBody"></div><div class="modalfoot" id="vdlgFoot"></div></div></div>
 <script type="text/plain" id="coreSource">
-const SEED = {"centers": [], "actions": [], "visits": [], "followupFields": ["Acta claustro adscripción", "Autorización días no lectivos", "Autorización agrupamientos flex.", "Autorizaciones matrícula simultánea", "Solicitud material", "Cierre app transporte escolar", "Bolsas", "Acceso público PROENS", "Listado NEAE", "Horarios PT/AL/ATE", "Horario prof. disp. horaria (PDH)", "Planes esp. repetidores/materias pendientes", "Programas intervención PT/AL", "PGA", "DOC", "Memoria final", "Propuesta de títulos"], "followup": {}, "followupNA": {}, "teacherAbsenceDates": {}, "petitionsRequirements": [], "specials": {"EscolarizaciónExtraordinarias-B": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "Curso", "ED550C", "Firmada", "Motivo", "Origen", "Identidad", "Filiación", "Empadronamiento", "Documentación", "Vacantes", "Informe"], "rows": []}, "EscolarizaciónCursoInferior": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "De", "Para", "Motivo"], "rows": []}, "Protocolos_ProcCorrector": {"headers": ["Fecha", "Centro", "Protocolo", "Alumno", "Curso/edad", "Sexo del alumno/a", "Apertura del expediente", "Resolución del expediente", "Fiscalía", "Seguridad", "Servicios sociales/sanitarios", "Fecha informe en XIE", "Seguimiento"], "rows": []}, "EOE_At.Dom_Cambio mod_Flexibili": {"headers": ["Campo 1", "Centro", "Alumno/a", "Motivo", "Curso actual", "Comunicación al centro responsable", "Fecha resolución DT", "Horas semanales asignadas", "Fecha inicio at. domiciliaria", "Fecha fin at. domiciliaria", "Observaciones"], "rows": []}, "Prof. Prácticas": {"headers": ["CENTRO", "Docente", "Materia", "Tutor/a", "Visita", "Observaciones"], "rows": []}, "Dep. Orientación": {"headers": ["CENTRO", "Unidades", "Tipo", "PT", "PTC", "AL", "ALC", "Centro adscrito"], "rows": []}, "PAC - ILS": {"headers": ["CENTRO", "Auxiliar cuidador", "Alumnado", "Compartido", "Días asistencia"], "rows": []}, "Relixión": {"headers": ["CENTRO", "Religión católica (especialidad 701401)", "Columna 4", "Columna 5", "Columna 6", "Columna 7", "Columna 8", "Religión evangélica (701402)"], "rows": []}, "Actuacións": {"headers": ["Centro", "Fecha", "Modo de comunicación", "Asunto", "Descripción", "Finalizada"], "rows": []}, "Días no lectivos": {"headers": ["CENTRO", "Fecha", "Estado"], "rows": []}}};
+const SEED = {"centers": [], "actions": [], "visits": [], "followupFields": ["Acta claustro adscripción", "Entrega programaciones", "Autorización agrupamientos flex.", "Autorizaciones matrícula simultánea", "Listado NEAE", "Horarios PT/AL/ATE", "Horario prof. disp. horaria (PDH)", "Planes esp. repetidores/materias pendientes", "PGA", "DOC", "Memoria final"], "followup": {}, "followupNA": {}, "teacherAbsenceDates": {}, "petitionsRequirements": [], "specials": {"EscolarizaciónExtraordinarias-B": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "Curso", "ED550C", "Firmada", "Motivo", "Origen", "Identidad", "Filiación", "Empadronamiento", "Documentación", "Vacantes", "Informe"], "rows": []}, "EscolarizaciónCursoInferior": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "De", "Para", "Motivo"], "rows": []}, "Protocolos_ProcCorrector": {"headers": ["Fecha", "Centro", "Protocolo", "Alumno", "Curso/edad", "Sexo del alumno/a", "Apertura del expediente", "Resolución del expediente", "Fiscalía", "Seguridad", "Servicios sociales/sanitarios", "Fecha informe en XIE", "Seguimiento"], "rows": []}, "EOE_At.Dom_Cambio mod_Flexibili": {"headers": ["Campo 1", "Centro", "Alumno/a", "Motivo", "Curso actual", "Comunicación al centro responsable", "Fecha resolución DT", "Horas semanales asignadas", "Fecha inicio at. domiciliaria", "Fecha fin at. domiciliaria", "Observaciones"], "rows": []}, "Prof. Prácticas": {"headers": ["CENTRO", "Docente", "Materia", "Tutor/a", "Visita", "Observaciones"], "rows": []}, "Dep. Orientación": {"headers": ["CENTRO", "Unidades", "Tipo", "PT", "PTC", "AL", "ALC", "Centro adscrito"], "rows": []}, "PAC - ILS": {"headers": ["CENTRO", "Auxiliar cuidador", "Alumnado", "Compartido", "Días asistencia"], "rows": []}, "Relixión": {"headers": ["CENTRO", "Religión católica (especialidad 701401)", "Columna 4", "Columna 5", "Columna 6", "Columna 7", "Columna 8", "Religión evangélica (701402)"], "rows": []}, "Actuacións": {"headers": ["Centro", "Fecha", "Modo de comunicación", "Asunto", "Descripción", "Finalizada"], "rows": []}, "Días no lectivos": {"headers": ["CENTRO", "Fecha", "Estado"], "rows": []}}};
 let db=window.__BOOT_DATA__||JSON.parse(JSON.stringify(SEED));delete window.__BOOT_DATA__;
 for(const k of ['centers','actions','visits'])if(!Array.isArray(db[k]))db[k]=[];if(!db.followup)db.followup={};if(!db.followupNA)db.followupNA={};if(!Array.isArray(db.followupFields))db.followupFields=[...SEED.followupFields];
 if(!Array.isArray(db.petitionsRequirements))db.petitionsRequirements=[];
@@ -905,7 +927,7 @@ function ensureShape(){
  if(!db.specials||typeof db.specials!=='object')db.specials=JSON.parse(JSON.stringify(SEED.specials));
  if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
  db.centers.forEach(c=>{if(!db.followup[c.id])db.followup[c.id]={}});
- migrateSpecialTables();applyOrientationCatalog();migrateV2();
+ migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();
 }
 window.__coreGetDb=()=>db;
 window.__coreReplaceData=d=>{db=d;ensureShape();closeModal();nav('dashboard')};
@@ -916,8 +938,8 @@ function datos(){
  const when=v.lastSaved?new Date(v.lastSaved).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}):'—';
  const specialsTotal=Object.values(db.specials).reduce((a,m)=>a+(m.rows?.length||0),0);
  const where=v.linked
-  ?`Los cambios se guardan directamente en el archivo <b>${esc(v.name)}</b>. Si está en tu carpeta de AbalarBox, el cliente de escritorio lo sincroniza con tus otros equipos.`
-  :`En este dispositivo los cambios se guardan cifrados dentro del navegador. Para llevarlos a AbalarBox pulsa «Guardar en AbalarBox» y sustituye el archivo del registro.${v.pending?' <b>Ahora mismo hay cambios pendientes de enviar.</b>':''}`;
+  ?`Los cambios se guardan directamente en el archivo <b>${esc(v.name)}</b>. Si está en tu carpeta de BoxAbalar, el cliente de escritorio lo sincroniza con tus otros equipos.`
+  :`En este dispositivo los cambios se guardan cifrados dentro del navegador. Para llevarlos a BoxAbalar pulsa «Guardar en BoxAbalar» y sustituye el archivo del registro.${v.pending?' <b>Ahora mismo hay cambios pendientes de enviar.</b>':''}`;
  const autolock=[5,10,15,30,60,0].map(m=>`<option value="${m}" ${m===v.autolock?'selected':''}>${m?m+' minutos':'Nunca'}</option>`).join('');
  document.getElementById('main').innerHTML=layout('Datos y seguridad','Archivo cifrado, copias, importación y exportación',homeBtn())+
  `<div class="grid2">
@@ -931,7 +953,7 @@ function datos(){
    </dl>
    <div class="toolbar" style="margin-top:14px">
     <button class="btn primary" onclick="__vault.saveNow()">Guardar ahora</button>
-    ${v.linked?'':v.canLink?`<button class="btn" onclick="__vault.linkFile()">Vincular archivo de AbalarBox</button>`:`<button class="btn" onclick="__vault.exportToCloud()">Guardar en AbalarBox</button>`}
+    ${v.linked?'':v.canLink?`<button class="btn" onclick="__vault.linkFile()">Vincular archivo de BoxAbalar</button>`:`<button class="btn" onclick="__vault.exportToCloud()">Guardar en BoxAbalar</button>`}
     <button class="btn" onclick="__vault.downloadEncrypted()">Descargar copia cifrada</button>
     <button class="btn" onclick="__vault.lock()">Cerrar y abrir otro archivo</button>
    </div>
@@ -1219,6 +1241,21 @@ function migrateV2(){
  });
 }
 
+/* Versión 3.3: Seguimiento documental. «Entrega programaciones» ocupa el lugar de «Autorización días no lectivos»
+   y se eliminan definitivamente varios elementos con sus fechas y marcas N/A. */
+const FOLLOW_REMOVED_V33=['Autorización días no lectivos','Solicitud material','Cierre app transporte escolar','Bolsas','Acceso público PROENS','Programas intervención PT/AL','Propuesta de títulos'];
+function migrateV33(){
+ if(db.migratedV33)return;
+ const f=Array.isArray(db.followupFields)?db.followupFields:[];
+ if(!f.includes('Entrega programaciones')){
+  const i=f.indexOf('Autorización días no lectivos');
+  if(i>=0)f.splice(i,0,'Entrega programaciones');else f.splice(Math.min(1,f.length),0,'Entrega programaciones');
+ }
+ db.followupFields=f.filter(x=>!FOLLOW_REMOVED_V33.includes(x));
+ for(const store of [db.followup,db.followupNA])for(const row of Object.values(store||{}))if(row&&typeof row==='object')FOLLOW_REMOVED_V33.forEach(k=>{delete row[k]});
+ db.migratedV33=true;
+}
+
 /* ---------- Inicio: bloques desplegables ---------- */
 function homeBlock(key,title,headExtra,body){
  const open=window.__vault?.ui?window.__vault.ui('home.'+key,true)!==false:true;
@@ -1244,14 +1281,14 @@ function dashboard(){
  const today=todayIso();
  const next=db.visits.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
  const last=db.visits.filter(x=>x.date&&x.date<today).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
- const actionEvents=items=>items.map(a=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> <button class="btn small" onclick="finishActionFromHome('${a.id}')">Marcar como finalizada</button></div>`).join('')||'<div class="empty">No hay actuaciones pendientes.</div>';
+ const actionEvents=items=>items.map(a=>`<div class="event"><b>${date(a.date)} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> <button class="btn small" onclick="finishActionFromHome('${a.id}')">Marcar como finalizada</button></div>`).join('')||'<div class="empty">No hay actuaciones pendientes.</div>';
  const go=v=>v==='registroPendientes'?'registroPending()':`nav('${v}')`;
  const card=(n,label,view)=>`<div class="card link" role="button" tabindex="0" onclick="${go(view)}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${go(view)}}"><div class="metric">${n}</div><div class="label">${label}</div></div>`;
  const visitRow=(v,pill)=>`<div class="kpi" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:12px">${date(v.date)}</b><div class="muted" style="font-size:11px">${esc(v.center)}</div></div>${pill}</div>`;
  const visitsBody=`<h3 class="home-sub">Próximas visitas</h3>${next.map(v=>visitRow(v,`<span class="pill">${esc(v.month||'')}</span>`)).join('')||'<div class="empty">No hay visitas próximas.</div>'}<h3 class="home-sub" style="margin-top:18px">Últimas visitas realizadas</h3>${last.map(v=>visitRow(v,'<span class="pill ok">Realizada</span>')).join('')||'<div class="empty">No hay visitas realizadas.</div>'}`;
  const pendingBody=`<h3 class="home-sub">Las 3 más antiguas</h3><div class="timeline">${actionEvents(pendingActions.slice(0,3))}</div><h3 class="home-sub" style="margin-top:18px">Las 3 más recientes</h3><div class="timeline">${actionEvents(pendingActions.slice(-3).reverse())}</div>`;
  document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
- `<div class="cards cards3">${card(pending,'Actuaciones pendientes','registroPendientes')}${card(db.centers.length,'Centros registrados','centros')}${card(db.visits.filter(v=>courseOf(v.date)===currentCourse()).length,'Visitas del curso '+currentCourse(),'visitas')}</div>`+
+ `<div class="cards cards1">${card(pending,'Actuaciones pendientes','registroPendientes')}</div>`+
  homeRequestsPanel()+calendarBlock()+
  `<div class="grid2 home-grid">`+
  homeBlock('visits','Visitas',`<button class="btn small" onclick="stopEv(event);nav('visitas')">Ver visitas</button>`,visitsBody)+
@@ -1261,7 +1298,7 @@ function dashboard(){
 
 /* ---------- Registro de actuaciones ---------- */
 function registro(){
- document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0">Pendientes</option><option value="1">Finalizadas</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Alumno/a</th><th>Asunto</th><th>Detalles</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
+ document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0">Pendientes</option><option value="1">Finalizadas</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Alumno/a</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
  filterActions();
 }
 function registroForCenter(name,course='*'){nav('registro');const i=document.getElementById('rsearch'),k=document.getElementById('rcourse');if(k)k.value=[...k.options].some(o=>o.value===course)?course:'*';if(i){i.value=name;filterActions()}}
@@ -1275,7 +1312,7 @@ function filterActions(){
  const c=document.getElementById('rcount');if(c)c.textContent=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+k}`;
  document.getElementById('actionRows').innerHTML=a.map(x=>{
   const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
-  return `<tr><td>${date(x.date)}<br><span class="muted">${esc(x.time||'')}</span></td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><b>${esc(x.subject)}</b></td><td><div class="clamp">${esc(x.details)}</div></td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small" onclick="editAction('${x.id}')">Abrir</button> <button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
+  return `<tr><td>${date(x.date)}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button></td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay resultados.</td></tr>';
 }
 
 /* ---------- Formulario de actuación: fechas e historial ---------- */
@@ -1287,7 +1324,7 @@ function actionForm(x={},warnings=[]){
  return `${warnings.length?`<div class="notice warn-notice" style="margin:0 0 14px">${warnings.map(esc).join('<br>')}</div>`:''}${meta}
  <div class="formgrid" style="margin-top:12px">
   <div class="field"><label for="fdate">Fecha de la actuación</label><input id="fdate" class="input" type="date" value="${esc(x.date||todayIso())}"></div>
-  <div class="field"><label for="ftime">Hora</label><input id="ftime" class="input" type="time" value="${esc(x.time||'')}"></div>
+  <input id="ftime" type="hidden" value="${esc(x.time||'')}">
   <div class="field"><label for="fmode">Medio de comunicación</label><select id="fmode" class="select"><option value="" ${!x.mode?'selected':''}>Sin especificar</option>${ACTION_MODES.map(m=>`<option ${x.mode===m?'selected':''}>${m}</option>`).join('')}</select></div>
   <div class="field"><label for="fcenter">Centro</label><select id="fcenter" class="select"><option value="">— Sin centro —</option>${centerKnown?'':`<option value="${esc(x.center)}" selected>${esc(x.center)} (no registrado)</option>`}${[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
   <div class="field"><label for="fstudent">Alumno/a</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
@@ -1359,7 +1396,6 @@ function claudeInstructions(){
 
 ACTUACIÓN
 Fecha: DD/MM/AAAA
-Hora: HH:MM (vacío si no se indica)
 Medio: Correo electrónico | Teléfono | Presencial | REXEL | Otro
 Centro: nombre exacto de la lista de abajo
 Código: código del centro
@@ -1384,7 +1420,7 @@ async function pasteFromClipboard(){
 function pasteActionStart(){
  openModal('Pegar actuación de Claude',`<p style="margin-top:0">Pega aquí el bloque que te ha preparado Claude. Se abrirá el formulario relleno para que lo revises antes de guardar.</p>
  <div class="toolbar"><button type="button" class="btn" onclick="pasteFromClipboard()">Pegar del portapapeles</button><button type="button" class="btn" onclick="copyClaudeInstructions()">Copiar instrucciones para Claude</button></div>
- <textarea id="pasteText" class="textarea" style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="ACTUACIÓN&#10;Fecha: 28/09/2026&#10;Hora: 10:30&#10;Medio: Teléfono&#10;Centro: …&#10;Asunto: …&#10;Detalles: …"></textarea>
+ <textarea id="pasteText" class="textarea" style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="ACTUACIÓN&#10;Fecha: 28/09/2026&#10;Medio: Teléfono&#10;Centro: …&#10;Asunto: …&#10;Detalles: …"></textarea>
  <p class="muted" style="font-size:12px">Las instrucciones incluyen el formato y la lista de tus centros (nombre y código) para que Claude los escriba igual que en la aplicación.</p>`,()=>{
   const p=parsePastedAction(document.getElementById('pasteText').value);
   if(!p.subject&&!p.details&&!p.action){alert('No reconozco el formato. Comprueba que el texto tenga líneas como «Asunto: …» o «Detalles: …».');return}
@@ -1476,7 +1512,7 @@ function showCenterTab(tab){
  const content=document.getElementById('centerContent');if(content)content.scrollTop=0;
 }
 /* ---------- Ficha: actuaciones y visitas por curso ---------- */
-function centerActEvent(a,c){return `<div class="event"><b>${date(a.date)} ${esc(a.time||'')}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> ${!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`}
+function centerActEvent(a,c){return `<div class="event"><b>${date(a.date)}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div>${!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`}
 function centerActsHTML(c){
  const all=db.actions.filter(a=>a.center===c.name),k=getCenterCourse(c.id,'act');
  const list=all.filter(a=>inCourse(a.date,k)).sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
@@ -1505,6 +1541,11 @@ const CHAR_WIDE=new Set(['comedor','pt','al','cuidadoras','varios']);
 function charHasData(o){return !!o&&CHAR_FIELDS.some(([k])=>String(o[k]||'').trim())}
 function centerCharHTML(c){
  const store=c.caracteristicas||{};
+ const kk=(()=>{const courses=[...new Set([currentCourse(),...Object.keys(store)])];let k=centerCourseSel[c.id+'.char']||(charHasData(store[currentCourse()])?currentCourse():(courses.sort().reverse().find(x=>charHasData(store[x]))||currentCourse()));if(k==='*'||!courses.includes(k))k=currentCourse();return k})();
+ return centerCharBaseHTML(c)+centerDotHTML(c,kk);
+}
+function centerCharBaseHTML(c){
+ const store=c.caracteristicas||{};
  const courses=[...new Set([currentCourse(),...Object.keys(store)])].sort().reverse();
  let k=centerCourseSel[c.id+'.char']||(charHasData(store[currentCourse()])?currentCourse():(courses.find(x=>charHasData(store[x]))||currentCourse()));if(k==='*'||!courses.includes(k))k=currentCourse();
  const d=store[k],prev=courses.filter(x=>x<k&&charHasData(store[x]))[0];
@@ -1532,6 +1573,104 @@ function editCharacteristics(cid,k){
   if(charHasData(o))c.caracteristicas[nk]=o;else delete c.caracteristicas[nk];
   centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'caracteristicas');
  });
+}
+
+/* ---------- Ficha: dotación de profesorado (CEIP/CEI/EEI/CRA públicos) ---------- */
+const DOT_SPECS=[['EI','031','Educación Infantil'],['EP','038','Educación Primaria'],['FI','032','Inglés'],['FF','033','Francés'],['EM','035','Música'],['EF','034','Educación Física'],['AL','037','Audición y Lenguaje'],['PT','036','Pedagogía Terapéutica'],['DO','039','Orientación'],['ALC','037','AL compartido'],['PTC','036','PT compartido'],['OC','039','Orientación compartida']];
+const DOT_TIPOS=['CEIP','CEI','EEI','CRA'];
+function dotApplies(c){const t=String(c.tipo||'').toUpperCase(),m=String(c.name||'').match(/^([A-Z]{2,6})\b/);return DOT_TIPOS.includes(t)||(!!m&&DOT_TIPOS.includes(m[1]))||Object.keys(c.dotacion||{}).length>0}
+function dotHasData(o){return !!o&&(o.uei!==''&&o.uei!=null||o.uep!==''&&o.uep!=null||DOT_SPECS.some(([s])=>o.cat?.[s]!=null&&o.cat[s]!==''||o.real?.[s]!=null&&o.real[s]!==''))}
+function dotNum(v){const n=parseInt(v,10);return isNaN(n)?0:n}
+function dotSign(n){return n>0?'+'+n:String(n)}
+function dotTable(d){
+ const cat=d.cat||{},real=d.real||{};
+ const tc=DOT_SPECS.reduce((s,[k])=>s+dotNum(cat[k]),0),tr=DOT_SPECS.reduce((s,[k])=>s+dotNum(real[k]),0);
+ const diffCell=n=>`<td class="${n<0?'dot-neg':n>0?'dot-pos':''}">${dotSign(n)}</td>`;
+ const head=`<tr><th class="dot-label"></th><th>UEI</th><th>UEP</th>${DOT_SPECS.map(([s,c,l])=>`<th title="${esc(l)}">${s}<br><span>${c}</span></th>`).join('')}<th>TOTAL</th></tr>`;
+ const r1=`<tr><th class="dot-label">Catálogo+Habilitadas</th><td class="dot-units">${esc(d.uei??'')}</td><td class="dot-units">${esc(d.uep??'')}</td>${DOT_SPECS.map(([s])=>`<td>${dotNum(cat[s])}</td>`).join('')}<td class="dot-total">${tc}</td></tr>`;
+ const r2=`<tr><th class="dot-label">Presencia en centro</th><td class="dot-units"></td><td class="dot-units"></td>${DOT_SPECS.map(([s])=>`<td>${dotNum(real[s])}</td>`).join('')}<td class="dot-total">${tr}</td></tr>`;
+ const r3=`<tr class="dot-diff"><th class="dot-label">Diferencia</th><td class="dot-units"></td><td class="dot-units"></td>${DOT_SPECS.map(([s])=>diffCell(dotNum(real[s])-dotNum(cat[s]))).join('')}${diffCell(tr-tc)}</tr>`;
+ return `<div class="dot-wrap"><table class="dot-table"><thead>${head}</thead><tbody>${r1}${r2}${r3}</tbody></table></div>`;
+}
+function centerDotHTML(c,k){
+ if(!dotApplies(c))return '';
+ const d=(c.dotacion||{})[k];
+ const head=`<div class="section-head dot-head"><h3 style="margin:0">Dotación de profesorado · curso ${k}</h3><div class="toolbar" style="margin:0"><button class="btn small" onclick="pasteDotStart()">Pegar datos de Claude</button><button class="btn small primary" onclick="editDot('${c.id}','${k}')">${dotHasData(d)?'Editar':'Añadir a mano'}</button></div></div>`;
+ if(!dotHasData(d))return head+`<div class="empty">No hay datos de dotación de profesorado para el curso ${k}.</div>`;
+ return head+dotTable(d)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: UPTCentros, curso actual, «Postos totais (autorizados + habilitados)». Presencia: PersoalCentros, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${d.notas?`<div class="note-text dot-notes">${esc(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
+}
+function dotForm(k,d){
+ const cat=d.cat||{},real=d.real||{};
+ const inp=(id,v)=>`<input id="${id}" class="input dot-in" type="number" min="0" step="1" inputmode="numeric" value="${esc(v??'')}">`;
+ return `<div class="formgrid"><div class="field"><label for="dotCourse">Curso escolar</label><input id="dotCourse" class="input" style="width:100%" value="${esc(k)}" placeholder="2026/27"></div><div class="field"><label for="dotFecha">Fecha de los datos</label><input id="dotFecha" class="input" type="date" value="${esc(d.fecha||'')}"></div></div>
+ <div class="dot-wrap" style="margin-top:12px"><table class="dot-table dot-form"><thead><tr><th class="dot-label"></th><th>UEI</th><th>UEP</th>${DOT_SPECS.map(([s,c])=>`<th>${s}<br><span>${c}</span></th>`).join('')}</tr></thead><tbody>
+ <tr><th class="dot-label">Catálogo+Habilitadas</th><td>${inp('dot_uei',d.uei)}</td><td>${inp('dot_uep',d.uep)}</td>${DOT_SPECS.map(([s])=>`<td>${inp('dotc_'+s,cat[s])}</td>`).join('')}</tr>
+ <tr><th class="dot-label">Presencia en centro</th><td></td><td></td>${DOT_SPECS.map(([s])=>`<td>${inp('dotr_'+s,real[s])}</td>`).join('')}</tr></tbody></table></div>
+ <div class="field full" style="margin-top:12px"><label for="dotNotas">Notas</label><textarea id="dotNotas" class="textarea" style="min-height:70px">${esc(d.notas||'')}</textarea></div>`;
+}
+function editDot(cid,k){
+ const c=db.centers.find(x=>x.id===cid);if(!c)return;if(!c.dotacion)c.dotacion={};
+ openModal(`Dotación de profesorado · ${c.name}`,dotForm(k,c.dotacion[k]||{}),()=>{
+  const nk=normCourse(document.getElementById('dotCourse').value);
+  if(!nk){alert('Indica el curso con el formato 2026/27.');return}
+  if(nk!==k&&dotHasData(c.dotacion[nk])&&!confirm(`El curso ${nk} ya tiene datos de dotación. ¿Sustituirlos?`))return;
+  const g=id=>{const v=document.getElementById(id).value.trim();return v===''?'':dotNum(v)};
+  const o={uei:g('dot_uei'),uep:g('dot_uep'),cat:{},real:{},fecha:document.getElementById('dotFecha').value,notas:document.getElementById('dotNotas').value.trim(),updatedAt:nowIso()};
+  DOT_SPECS.forEach(([s])=>{o.cat[s]=g('dotc_'+s);o.real[s]=g('dotr_'+s)});
+  if(nk!==k)delete c.dotacion[k];
+  if(dotHasData(o))c.dotacion[nk]=o;else delete c.dotacion[nk];
+  centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'caracteristicas');
+ });
+}
+function deleteDot(cid,k){
+ const c=db.centers.find(x=>x.id===cid);if(!c||!c.dotacion)return;
+ if(!confirm(`¿Eliminar la dotación de profesorado del curso ${k}?`))return;
+ delete c.dotacion[k];save();centerDetail(cid,'caracteristicas');
+}
+/* Bloques «DOTACIÓN DE PROFESORADO» preparados por Claude (uno o varios) */
+function parseDotBlocks(text){
+ const blocks=[];let cur=null,lastKey='';
+ String(text||'').replace(/\r/g,'').replace(/^```.*$/gm,'').split('\n').forEach(line=>{
+  const t=line.trim();
+  if(/^DOTACI[ÓO]N( DE)? PROFESORADO/i.test(t)){cur={notas:''};blocks.push(cur);lastKey='';return}
+  if(!cur)return;
+  if(/^FIN$/i.test(t)){cur=null;return}
+  const m=t.match(/^([^:]{2,40}):\s*(.*)$/);
+  const key=m?normTxt(m[1]):'';
+  const pairs=v=>{const o={};v.split(/[;,]/).forEach(p=>{const q=p.trim().match(/^([A-Za-z]{2,4})(?:\s+0\d\d(?=[\s=:]))?\s*[=:]?\s*(-?\d+)$/);if(q)o[q[1].toUpperCase()]=+q[2]});return o};
+  if(m&&/^codigo/.test(key)){cur.code=m[2].replace(/\s/g,'');lastKey=''}
+  else if(m&&/^centro/.test(key)){cur.center=m[2].trim();lastKey=''}
+  else if(m&&/^curso/.test(key)){cur.course=normCourse(m[2]);lastKey=''}
+  else if(m&&/^fecha/.test(key)){cur.fecha=parseDateAny(m[2])||'';lastKey=''}
+  else if(m&&/^unidades/.test(key)){const o=pairs(m[2]);if('UEI' in o)cur.uei=o.UEI;if('UEP' in o)cur.uep=o.UEP;lastKey=''}
+  else if(m&&/^catalogo/.test(key)){cur.cat=pairs(m[2]);lastKey=''}
+  else if(m&&/^(presencia|reales|real)/.test(key)){cur.real=pairs(m[2]);lastKey=''}
+  else if(m&&/^notas?/.test(key)){cur.notas=m[2].trim();lastKey='notas'}
+  else if(lastKey==='notas'&&t)cur.notas+=(cur.notas?'\n':'')+t;
+ });
+ return blocks.filter(b=>b.cat||b.real);
+}
+function pasteDotStart(){
+ openModal('Pegar dotación de profesorado',`<p style="margin-top:0">Pega aquí uno o varios bloques «DOTACIÓN DE PROFESORADO» preparados por Claude. Cada bloque se guarda en su centro (por el código) y en su curso.</p>
+ <div class="toolbar"><button type="button" class="btn" onclick="pasteDotClipboard()">Pegar del portapapeles</button></div>
+ <textarea id="dotPaste" class="textarea" style="min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="DOTACIÓN DE PROFESORADO&#10;Código: …&#10;Curso: 2026/27&#10;Unidades: UEI 5; UEP 14&#10;Catálogo+Habilitadas: EI 6; EP 13; …&#10;Presencia en centro: EI 6; EP 12; …&#10;FIN"></textarea>`,()=>{
+  const blocks=parseDotBlocks(document.getElementById('dotPaste').value);
+  if(!blocks.length){alert('No reconozco el formato. El bloque debe empezar por «DOTACIÓN DE PROFESORADO» y tener las líneas «Catálogo+Habilitadas» y «Presencia en centro».');return}
+  const ok=[],bad=[];
+  blocks.forEach(b=>{const c=matchCenter(b.center,b.code);if(!c||!b.course){bad.push(`${b.center||b.code||'Sin centro'}${b.course?'':' (sin curso)'}`);return}ok.push([c,b])});
+  if(!ok.length){alert('No encuentro en tu registro ninguno de los centros:\n'+bad.join('\n'));return}
+  const repl=ok.filter(([c,b])=>dotHasData(c.dotacion?.[b.course])).map(([c,b])=>`${c.name} (${b.course})`);
+  if(repl.length&&!confirm(`Ya hay datos de dotación y se sustituirán en:\n${repl.join('\n')}\n\n¿Continuar?`))return;
+  ok.forEach(([c,b])=>{if(!c.dotacion)c.dotacion={};const cat={},real={};DOT_SPECS.forEach(([s])=>{cat[s]=b.cat?.[s]??0;real[s]=b.real?.[s]??0});c.dotacion[b.course]={uei:b.uei??'',uep:b.uep??'',cat,real,fecha:b.fecha||'',notas:b.notas||'',updatedAt:nowIso(),source:'claude'}});
+  save();closeModal();
+  alert(`Dotación guardada en ${ok.length} ${ok.length===1?'centro':'centros'}:\n${ok.map(([c,b])=>`${c.name} (${b.course})`).join('\n')}${bad.length?`\n\nNo encontrados:\n${bad.join('\n')}`:''}`);
+  if(ok.length===1){centerCourseSel[ok[0][0].id+'.char']=ok[0][1].course;centerDetail(ok[0][0].id,'caracteristicas')}
+ });
+ document.getElementById('modalSave').textContent='Guardar';
+}
+async function pasteDotClipboard(){
+ try{document.getElementById('dotPaste').value=await navigator.clipboard.readText()}
+ catch{alert('El navegador no ha dado acceso al portapapeles. Mantén pulsado el cuadro de texto y elige «Pegar».');document.getElementById('dotPaste').focus()}
 }
 
 /* ---------- Ficha oficial del centro (importada del generador de fichas) ---------- */
@@ -1736,7 +1875,7 @@ function centerDetail(id,tab=activeCenterTab){
  const leadership=(cls,label,value)=>`<div class="leadership-role ${cls}"><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
  const empty=(col,row)=>`<div class="leadership-empty" style="grid-column:${col};grid-row:${row}" aria-hidden="true"></div>`;
  const data=`<h3>Información del centro</h3><dl class="center-data-list">${field('Tipo',c.tipo)}${field('Código',c.code)}${field('Dirección postal',c.address)}${field('Concello',c.town)}${field('Teléfono',c.phone)}${field('Correo electrónico',c.email)}${field('Otro correo',c.email2)}</dl><h3>Equipo directivo</h3><dl class="center-leadership"><div class="leadership-role leadership-direction"><dt>Dirección</dt><dd>${esc(c.director||'—')}${c.directorExt?`<span class="dir-extra">Extensión: ${esc(c.directorExt)}</span>`:''}${c.directorMobile?`<span class="dir-extra">Móvil: <a href="tel:${esc(String(c.directorMobile).replace(/[^\d+]/g,''))}">${esc(c.directorMobile)}</a></span>`:''}${c.directorObs?`<span class="dir-extra dir-obs">${esc(c.directorObs)}</span>`:''}</dd></div>${leadership('leadership-primary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${leadership('leadership-secondary','Jefatura de estudios · Secundaria',c.headSecondary)}${leadership('leadership-adults','Jefatura de estudios · Adultos',c.headAdults)}${leadership('leadership-secretary','Secretaría',c.secretary)}${leadership('leadership-vice','Vicedirección',c.vice)}${empty(1,2)}${empty(1,3)}${empty(3,2)}${empty(3,3)}${empty(4,2)}${empty(4,3)}</dl><h3 class="after-block">Otro personal</h3><dl class="center-data-list">${field('Orientación',c.orientacion)}${field('Conserje',c.conserje)}</dl>`;
- const ev=(a,withFinish)=>`<div class="event"><b>${date(a.date)} ${esc(a.time||'')}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> ${withFinish&&!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`;
+ const ev=(a,withFinish)=>`<div class="event"><b>${date(a.date)}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div>${withFinish&&!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`;
  const actions=`<h3>Actuaciones pendientes (${pending.length})</h3><div class="timeline">${pending.map(a=>ev(a,true)).join('')||'<div class="empty">No hay actuaciones pendientes en este centro.</div>'}</div><div id="centerActsCourse">${centerActsHTML(c)}</div>`;
  const notesHtml=`<div class="section-head"><h3>Notas del centro (${notes.length})</h3><button class="btn small primary" onclick="newCenterNote('${c.id}')">+ Añadir nota</button></div><div class="timeline">${notes.map(n=>`<div class="event note"><b>${n.date?date(n.date):'Sin fecha'}${n.title?' · '+esc(n.title):''}${n.source==='notion'?' · <span class="muted">Notion</span>':''}</b><div class="note-text">${esc(n.text)}</div><button class="btn small" onclick="editCenterNote('${n.id}','${c.id}')">Editar</button> <button class="btn small danger" aria-label="Eliminar nota" onclick="deleteCenterNote('${n.id}','${c.id}')">🗑️</button></div>`).join('')||'<div class="empty">Sin notas. Aquí puedes guardar comentarios y observaciones generales sobre el centro.</div>'}</div>`;
  const visits=`<div id="centerVisitsCourse">${centerVisitsHTML(c)}</div>`;
@@ -1748,8 +1887,8 @@ function centerDetail(id,tab=activeCenterTab){
 
 /* ---------- Exportación CSV ---------- */
 function actionsCsvRows(list){
- return [['Fecha actuación','Hora','Medio','Centro','Alumno/a','Asunto','Detalles','Actuación','Actualizaciones','Finalizada','Registrada','Última modificación'],
-  ...list.map(x=>[x.date,x.time,x.mode,x.center,x.student,x.subject,x.details,x.action,(x.updates||[]).map(u=>`${u.date}: ${u.text}`).join(' | '),x.finalizada?'Sí':'No',x.createdAt||'',x.updatedAt||''])];
+ return [['Fecha actuación','Medio','Centro','Alumno/a','Asunto','Detalles','Actuación','Actualizaciones','Finalizada','Registrada','Última modificación'],
+  ...list.map(x=>[x.date,x.mode,x.center,x.student,x.subject,x.details,x.action,(x.updates||[]).map(u=>`${u.date}: ${u.text}`).join(' | '),x.finalizada?'Sí':'No',x.createdAt||'',x.updatedAt||''])];
 }
 function csvBlob(rows){return new Blob(['\ufeff'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n')],{type:'text/csv;charset=utf-8'})}
 function exportFilteredActionsCSV(){download(csvBlob(actionsCsvRows(currentFilteredActions)),'registro-actuaciones-filtrado.csv')}
@@ -2059,11 +2198,11 @@ nav('dashboard');
 /* ================================================================
    Capa de seguridad y guardado del Registro de actuaciones
    - Cifrado AES-GCM 256 con clave derivada de la contraseña (PBKDF2-SHA256)
-   - Archivo de datos .json cifrado, pensado para vivir en AbalarBox
+   - Archivo de datos .json cifrado, pensado para vivir en BoxAbalar
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
-   - iPhone / otros: copia cifrada en el dispositivo + «Guardar en AbalarBox»
+   - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='3.1 (29/09/2026)';
+const APP_VERSION='3.3 (30/09/2026)';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -2146,10 +2285,10 @@ async function startScreen(message='',isError=false){
   parts.push(`<button class="btn primary gate-main" id="gOpenHandle">Abrir mi registro</button>
    <p class="gate-note">Archivo vinculado: <b>${esc(handle.name)}</b>${remembered?'. La contraseña está recordada en este equipo.':''}</p>`);
  }else{
-  parts.push(`<button class="btn primary gate-main" id="gPick">${cache?'Abrir el archivo de AbalarBox':'Abrir mi archivo de datos'}</button>
-   <p class="gate-note">${IS_IOS?'Se abrirá la app Archivos: entra en AbalarBox y elige el archivo del registro.':'Elige el archivo cifrado del registro en tu carpeta de AbalarBox.'}</p>`);
+  parts.push(`<button class="btn primary gate-main" id="gPick">${cache?'Abrir el archivo de BoxAbalar':'Abrir mi archivo de datos'}</button>
+   <p class="gate-note">${IS_IOS?'Se abrirá la app Archivos, normalmente en la última carpeta que usaste. Si no, entra en BoxAbalar › Registro (o en Favoritos) y elige el archivo del registro.':'Elige el archivo cifrado del registro en tu carpeta de BoxAbalar.'}</p>`);
   if(cache)parts.push(`<button class="btn gate-secondary" id="gOpenCache">Usar la copia de este dispositivo</button>
-   <p class="gate-note">Guardada el ${esc(fmt(cache.savedAt))}.${cache.pending?' <b>Tiene cambios que aún no están en AbalarBox.</b>':' Si has trabajado después en otro equipo, abre mejor el archivo de AbalarBox.'}</p>`);
+   <p class="gate-note">Guardada el ${esc(fmt(cache.savedAt))}.${cache.pending?' <b>Tiene cambios que aún no están en BoxAbalar.</b>':' Si has trabajado después en otro equipo, abre mejor el archivo de BoxAbalar.'}</p>`);
  }
  parts.push(`<div class="gate-alt">${handle&&CAN_FS?'<button class="btn" id="gPick">Abrir otro archivo…</button>':''}<button class="btn" id="gNew">Crear un registro nuevo</button></div>`);
  gate(parts.join(''));
@@ -2258,7 +2397,7 @@ async function finishOpen({data,h,key,remember,src,baseRev,pending}){
 /* ---------- Crear un registro nuevo ---------- */
 function createScreen(error=''){
  gate(`<form id="gNewForm" class="gate-form" autocomplete="off">
-  <p class="gate-msg">Vas a crear un registro vacío y cifrado.${CAN_FS?' Después elegirás dónde guardarlo: escoge tu carpeta de AbalarBox.':' Quedará en este dispositivo hasta que lo guardes en AbalarBox.'}</p>
+  <p class="gate-msg">Vas a crear un registro vacío y cifrado.${CAN_FS?' Después elegirás dónde guardarlo: escoge tu carpeta de BoxAbalar.':' Quedará en este dispositivo hasta que lo guardes en BoxAbalar.'}</p>
   ${error?`<p class="gate-msg bad" role="alert">${esc(error)}</p>`:''}
   <label for="gPw1">Contraseña (mínimo 10 caracteres)</label>
   <input id="gPw1" type="password" class="input" autocomplete="new-password" minlength="10" required>
@@ -2384,7 +2523,7 @@ async function checkNewerOnFocus(){
  }catch(e){console.warn(e)}finally{focusBusy=false}
 }
 
-/* ---------- Envío a AbalarBox sin escritura directa (iPhone, Safari…) ---------- */
+/* ---------- Envío a BoxAbalar sin escritura directa (iPhone, Safari…) ---------- */
 async function cacheText(){await flushNow();const c=await idb.get('cache');return c?.text||null}
 async function exportToCloud(){
  if(CAN_FS&&!S.handle)return linkFile();
@@ -2399,7 +2538,7 @@ async function markExported(downloaded){
  S.pending=false;S.baseRev=S.rev;
  const c=await idb.get('cache');if(c){c.pending=false;c.baseRev=S.rev;await idb.set('cache',c)}
  setStatus();
- if(downloaded)dialog('Archivo descargado','<p>El archivo cifrado se ha descargado. Muévelo a tu carpeta de AbalarBox sustituyendo el anterior.</p>',[{label:'Entendido',cls:'primary'}]);
+ if(downloaded)dialog('Archivo descargado','<p>El archivo cifrado se ha descargado. Muévelo a tu carpeta de BoxAbalar sustituyendo el anterior.</p>',[{label:'Entendido',cls:'primary'}]);
 }
 async function linkFile(){
  if(!CAN_FS)return exportToCloud();
@@ -2470,7 +2609,7 @@ function setStatus(){
  else if(S.saving||S.dirty){text='Guardando…'}
  else if(S.handle&&S.needPerm){text='Falta permiso para guardar en el archivo';cls='warn';action=async()=>{if(await perm(true)){S.dirty=true;await flushNow()}setStatus()};label='Permitir'}
  else if(S.handle){text=`Guardado en ${S.name} a las ${hhmm(S.lastSaved)}`;cls='ok'}
- else if(S.pending){text='Guardado en este dispositivo. Falta enviarlo a AbalarBox.';cls='warn';action=exportToCloud;label=CAN_FS?'Vincular archivo':'Guardar en AbalarBox'}
+ else if(S.pending){text='Guardado en este dispositivo. Falta enviarlo a BoxAbalar.';cls='warn';action=exportToCloud;label=CAN_FS?'Vincular archivo':'Guardar en BoxAbalar'}
  else{text=S.lastSaved?`Registro al día (${hhmm(S.lastSaved)})`:'Registro abierto';cls='ok'}
  box.textContent=text;box.className='vault-status '+cls;
  if(action){btn.hidden=false;btn.textContent=label;btn.onclick=action}else btn.hidden=true;
