@@ -9,6 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Inspección">
+<link rel="icon" type="image/png" sizes="180x180" href="icon-180.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Registro de actuaciones · Inspección educativa</title>
@@ -248,13 +249,12 @@ h3.after-block{margin-top:22px}
 <div class="modal" id="modal"><div class="modalbox"><div class="modalhead"><b id="modalTitle">Nueva actuación</b><button class="close" onclick="closeModal()" aria-label="Cerrar">×</button></div><div class="modalbody" id="modalBody"></div><div class="modalfoot"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="modalSave">Guardar</button></div></div></div>
 <div class="modal vdlg" id="vdlg" role="dialog" aria-modal="true" aria-labelledby="vdlgTitle"><div class="modalbox"><div class="modalhead"><b id="vdlgTitle"></b></div><div class="modalbody" id="vdlgBody"></div><div class="modalfoot" id="vdlgFoot"></div></div></div>
 <script type="text/plain" id="coreSource">
-const SEED = {"centers": [], "actions": [], "visits": [], "followupFields": ["Acta claustro adscripción", "Entrega programaciones", "Autorización agrupamientos flex.", "Autorizaciones matrícula simultánea", "Listado NEAE", "Horarios PT/AL/ATE", "Horario prof. disp. horaria (PDH)", "Planes esp. repetidores/materias pendientes", "PGA", "DOC", "Memoria final"], "followup": {}, "followupNA": {}, "teacherAbsenceDates": {}, "petitionsRequirements": [], "specials": {"EscolarizaciónExtraordinarias-B": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "Curso", "ED550C", "Firmada", "Motivo", "Origen", "Identidad", "Filiación", "Empadronamiento", "Documentación", "Vacantes", "Informe"], "rows": []}, "EscolarizaciónCursoInferior": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "De", "Para", "Motivo"], "rows": []}, "Protocolos_ProcCorrector": {"headers": ["Fecha", "Centro", "Protocolo", "Alumno", "Curso/edad", "Sexo del alumno/a", "Apertura del expediente", "Resolución del expediente", "Fiscalía", "Seguridad", "Servicios sociales/sanitarios", "Fecha informe en XIE", "Seguimiento"], "rows": []}, "EOE_At.Dom_Cambio mod_Flexibili": {"headers": ["Campo 1", "Centro", "Alumno/a", "Motivo", "Curso actual", "Comunicación al centro responsable", "Fecha resolución DT", "Horas semanales asignadas", "Fecha inicio at. domiciliaria", "Fecha fin at. domiciliaria", "Observaciones"], "rows": []}, "Prof. Prácticas": {"headers": ["CENTRO", "Docente", "Materia", "Tutor/a", "Visita", "Observaciones"], "rows": []}, "Dep. Orientación": {"headers": ["CENTRO", "Unidades", "Tipo", "PT", "PTC", "AL", "ALC", "Centro adscrito"], "rows": []}, "PAC - ILS": {"headers": ["CENTRO", "Auxiliar cuidador", "Alumnado", "Compartido", "Días asistencia"], "rows": []}, "Relixión": {"headers": ["CENTRO", "Religión católica (especialidad 701401)", "Columna 4", "Columna 5", "Columna 6", "Columna 7", "Columna 8", "Religión evangélica (701402)"], "rows": []}, "Actuacións": {"headers": ["Centro", "Fecha", "Modo de comunicación", "Asunto", "Descripción", "Finalizada"], "rows": []}, "Días no lectivos": {"headers": ["CENTRO", "Fecha", "Estado"], "rows": []}}};
+const SEED = {"centers": [], "actions": [], "visits": [], "followupFields": ["Acta claustro adscripción", "Entrega programaciones", "Autorización agrupamientos flex.", "Autorizaciones matrícula simultánea", "Listado NEAE", "Horarios PT/AL/ATE", "Horario prof. disp. horaria (PDH)", "Planes esp. repetidores/materias pendientes", "PGA", "DOC", "Memoria final"], "followup": {}, "followupNA": {}, "petitionsRequirements": [], "specials": {"EscolarizaciónExtraordinarias-B": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "Curso", "ED550C", "Firmada", "Motivo", "Origen", "Identidad", "Filiación", "Empadronamiento", "Documentación", "Vacantes", "Informe"], "rows": []}, "EscolarizaciónCursoInferior": {"headers": ["CENTRO", "Fecha sol", "Fecha res", "Alumnado", "De", "Para", "Motivo"], "rows": []}, "Protocolos_ProcCorrector": {"headers": ["Fecha", "Centro", "Protocolo", "Alumno", "Curso/edad", "Sexo del alumno/a", "Apertura del expediente", "Resolución del expediente", "Fiscalía", "Seguridad", "Servicios sociales/sanitarios", "Fecha informe en XIE", "Seguimiento"], "rows": []}, "EOE_At.Dom_Cambio mod_Flexibili": {"headers": ["Campo 1", "Centro", "Alumno/a", "Motivo", "Curso actual", "Comunicación al centro responsable", "Fecha resolución DT", "Horas semanales asignadas", "Fecha inicio at. domiciliaria", "Fecha fin at. domiciliaria", "Observaciones"], "rows": []}, "Prof. Prácticas": {"headers": ["CENTRO", "Docente", "Materia", "Tutor/a", "Visita", "Observaciones"], "rows": []}, "Dep. Orientación": {"headers": ["CENTRO", "Unidades", "Tipo", "PT", "PTC", "AL", "ALC", "Centro adscrito"], "rows": []}, "PAC - ILS": {"headers": ["CENTRO", "Auxiliar cuidador", "Alumnado", "Compartido", "Días asistencia"], "rows": []}, "Relixión": {"headers": ["CENTRO", "Religión católica (especialidad 701401)", "Columna 4", "Columna 5", "Columna 6", "Columna 7", "Columna 8", "Religión evangélica (701402)"], "rows": []}, "Actuacións": {"headers": ["Centro", "Fecha", "Modo de comunicación", "Asunto", "Descripción", "Finalizada"], "rows": []}, "Días no lectivos": {"headers": ["CENTRO", "Fecha", "Estado"], "rows": []}}};
 let db=window.__BOOT_DATA__||JSON.parse(JSON.stringify(SEED));delete window.__BOOT_DATA__;
 for(const k of ['centers','actions','visits'])if(!Array.isArray(db[k]))db[k]=[];if(!db.followup)db.followup={};if(!db.followupNA)db.followupNA={};if(!Array.isArray(db.followupFields))db.followupFields=[...SEED.followupFields];
 if(!Array.isArray(db.petitionsRequirements))db.petitionsRequirements=[];
 if(!db.specials||typeof db.specials!=='object')db.specials={};
 if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
-if(!db.teacherAbsenceDates||typeof db.teacherAbsenceDates!=='object')db.teacherAbsenceDates={};
 // Normaliza denominaciones antiguas para que las actuaciones se vinculen con la ficha correcta del centro.
 let normalizedCenters=false;
 if(Array.isArray(db.actions)){
@@ -691,27 +691,10 @@ function editCenterOrientation(centerId){
  openModal('Editar departamento de orientación',body,closeModal);
  document.getElementById('modalSave').textContent='Cerrar';
 }
-const ABSENCE_MONTHS=['SEP','OCT','NOV','DIC','ENE','FEB','MAR','ABR','MAY','JUN'];
-function absenceRow(c){
- const row=db.teacherAbsenceDates?.[c.id]||{};
- return `<tr><td><b>${esc(c.name)}</b></td>${ABSENCE_MONTHS.map(month=>`<td class="follow-cell ${row[month]?'done':'pending'}"><input type="date" class="input" style="min-width:120px" aria-label="${month} · ${esc(c.name)}" value="${esc(row[month]||'')}" data-cid="${esc(c.id)}" data-month="${month}" onchange="setAbsenceDate(this)" oninput="setAbsenceDate(this)"></td>`).join('')}</tr>`;
-}
-function absenceTable(centers){
- return `<div class="tablewrap"><table class="table"><thead><tr><th>Centro</th>${ABSENCE_MONTHS.map(month=>`<th>${month}</th>`).join('')}</tr></thead><tbody>${centers.map(absenceRow).join('')||'<tr><td colspan="11" class="empty">No hay centros.</td></tr>'}</tbody></table></div>`;
-}
-function setAbsenceDate(input){
- const cid=input?.dataset.cid,month=input?.dataset.month;
- if(!cid||!ABSENCE_MONTHS.includes(month)||!db.centers.some(c=>c.id===cid))return;
- if(!db.teacherAbsenceDates)db.teacherAbsenceDates={};
- if(!db.teacherAbsenceDates[cid])db.teacherAbsenceDates[cid]={};
- db.teacherAbsenceDates[cid][month]=input.value||'';
- save();
- const cell=input.closest('.follow-cell');if(cell){cell.classList.toggle('done',!!input.value);cell.classList.toggle('pending',!input.value);}
-}
 function centerFollowupPanel(c){
  let fields=db.followupFields||[],row=db.followup[c.id]||{};
  const documents=`<div class="tablewrap"><table class="table"><thead><tr><th>Centro</th>${fields.map(f=>`<th>${esc(f)}</th>`).join('')}</tr></thead><tbody><tr><td><b>${esc(c.name)}</b></td>${fields.map(f=>{let na=followNA(c.id,f),hasDate=!!iso(row[f]),state=na?'na':(hasDate?'done':'pending');return `<td class="follow-cell ${state}"><input type="date" class="input" style="min-width:120px" value="${esc(iso(row[f]))}" data-cid="${esc(c.id)}" data-field="${encodeURIComponent(f)}" onchange="setFollowFromInput(this)" oninput="setFollowFromInput(this)" ${na?'disabled':''}><label class="na-toggle"><input type="checkbox" data-cid="${esc(c.id)}" data-field="${encodeURIComponent(f)}" onchange="setFollowNAFromInput(this)" ${na?'checked':''}> N/A</label></td>`}).join('')}</tr></tbody></table></div>`;
- return `<div style="margin-bottom:12px"><button class="btn small" onclick="nav('seguimiento')">Ver seguimiento general</button></div><h3>Documentos</h3>${documents}<h3>Faltas profesorado</h3>${absenceTable([c])}`;
+ return `<div style="margin-bottom:12px"><button class="btn small" onclick="nav('seguimiento')">Ver seguimiento general</button></div><h3>Documentos</h3>${documents}`;
 }
 function deleteActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==aid);save();centerDetail(cid)}
 function finishActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(x){x.finalizada=true;x.updatedAt=new Date().toISOString();save();centerDetail(cid)}}
@@ -818,7 +801,7 @@ function editVisitFromCenter(id,cid){
 }
 function seguimiento(){
  const fields=db.followupFields;
- document.getElementById('main').innerHTML=layout('Seguimiento','Control de documentación y tareas por centro',homeBtn()+`<button class="btn" onclick="exportCSV('followup')">Exportar CSV</button>`)+`<div class="panel"><div class="panelhead"><h2>Documentos</h2></div><div class="panelbody"><div class="toolbar"><select id="spend" class="select" onchange="renderFollowup()"><option value="">Todos</option><option value="pending">Con pendientes</option><option value="done">Sin pendientes</option></select></div><div class="tablewrap"><table class="table"><thead><tr><th>Centro</th>${fields.map(f=>`<th>${esc(f)}</th>`).join('')}</tr></thead><tbody id="followRows"></tbody></table></div></div></div><div class="panel"><div class="panelhead"><h2>Faltas profesorado</h2></div><div class="panelbody">${absenceTable(db.centers)}</div></div>`;
+ document.getElementById('main').innerHTML=layout('Seguimiento','Control de documentación y tareas por centro',homeBtn()+`<button class="btn" onclick="exportCSV('followup')">Exportar CSV</button>`)+`<div class="panel"><div class="panelhead"><h2>Documentos</h2></div><div class="panelbody"><div class="toolbar"><select id="spend" class="select" onchange="renderFollowup()"><option value="">Todos</option><option value="pending">Con pendientes</option><option value="done">Sin pendientes</option></select></div><div class="tablewrap"><table class="table"><thead><tr><th>Centro</th>${fields.map(f=>`<th>${esc(f)}</th>`).join('')}</tr></thead><tbody id="followRows"></tbody></table></div></div></div>`;
  renderFollowup();
 }
 function followNA(cid,f){return !!(db.followupNA&&db.followupNA[cid]&&db.followupNA[cid][f])}
@@ -923,11 +906,11 @@ function ensureShape(){
  if(!db||typeof db!=='object')db=JSON.parse(JSON.stringify(SEED));
  for(const k of ['centers','actions','visits','petitionsRequirements'])if(!Array.isArray(db[k]))db[k]=[];
  if(!Array.isArray(db.followupFields))db.followupFields=[...SEED.followupFields];
- for(const k of ['followup','followupNA','teacherAbsenceDates'])if(!db[k]||typeof db[k]!=='object')db[k]={};
+ for(const k of ['followup','followupNA'])if(!db[k]||typeof db[k]!=='object')db[k]={};
  if(!db.specials||typeof db.specials!=='object')db.specials=JSON.parse(JSON.stringify(SEED.specials));
  if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
  db.centers.forEach(c=>{if(!db.followup[c.id])db.followup[c.id]={}});
- migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();
+ migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();
 }
 window.__coreGetDb=()=>db;
 window.__coreReplaceData=d=>{db=d;ensureShape();closeModal();nav('dashboard')};
@@ -1048,7 +1031,7 @@ const IMPORT_TARGETS={
   ['time','Hora',['hora','time']],
   ['mode','Medio de comunicación',['medio','via','canal','modo','contacto','comunicacion']],
   ['center','Centro',['centro','center','colegio','instituto']],
-  ['student','Alumno/a',['alumn','estudiante','student']],
+  ['student','Persona implicada',['persona','implicad','alumn','estudiante','student']],
   ['subject','Asunto',['asunto','name','nombre','titulo','title','tema']],
   ['details','Detalles',['detalle','descripcion','notas','nota','observ','contenido','description']],
   ['action','Actuación realizada / respuesta',['actuacion','respuesta','accion','resolucion','medida']],
@@ -1256,6 +1239,9 @@ function migrateV33(){
  db.migratedV33=true;
 }
 
+/* Versión 3.4: se retira el seguimiento de «Faltas profesorado» y se eliminan definitivamente sus fechas. */
+function migrateV34(){if('teacherAbsenceDates' in db)delete db.teacherAbsenceDates}
+
 /* ---------- Inicio: bloques desplegables ---------- */
 function homeBlock(key,title,headExtra,body){
  const open=window.__vault?.ui?window.__vault.ui('home.'+key,true)!==false:true;
@@ -1265,7 +1251,7 @@ function homeBlockToggle(el){window.__vault?.setUi?.('home.'+el.dataset.block,el
 function homeRequestsPanel(){
  const items=db.petitionsRequirements||[];
  const centerName=id=>db.centers.find(c=>c.id===id)?.name||'Centro no registrado';
- const body=`<div class="toolbar"><input id="homeRequestSearch" class="input" type="search" placeholder="Buscar por centro" aria-label="Buscar peticiones y requerimientos por centro" oninput="filterHomeRequests()"><label style="display:flex;align-items:center;gap:6px;font-size:13px"><input id="homeRequestPendingOnly" type="checkbox" onchange="filterHomeRequests()"> Solo pendientes</label></div><div class="home-request-list" id="homeRequestList">${[...items].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>`<div class="event home-request-row ${x.finalizada?'finalized':''}" data-finished="${!!x.finalizada}" data-center="${esc(centerName(x.centerId).toLocaleLowerCase('es'))}"><b>${esc(x.type||'Petición')} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div><strong>${esc(centerName(x.centerId))}</strong> · ${esc(x.subject||'Sin asunto')}</div>${x.details?`<p>${esc(x.details)}</p>`:''}${db.centers.some(c=>c.id===x.centerId)?`<button class="btn small" type="button" onclick="centerDetail('${x.centerId}','peticiones')">Ver ficha</button>`:''}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div><div id="homeRequestNoResults" class="empty" hidden>No hay resultados para ese centro.</div>`;
+ const body=`<div class="toolbar"><input id="homeRequestSearch" class="input" type="search" placeholder="Buscar por centro" aria-label="Buscar peticiones y requerimientos por centro" oninput="filterHomeRequests()"><label style="display:flex;align-items:center;gap:6px;font-size:13px"><input id="homeRequestPendingOnly" type="checkbox" onchange="filterHomeRequests()"> Solo pendientes</label></div><div class="home-request-list" id="homeRequestList">${[...items].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>`<div class="event home-request-row ${x.finalizada?'finalized':''}" data-finished="${!!x.finalizada}" data-center="${esc(centerName(x.centerId).toLocaleLowerCase('es'))}"><b>${esc(x.type||'Petición')} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div><strong>${esc(centerName(x.centerId))}</strong> · ${esc(x.subject||'Sin asunto')}</div>${db.centers.some(c=>c.id===x.centerId)?`<button class="btn small" type="button" onclick="centerDetail('${x.centerId}','peticiones')">Ver ficha</button>`:''}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div><div id="homeRequestNoResults" class="empty" hidden>No hay resultados para ese centro.</div>`;
  return homeBlock('requests','Peticiones y requerimientos',`<span class="pill">${items.length} ${items.length===1?'registro':'registros'}</span>`,body);
 }
 function calendarBlock(){
@@ -1289,16 +1275,16 @@ function dashboard(){
  const pendingBody=`<h3 class="home-sub">Las 3 más antiguas</h3><div class="timeline">${actionEvents(pendingActions.slice(0,3))}</div><h3 class="home-sub" style="margin-top:18px">Las 3 más recientes</h3><div class="timeline">${actionEvents(pendingActions.slice(-3).reverse())}</div>`;
  document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
  `<div class="cards cards1">${card(pending,'Actuaciones pendientes','registroPendientes')}</div>`+
- homeRequestsPanel()+calendarBlock()+
+ homeRequestsPanel()+
  `<div class="grid2 home-grid">`+
  homeBlock('visits','Visitas',`<button class="btn small" onclick="stopEv(event);nav('visitas')">Ver visitas</button>`,visitsBody)+
  homeBlock('pending','Actuaciones pendientes',`<span class="pill ${pending?'warn':''}">${pending}</span><button class="btn small" onclick="stopEv(event);registroPending()">Ver pendientes</button>`,pendingBody)+
- `</div>`;
+ `</div>`+calendarBlock();
 }
 
 /* ---------- Registro de actuaciones ---------- */
 function registro(){
- document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0">Pendientes</option><option value="1">Finalizadas</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Alumno/a</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
+ document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0">Pendientes</option><option value="1">Finalizadas</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
  filterActions();
 }
 function registroForCenter(name,course='*'){nav('registro');const i=document.getElementById('rsearch'),k=document.getElementById('rcourse');if(k)k.value=[...k.options].some(o=>o.value===course)?course:'*';if(i){i.value=name;filterActions()}}
@@ -1327,7 +1313,7 @@ function actionForm(x={},warnings=[]){
   <input id="ftime" type="hidden" value="${esc(x.time||'')}">
   <div class="field"><label for="fmode">Medio de comunicación</label><select id="fmode" class="select"><option value="" ${!x.mode?'selected':''}>Sin especificar</option>${ACTION_MODES.map(m=>`<option ${x.mode===m?'selected':''}>${m}</option>`).join('')}</select></div>
   <div class="field"><label for="fcenter">Centro</label><select id="fcenter" class="select"><option value="">— Sin centro —</option>${centerKnown?'':`<option value="${esc(x.center)}" selected>${esc(x.center)} (no registrado)</option>`}${[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
-  <div class="field"><label for="fstudent">Alumno/a</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
+  <div class="field"><label for="fstudent">Persona implicada</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
   <div class="field"><label for="fsubject">Asunto</label><input id="fsubject" class="input" style="width:100%" value="${esc(x.subject)}"></div>
   <div class="field full"><label for="fdetails">Detalles</label><textarea id="fdetails" class="textarea">${esc(x.details)}</textarea></div>
   <div class="field full"><label for="faction">Actuación realizada / respuesta</label><textarea id="faction" class="textarea">${esc(x.action)}</textarea></div>
@@ -1367,7 +1353,7 @@ function editAction(id){
 }
 
 /* ---------- Pegar actuación preparada por Claude ---------- */
-const PASTE_KEYS={'fecha':'date','fecha de la actuacion':'date','hora':'time','medio':'mode','medio de comunicacion':'mode','centro':'center','codigo':'code','codigo del centro':'code','alumno/a':'student','alumno':'student','alumna':'student','alumnado':'student','asunto':'subject','detalles':'details','actuacion realizada':'action','actuacion realizada / respuesta':'action','respuesta':'action','estado':'status','finalizada':'status'};
+const PASTE_KEYS={'fecha':'date','fecha de la actuacion':'date','hora':'time','medio':'mode','medio de comunicacion':'mode','centro':'center','codigo':'code','codigo del centro':'code','persona implicada':'student','persona':'student','persona implicada / alumno/a':'student','alumno/a':'student','alumno':'student','alumna':'student','alumnado':'student','asunto':'subject','detalles':'details','actuacion realizada':'action','actuacion realizada / respuesta':'action','respuesta':'action','estado':'status','finalizada':'status'};
 function parsePastedAction(text){
  const out={};let cur=null;
  for(const raw of String(text).replace(/\r/g,'').split('\n')){
@@ -1392,14 +1378,14 @@ function matchCenter(name,code){
 }
 function claudeInstructions(){
  const centers=[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`- ${c.name}${c.code?` (${c.code})`:''}`).join('\n');
- return `Cuando te pida preparar una actuación para mi aplicación de registro, devuélvela SOLO en este formato, dentro de un bloque de código y sin texto adicional dentro del bloque. Usa solo iniciales para el alumnado.
+ return `Cuando te pida preparar una actuación para mi aplicación de registro, devuélvela SOLO en este formato, dentro de un bloque de código y sin texto adicional dentro del bloque. Usa solo iniciales para el alumnado y las demás personas implicadas.
 
 ACTUACIÓN
 Fecha: DD/MM/AAAA
 Medio: Correo electrónico | Teléfono | Presencial | REXEL | Otro
 Centro: nombre exacto de la lista de abajo
 Código: código del centro
-Alumno/a: iniciales o vacío
+Persona implicada: iniciales o vacío
 Asunto: una sola línea
 Detalles: texto; puede ocupar varias líneas
 Actuación realizada: texto; puede ocupar varias líneas
@@ -1597,7 +1583,7 @@ function centerDotHTML(c,k){
  const d=(c.dotacion||{})[k];
  const head=`<div class="section-head dot-head"><h3 style="margin:0">Dotación de profesorado · curso ${k}</h3><div class="toolbar" style="margin:0"><button class="btn small" onclick="pasteDotStart()">Pegar datos de Claude</button><button class="btn small primary" onclick="editDot('${c.id}','${k}')">${dotHasData(d)?'Editar':'Añadir a mano'}</button></div></div>`;
  if(!dotHasData(d))return head+`<div class="empty">No hay datos de dotación de profesorado para el curso ${k}.</div>`;
- return head+dotTable(d)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: UPTCentros, curso actual, «Postos totais (autorizados + habilitados)». Presencia: PersoalCentros, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${d.notas?`<div class="note-text dot-notes">${esc(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
+ return head+dotTable(d)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: docentes que corresponden a esas unidades según el catálogo de EI/EP (archivo CatalogoEsteban). Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${d.notas?`<div class="note-text dot-notes">${esc(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
 }
 function dotForm(k,d){
  const cat=d.cat||{},real=d.real||{};
@@ -1870,8 +1856,9 @@ function centerDetail(id,tab=activeCenterTab){
  const notes=db.centerNotes.filter(n=>n.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const field=(label,value)=>`<div><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
  const tabs=[['datos','Datos del centro'],['caracteristicas','Características del centro'],['ficha','Ficha oficial'],['actuaciones','Actuaciones'],['notas','Notas del centro'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['otros','Otros datos'],['peticiones','Peticiones y requerimientos']];
- const counts={ficha:Object.keys(c.fichaOficial||{}).length,actuaciones:allActs.length,notas:notes.length,visitas:centerVisits.length,peticiones:centerRequests.length};
- const menuButtons=tabs.map(([key,label])=>`<button id="center-menu-${key}" class="center-menu-button" type="button" data-tab="${key}" aria-controls="center-panel-${key}" aria-pressed="${key===tab}" onclick="showCenterTab('${key}')">${label}${counts[key]?` <span class="menu-count">${counts[key]}</span>`:''}</button>`).join('');
+ const cur=currentCourse(),inCur=x=>courseOf(x.date)===cur;
+ const counts={actuaciones:allActs.filter(inCur).length,notas:notes.length,visitas:centerVisits.filter(inCur).length,peticiones:centerRequests.filter(inCur).length};
+ const menuButtons=tabs.map(([key,label])=>`<button id="center-menu-${key}" class="center-menu-button" type="button" data-tab="${key}" aria-controls="center-panel-${key}" aria-pressed="${key===tab}" onclick="showCenterTab('${key}')">${label}${counts[key]?` <span class="menu-count" title="${key==='notas'?'Notas del centro':'Curso '+cur}">${counts[key]}</span>`:''}</button>`).join('');
  const leadership=(cls,label,value)=>`<div class="leadership-role ${cls}"><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
  const empty=(col,row)=>`<div class="leadership-empty" style="grid-column:${col};grid-row:${row}" aria-hidden="true"></div>`;
  const data=`<h3>Información del centro</h3><dl class="center-data-list">${field('Tipo',c.tipo)}${field('Código',c.code)}${field('Dirección postal',c.address)}${field('Concello',c.town)}${field('Teléfono',c.phone)}${field('Correo electrónico',c.email)}${field('Otro correo',c.email2)}</dl><h3>Equipo directivo</h3><dl class="center-leadership"><div class="leadership-role leadership-direction"><dt>Dirección</dt><dd>${esc(c.director||'—')}${c.directorExt?`<span class="dir-extra">Extensión: ${esc(c.directorExt)}</span>`:''}${c.directorMobile?`<span class="dir-extra">Móvil: <a href="tel:${esc(String(c.directorMobile).replace(/[^\d+]/g,''))}">${esc(c.directorMobile)}</a></span>`:''}${c.directorObs?`<span class="dir-extra dir-obs">${esc(c.directorObs)}</span>`:''}</dd></div>${leadership('leadership-primary','Jefatura de estudios · Primaria',c.headPrimary??c.head)}${leadership('leadership-secondary','Jefatura de estudios · Secundaria',c.headSecondary)}${leadership('leadership-adults','Jefatura de estudios · Adultos',c.headAdults)}${leadership('leadership-secretary','Secretaría',c.secretary)}${leadership('leadership-vice','Vicedirección',c.vice)}${empty(1,2)}${empty(1,3)}${empty(3,2)}${empty(3,3)}${empty(4,2)}${empty(4,3)}</dl><h3 class="after-block">Otro personal</h3><dl class="center-data-list">${field('Orientación',c.orientacion)}${field('Conserje',c.conserje)}</dl>`;
@@ -1887,14 +1874,14 @@ function centerDetail(id,tab=activeCenterTab){
 
 /* ---------- Exportación CSV ---------- */
 function actionsCsvRows(list){
- return [['Fecha actuación','Medio','Centro','Alumno/a','Asunto','Detalles','Actuación','Actualizaciones','Finalizada','Registrada','Última modificación'],
+ return [['Fecha actuación','Medio','Centro','Persona implicada','Asunto','Detalles','Actuación','Actualizaciones','Finalizada','Registrada','Última modificación'],
   ...list.map(x=>[x.date,x.mode,x.center,x.student,x.subject,x.details,x.action,(x.updates||[]).map(u=>`${u.date}: ${u.text}`).join(' | '),x.finalizada?'Sí':'No',x.createdAt||'',x.updatedAt||''])];
 }
 function csvBlob(rows){return new Blob(['\ufeff'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n')],{type:'text/csv;charset=utf-8'})}
 function exportFilteredActionsCSV(){download(csvBlob(actionsCsvRows(currentFilteredActions)),'registro-actuaciones-filtrado.csv')}
 function exportCSV(kind){
  if(kind==='actions')return download(csvBlob(actionsCsvRows(db.actions)),'registro-actuaciones.csv');
- const rows=[['Centro',...db.followupFields.map(f=>'Documentos · '+f),...ABSENCE_MONTHS.map(m=>'Faltas profesorado · '+m)],...db.centers.map(c=>[c.name,...db.followupFields.map(f=>followNA(c.id,f)?'N/A':(db.followup[c.id]?.[f]||'')),...ABSENCE_MONTHS.map(m=>db.teacherAbsenceDates?.[c.id]?.[m]||'')])];
+ const rows=[['Centro',...db.followupFields.map(f=>'Documentos · '+f)],...db.centers.map(c=>[c.name,...db.followupFields.map(f=>followNA(c.id,f)?'N/A':(db.followup[c.id]?.[f]||''))])];
  download(csvBlob(rows),'seguimiento.csv');
 }
 
@@ -2202,7 +2189,7 @@ nav('dashboard');
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='3.3 (30/09/2026)';
+const APP_VERSION='3.4 (02/10/2026)';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -2295,7 +2282,7 @@ async function startScreen(message='',isError=false){
  $('gOpenHandle')&&($('gOpenHandle').onclick=()=>openStoredHandle(handle));
  $('gPick')&&($('gPick').onclick=pickFile);
  $('gOpenCache')&&($('gOpenCache').onclick=()=>openFromCache(cache));
- $('gNew').onclick=createScreen;
+ $('gNew').onclick=()=>createScreen();
  ($('gOpenHandle')||$('gPick'))?.focus();
 }
 

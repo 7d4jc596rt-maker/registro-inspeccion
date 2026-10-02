@@ -1,7 +1,7 @@
-/* Registro de actuaciones · service worker · versión 3.3
+/* Registro de actuaciones · service worker · versión 3.4
    Red primero (así cada versión nueva se carga en cuanto se publica) y copia en caché para funcionar sin conexión.
    No guarda ningún dato del registro: solo los archivos de la aplicación. */
-const CACHE='registro-inspeccion-v3.3';
+const CACHE='registro-inspeccion-v3.4';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon-180.png','./icon-512.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>Promise.all(FILES.map(f=>c.add(new Request(f,{cache:'reload'})).catch(()=>{})))).then(()=>self.skipWaiting()));
