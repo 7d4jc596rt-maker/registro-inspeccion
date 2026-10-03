@@ -1,0 +1,2 @@
+ensureShape();
+nav('dashboard');
