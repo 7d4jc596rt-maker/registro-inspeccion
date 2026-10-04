@@ -129,7 +129,7 @@ function filterConsultas(){
 function consultas(){
  const u=consultasUi;
  document.getElementById('main').innerHTML=layout('Consultas y procedimientos','Criterios, respuestas y pasos de tramitación que vas recopilando',
-  homeBtn()+`<button class="btn" onclick="importConsultasStart()">Importar consultas…</button><button class="btn primary" onclick="newConsulta()">+ Nueva ficha</button>`)
+  homeBtn()+`<button class="btn" onclick="pasteConsultaStart()">Pegar desde Claude</button><button class="btn" onclick="importConsultasStart()">Importar consultas…</button><button class="btn primary" onclick="newConsulta()">+ Nueva ficha</button>`)
   +`<div class="panel"><div class="panelbody">
   <div class="toolbar"><input id="csearch" class="input" type="search" placeholder="Buscar en título, texto, normativa y etiquetas…" value="${esc(u.q)}" oninput="consultasUi.q=this.value;filterConsultas()">
    <select id="ctipo" class="select" onchange="consultasUi.tipo=this.value;filterConsultas()"><option value="">Todos los tipos</option>${CONSULTA_TIPOS.map(t=>`<option ${u.tipo===t?'selected':''}>${t}</option>`).join('')}</select>
@@ -240,8 +240,8 @@ function readConsultaForm(){
   normativa:v('cfnormativa').split('\n').map(s=>s.trim()).filter(Boolean),etiquetas:cParseTags(v('cftags')),documentos:readCDocs(),
   fuente:v('cffuente').trim(),informacionDe:v('cfinfo').trim(),revisado:v('cfrev'),abierta:document.getElementById('cfabierta').checked};
 }
-function newConsulta(prefill={}){
- openModal('Nueva ficha',consultaForm(prefill),()=>{
+function newConsulta(prefill={},warnings=[]){
+ openModal('Nueva ficha',(warnings.length?`<div class="notice warn-notice" style="margin:0 0 12px">${warnings.map(esc).join('<br>')}</div>`:'')+consultaForm(prefill),()=>{
   const d=readConsultaForm();if(!d.titulo){alert('Escribe un título.');document.getElementById('cftitulo').focus();return}
   const x={id:uid(),creado:nowIso(),modificado:'',origen:'',...d};
   db.consultas.push(x);save();closeModal();consultaView(x.id);
@@ -287,4 +287,80 @@ function exportConsultasJSON(){
  if(!confirm('El archivo con las consultas sale SIN CIFRAR. ¿Descargarlo igualmente?'))return;
  const out={format:'consultas-inspeccion',version:1,generado:todayIso(),consultas:db.consultas.map(c=>({seedId:c.seedId||('usr-'+c.id),tipo:c.tipo,titulo:c.titulo,resumen:c.resumen,contenido:c.contenido,normativa:c.normativa||[],etiquetas:c.etiquetas||[],documentos:c.documentos||[],fuente:c.fuente||'',informacionDe:c.informacionDe||'',abierta:!!c.abierta}))};
  download(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}),'consultas-inspeccion-sin-cifrar.json');
+}
+
+/* ---------- Pegar consulta preparada por Claude (v4.1) ---------- */
+const CPASTE_KEYS={'tipo':'tipo','titulo':'titulo','resumen':'resumen','etiquetas':'etiquetas','etiqueta':'etiquetas','normativa':'normativa','normativa citada':'normativa','fuente':'fuente','informacion de':'informacionDe','duda abierta':'abierta','abierta':'abierta','revisada':'revisado','revisado':'revisado','contenido':'contenido'};
+function parsePastedConsulta(text){
+ const lines=String(text||'').replace(/\r/g,'').split('\n');
+ while(lines.length&&!lines[0].trim())lines.shift();
+ while(lines.length&&!lines[lines.length-1].trim())lines.pop();
+ if(lines.length&&/^\s*```/.test(lines[0])){lines.shift();if(lines.length&&/^\s*```\s*$/.test(lines[lines.length-1]))lines.pop()}
+ const out={};let cur=null;
+ for(const raw of lines){
+  if(cur==='contenido'){out.contenido+=(out.contenido?'\n':'')+raw.replace(/\s+$/,'');continue}
+  const line=raw.replace(/^\s*[-*>]+\s*/,'').replace(/\*\*/g,'');
+  const m=line.match(/^([A-Za-zÁÉÍÓÚÜáéíóúüñÑ ]{3,30}):\s*(.*)$/);
+  const key=m&&CPASTE_KEYS[cNorm(m[1]).replace(/\s+/g,' ')];
+  if(key){cur=key;out[key]=m[2].trim();continue}
+  if(!cur){continue}
+  if(line.trim())out[cur]=(out[cur]?out[cur]+'\n':'')+line.trim();
+ }
+ if(out.contenido!==undefined)out.contenido=out.contenido.replace(/^\n+/,'').replace(/\s+$/,'');
+ return out;
+}
+function claudeConsultaInstructions(){
+ const tags=cAllTags().map(c=>'- '+c.tag).join('\n');
+ return `Cuando te pida preparar una consulta (o un procedimiento, un criterio o una referencia) para el apartado «Consultas y procedimientos» de mi aplicación de registro, devuélvela SOLO en este formato, dentro de un bloque de código y sin texto adicional dentro del bloque. La línea «Contenido:» va siempre la última, porque todo lo que haya debajo se toma como contenido.
+
+CONSULTA
+Tipo: Consulta | Procedimiento | Criterio | Referencia
+Título: una sola línea
+Resumen: una o dos frases con la respuesta o la idea principal
+Etiquetas: de dos a cinco, separadas por comas
+Normativa: una norma por línea, con el artículo si procede; vacío si no hay
+Fuente: de dónde sale la información; vacío si no procede
+Información de: fecha o curso al que corresponde (p. ej. curso 2026/27)
+Duda abierta: Sí | No
+Contenido:
+Texto completo; puede ocupar varias líneas.
+
+Tipos: «Consulta» es una duda planteada y su respuesta; «Procedimiento», los pasos para tramitar algo; «Criterio», el criterio o postura que se aplica; «Referencia», datos, plazos, enlaces o contactos.
+Formato admitido en el contenido: «## Título» para los apartados, «- » para listas, «1. » para pasos numerados, «**negrita**», enlaces https://… y tablas con «|».
+Etiquetas: usa las de mi lista siempre que encajen, escritas igual; crea una nueva solo si ninguna sirve.
+
+Mis etiquetas actuales:
+${tags||'- (todavía no hay etiquetas)'}`;
+}
+async function copyClaudeConsultaInstructions(){
+ const text=claudeConsultaInstructions();
+ try{await navigator.clipboard.writeText(text);alert('Instrucciones copiadas. Pégalas al principio de tu conversación con Claude.')}
+ catch{const t=document.getElementById('cPasteText');if(t){t.value=text;t.select()}alert('No se pudo copiar automáticamente: las instrucciones están en el cuadro de texto; selecciónalas y cópialas.')}
+}
+async function pasteConsultaClipboard(){
+ try{document.getElementById('cPasteText').value=await navigator.clipboard.readText()}
+ catch{alert('El navegador no ha dado acceso al portapapeles. Mantén pulsado el cuadro de texto y elige «Pegar».');document.getElementById('cPasteText').focus()}
+}
+function pasteConsultaStart(){
+ openModal('Pegar consulta desde Claude',`<p style="margin-top:0">Pega aquí el bloque que te ha preparado Claude. Se abrirá la ficha rellena para que la revises antes de guardar.</p>
+ <div class="toolbar"><button type="button" class="btn" onclick="pasteConsultaClipboard()">Pegar del portapapeles</button><button type="button" class="btn" onclick="copyClaudeConsultaInstructions()">Copiar instrucciones para Claude</button></div>
+ <textarea id="cPasteText" class="textarea" style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="CONSULTA&#10;Tipo: Consulta&#10;Título: …&#10;Resumen: …&#10;Etiquetas: …&#10;Normativa: …&#10;Contenido:&#10;…"></textarea>
+ <p class="muted" style="font-size:12px">Las instrucciones incluyen el formato y la lista de tus etiquetas, para que Claude use las mismas que ya tienes.</p>`,()=>{
+  const p=parsePastedConsulta(document.getElementById('cPasteText').value);
+  if(!p.titulo&&!p.contenido&&!p.resumen){alert('No reconozco el formato. Comprueba que el texto tenga líneas como «Título: …» y «Contenido:».');return}
+  const warnings=[];
+  let tipo=CONSULTA_TIPOS.find(t=>cNorm(t)===cNorm(p.tipo));
+  if(!tipo){tipo='Consulta';if(p.tipo)warnings.push(`No conozco el tipo «${p.tipo}»: se ha puesto «Consulta». Revísalo.`)}
+  const known=cAllTags();
+  const etiquetas=cParseTags(p.etiquetas).map(t=>(known.find(c=>cNorm(c.tag)===cNorm(t))||{tag:t}).tag);
+  const nuevas=etiquetas.filter(t=>!known.some(c=>cNorm(c.tag)===cNorm(t)));
+  if(nuevas.length&&known.length)warnings.push(`${nuevas.length===1?'Etiqueta nueva':'Etiquetas nuevas'}: ${nuevas.join(', ')}.`);
+  const normativa=String(p.normativa||'').split(/\n|;/).map(s=>s.replace(/^\s*[-•]\s*/,'').trim()).filter(s=>s&&!/^(vac[ií]o|ninguna|no hay|—|-)$/i.test(s));
+  const vacio=s=>/^(vac[ií]o|—|-)$/i.test(String(s||'').trim())?'':String(s||'').trim();
+  let revisado='';if(p.revisado){revisado=parseDateAny(p.revisado)||'';if(!revisado&&!/^no$/i.test(p.revisado.trim()))warnings.push(`No he entendido la fecha de revisión «${p.revisado}».`)}
+  if(!p.titulo)warnings.push('El bloque no trae título: escríbelo antes de guardar.');
+  if(!p.contenido)warnings.push('El bloque no trae la línea «Contenido:».');
+  newConsulta({tipo,titulo:(p.titulo||'').replace(/\n+/g,' '),resumen:(p.resumen||'').replace(/\n+/g,' '),contenido:p.contenido||'',etiquetas,normativa,fuente:vacio(p.fuente).replace(/\n+/g,' '),informacionDe:vacio(p.informacionDe).replace(/\n+/g,' '),revisado,abierta:/^s[ií]/i.test(String(p.abierta||'').trim()),documentos:[]},warnings);
+ });
+ document.getElementById('modalSave').textContent='Continuar';
 }

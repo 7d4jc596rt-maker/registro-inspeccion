@@ -1,45 +1,165 @@
-/* ---------- Ficha: dotación de profesorado (CEIP/CEI/EEI/CRA públicos) ---------- */
+/* ---------- Ficha: dotación de profesorado ----------
+   Infantil y Primaria (CEIP, CEP, CEI, EEI, CRA): catálogo + habilitadas, presencia y diferencia.
+   Secundaria (IES): grupos y alumnado, y profesorado por especialidad con presencia en el centro.
+   CPI: las dos partes. En todas, marca del profesorado Proa+. */
 const DOT_SPECS=[['EI','031','Educación Infantil'],['EP','038','Educación Primaria'],['FI','032','Inglés'],['FF','033','Francés'],['EM','035','Música'],['EF','034','Educación Física'],['AL','037','Audición y Lenguaje'],['PT','036','Pedagogía Terapéutica'],['DO','039','Orientación'],['ALC','037','AL compartido'],['PTC','036','PT compartido'],['OC','039','Orientación compartida']];
-const DOT_TIPOS=['CEIP','CEI','EEI','CRA'];
-function dotApplies(c){const t=String(c.tipo||'').toUpperCase(),m=String(c.name||'').match(/^([A-Z]{2,6})\b/);return DOT_TIPOS.includes(t)||(!!m&&DOT_TIPOS.includes(m[1]))||Object.keys(c.dotacion||{}).length>0}
-function dotHasData(o){return !!o&&(o.uei!==''&&o.uei!=null||o.uep!==''&&o.uep!=null||DOT_SPECS.some(([s])=>o.cat?.[s]!=null&&o.cat[s]!==''||o.real?.[s]!=null&&o.real[s]!==''))}
+const DOT_TIPOS=['CEIP','CEP','CEI','EEI','CRA'];
+const DOT_TIPOS_SEC=['IES'];
+const DOT_TIPOS_BOTH=['CPI'];
+/* Especialidades de secundaria: sigla, tres últimos dígitos del código y nombre */
+const DOT_SEC_SPECS=[['FIL','001','Filosofía'],['GR','002','Griego'],['LAT','003','Latín'],['LCL','004','Lengua Castellana y Literatura'],['GH','005','Geografía e Historia'],['MAT','006','Matemáticas'],['FQ','007','Física y Química'],['BG','008','Biología y Geología'],['DIB','009','Dibujo'],['FR','010','Francés'],['ING','011','Inglés'],['ALE','012','Alemán'],['ITA','013','Italiano'],['POR','015','Portugués'],['MUS','016','Música'],['EF','017','Educación Física'],['OE','018','Orientación Educativa'],['TEC','019','Tecnología'],['LGL','053','Lengua Gallega y Literatura'],['ECO','061','Economía'],['FOL','105','Formación y Orientación Laboral'],['INF','107','Informática'],['PT','060','Pedagogía Terapéutica'],['AL','061','Audición y Lenguaje']];
+/* Niveles de la tabla de grupos: clave → [rótulo, etapa con subtotal] */
+const DOT_GR={'1ESO':['1º ESO','ESO'],'2ESO':['2º ESO','ESO'],'3ESO':['3º ESO','ESO'],'4ESO':['4º ESO','ESO'],'1BAC':['1º BAC','BAC'],'2BAC':['2º BAC','BAC'],'CB':['CF básico',''],'CM':['CF medio',''],'CS':['CF superior',''],'ADU':['Adultos','']};
+const DOT_GR_ALIAS={'FPB':'CB','CFGB':'CB','GB':'CB','CFGM':'CM','GM':'CM','CFGS':'CS','GS':'CS','1BACH':'1BAC','2BACH':'2BAC','ADULTOS':'ADU'};
+const DOT_GR_STAGES=[['ESO',['1ESO','2ESO','3ESO','4ESO']],['BAC',['1BAC','2BAC']]];
+
+function dotTipo(c){const t=String(c.tipo||'').toUpperCase(),m=String(c.name||'').match(/^([A-Z]{2,6})\b/),all=[...DOT_TIPOS,...DOT_TIPOS_SEC,...DOT_TIPOS_BOTH];return all.includes(t)?t:(m&&all.includes(m[1])?m[1]:'')}
+function dotKind(c){const t=dotTipo(c);return DOT_TIPOS_BOTH.includes(t)?'both':DOT_TIPOS_SEC.includes(t)?'sec':DOT_TIPOS.includes(t)?'prim':''}
+function dotApplies(c){return !!dotKind(c)||Object.keys(c.dotacion||{}).length>0}
+function dotPrimHasData(o){return !!o&&(o.uei!==''&&o.uei!=null||o.uep!==''&&o.uep!=null||DOT_SPECS.some(([s])=>o.cat?.[s]!=null&&o.cat[s]!==''||o.real?.[s]!=null&&o.real[s]!==''))}
+function dotSecHasData(o){return !!o&&!!o.sec&&((o.sec.esp||[]).length>0||(o.sec.grupos||[]).length>0)}
+function dotHasData(o){return dotPrimHasData(o)||dotSecHasData(o)}
+function dotParts(c,d){const k=dotKind(c);return {prim:k==='prim'||k==='both'||dotPrimHasData(d),sec:k==='sec'||k==='both'||dotSecHasData(d)}}
 function dotNum(v){const n=parseInt(v,10);return isNaN(n)?0:n}
 function dotSign(n){return n>0?'+'+n:String(n)}
+function dotRatio(a,g){return g>0?(Math.round(a/g*10)/10).toFixed(1).replace('.',','):'—'}
+function dotProaTag(n){return n>0?`<span class="proa-tag">${n} Proa+</span>`:''}
+function dotSecName(e){return e.name||(DOT_SEC_SPECS.find(([s])=>s===e.s)||[])[2]||''}
+function dotProaBox(items,det){
+ if(!items.length)return '';
+ return `<div class="proa-box"><b class="t">Proa+</b> · ${items.map(([n,name,code])=>`${n} ${n===1?'docente':'docentes'} de <b>${esc(name)}${code?` (${esc(code)})`:''}</b>`).join(' y ')}${det?', '+esc(String(det).replace(/[.\s]+$/,'')):''}.</div>`;
+}
+
+/* --- Infantil y Primaria --- */
 function dotTable(d){
- const cat=d.cat||{},real=d.real||{};
+ const cat=d.cat||{},real=d.real||{},proa=d.proa||{};
  const tc=DOT_SPECS.reduce((s,[k])=>s+dotNum(cat[k]),0),tr=DOT_SPECS.reduce((s,[k])=>s+dotNum(real[k]),0);
  const diffCell=n=>`<td class="${n<0?'dot-neg':n>0?'dot-pos':''}">${dotSign(n)}</td>`;
- const head=`<tr><th class="dot-label"></th><th>UEI</th><th>UEP</th>${DOT_SPECS.map(([s,c,l])=>`<th title="${esc(l)}">${s}<br><span>${c}</span></th>`).join('')}<th>TOTAL</th></tr>`;
- const r1=`<tr><th class="dot-label">Catálogo+Habilitadas</th><td class="dot-units">${esc(d.uei??'')}</td><td class="dot-units">${esc(d.uep??'')}</td>${DOT_SPECS.map(([s])=>`<td>${dotNum(cat[s])}</td>`).join('')}<td class="dot-total">${tc}</td></tr>`;
- const r2=`<tr><th class="dot-label">Presencia en centro</th><td class="dot-units"></td><td class="dot-units"></td>${DOT_SPECS.map(([s])=>`<td>${dotNum(real[s])}</td>`).join('')}<td class="dot-total">${tr}</td></tr>`;
+ const head=`<tr><th class="dot-label"></th><th>UEI</th><th>UEP</th>${DOT_SPECS.map(([s,c,l])=>`<th${dotNum(proa[s])>0?' class="dot-proa-h"':''} title="${esc(l)}">${s}<br><span>${c}</span></th>`).join('')}<th>TOTAL</th></tr>`;
+ const r1=`<tr><th class="dot-label">Catálogo+<wbr>Habilitadas</th><td class="dot-units">${esc(d.uei??'')}</td><td class="dot-units">${esc(d.uep??'')}</td>${DOT_SPECS.map(([s])=>`<td>${dotNum(cat[s])}</td>`).join('')}<td class="dot-total">${tc}</td></tr>`;
+ const r2=`<tr><th class="dot-label">Presencia en centro</th><td class="dot-units"></td><td class="dot-units"></td>${DOT_SPECS.map(([s])=>{const p=dotNum(proa[s]);return `<td${p>0?' class="dot-proa"':''}>${dotNum(real[s])}${dotProaTag(p)}</td>`}).join('')}<td class="dot-total">${tr}</td></tr>`;
  const r3=`<tr class="dot-diff"><th class="dot-label">Diferencia</th><td class="dot-units"></td><td class="dot-units"></td>${DOT_SPECS.map(([s])=>diffCell(dotNum(real[s])-dotNum(cat[s]))).join('')}${diffCell(tr-tc)}</tr>`;
  return `<div class="dot-wrap"><table class="dot-table"><thead>${head}</thead><tbody>${r1}${r2}${r3}</tbody></table></div>`;
 }
+function dotPrimHTML(d){
+ const proa=DOT_SPECS.filter(([s])=>dotNum(d.proa?.[s])>0).map(([s,c,l])=>[dotNum(d.proa[s]),l,c]);
+ return dotTable(d)+dotProaBox(proa,d.proaDet)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: docentes que corresponden a esas unidades según el catálogo de EI/EP (archivo CatalogoEsteban). Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${proa.length?' Fondo amarillo: la cifra incluye profesorado Proa+.':''}${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>`;
+}
+
+/* --- Secundaria --- */
+function dotGruposCols(gr){
+ const by={};(gr||[]).forEach(x=>{by[x.k]=x});
+ const cols=[],used=new Set();let blocks=0;
+ DOT_GR_STAGES.forEach(([name,keys])=>{
+  const xs=keys.map(k=>by[k]).filter(Boolean);if(!xs.length)return;blocks++;
+  xs.forEach(x=>{used.add(x.k);cols.push({h:DOT_GR[x.k][0],a:dotNum(x.a),g:dotNum(x.g)})});
+  cols.push({h:name,a:xs.reduce((s,x)=>s+dotNum(x.a),0),g:xs.reduce((s,x)=>s+dotNum(x.g),0),st:true});
+ });
+ (gr||[]).filter(x=>!used.has(x.k)).forEach(x=>{blocks++;cols.push({h:(DOT_GR[x.k]||[x.k])[0],a:dotNum(x.a),g:dotNum(x.g)})});
+ if(blocks>1)cols.push({h:'TOTAL',a:(gr||[]).reduce((s,x)=>s+dotNum(x.a),0),g:(gr||[]).reduce((s,x)=>s+dotNum(x.g),0),st:true,tot:true});
+ return cols;
+}
+function dotGruposTable(gr){
+ const cols=dotGruposCols(gr);if(!cols.length)return '';
+ const cell=(c,v)=>`<td${c.st?' class="dot-total"':''}>${v}</td>`;
+ return `<div class="dot-wrap fit"><table class="dot-table"><thead><tr><th class="dot-label"></th>${cols.map(c=>`<th${c.st&&!c.tot?' class="grp-stage"':''}>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+ <tr><th class="dot-label">Alumnado</th>${cols.map(c=>cell(c,c.a)).join('')}</tr>
+ <tr><th class="dot-label">Grupos</th>${cols.map(c=>cell(c,c.g)).join('')}</tr>
+ <tr class="grp-ratio"><th class="dot-label">Alumnos por grupo</th>${cols.map(c=>cell(c,dotRatio(c.a,c.g))).join('')}</tr></tbody></table></div>`;
+}
+function dotSecTable(sec){
+ const esp=(sec.esp||[]).filter(e=>dotNum(e.n)>0||dotNum(sec.proa?.[e.s])>0);if(!esp.length)return '';
+ const proa=sec.proa||{},tot=esp.reduce((s,e)=>s+dotNum(e.n),0);
+ return `<div class="dot-wrap"><table class="dot-table"><thead><tr><th class="dot-label">Especialidad</th>${esp.map(e=>`<th${dotNum(proa[e.s])>0?' class="dot-proa-h"':''} title="${esc(dotSecName(e))}">${esc(e.s)}${e.c?`<br><span>${esc(e.c)}</span>`:''}</th>`).join('')}<th>TOTAL</th></tr></thead><tbody>
+ <tr><th class="dot-label">Presencia en centro</th>${esp.map(e=>{const p=dotNum(proa[e.s]);return `<td${p>0?' class="dot-proa"':''}>${dotNum(e.n)}${dotProaTag(p)}</td>`}).join('')}<td class="dot-total">${tot}</td></tr></tbody></table></div>`;
+}
+function dotSecHTML(d,withPrim){
+ const sec=d.sec||{},pre=withPrim?'Secundaria · ':'';
+ const proa=(sec.esp||[]).filter(e=>dotNum(sec.proa?.[e.s])>0).map(e=>[dotNum(sec.proa[e.s]),dotSecName(e)||e.s,e.c]);
+ const gt=dotGruposTable(sec.grupos),st=dotSecTable(sec);
+ const keys=(sec.esp||[]).filter(e=>dotSecName(e)&&(dotNum(e.n)>0||dotNum(sec.proa?.[e.s])>0)).map(e=>`<li><b>${esc(e.s)}</b> ${esc(dotSecName(e))}</li>`).join('');
+ return `<h4 class="dot-sub">${pre}${withPrim?'g':'G'}rupos y alumnado</h4>${gt?gt+`<p class="dot-legend">XIEAlumnado, régimen ordinario. El alumnado de diversificación se suma a su curso, porque no forma grupo propio.${(sec.grupos||[]).some(x=>/BAC$/.test(x.k))?' En bachillerato, los grupos mixtos entre modalidades se cuentan una sola vez.':''}</p>`:'<div class="empty dot-empty">Sin datos de grupos y alumnado.</div>'}
+ <h4 class="dot-sub">${pre}${withPrim?'p':'P'}rofesorado por especialidad</h4>${st?st+dotProaBox(proa,d.proaDet)+`<p class="dot-legend">Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos y sin Religión. Catedráticos y profesores de la misma especialidad se suman. Los compartidos cuentan 1.${proa.length?' Fondo amarillo: la cifra incluye profesorado Proa+.':''}${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${keys?`<ul class="dot-keys">${keys}</ul>`:''}`:'<div class="empty dot-empty">Sin datos de profesorado por especialidad.</div>'}`;
+}
+
 function centerDotHTML(c,k){
  if(!dotApplies(c))return '';
- const d=(c.dotacion||{})[k];
- const head=`<div class="section-head dot-head"><h3 style="margin:0">Dotación de profesorado · curso ${k}</h3><div class="toolbar" style="margin:0"><button class="btn small" onclick="pasteDotStart()">Pegar datos de Claude</button><button class="btn small primary" onclick="editDot('${c.id}','${k}')">${dotHasData(d)?'Editar':'Añadir a mano'}</button></div></div>`;
- if(!dotHasData(d))return head+`<div class="empty">No hay datos de dotación de profesorado para el curso ${k}.</div>`;
- return head+dotTable(d)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: docentes que corresponden a esas unidades según el catálogo de EI/EP (archivo CatalogoEsteban). Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${d.notas?`<div class="note-text dot-notes">${esc(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
+ const d=(c.dotacion||{})[k],has=dotHasData(d),P=dotParts(c,d);
+ const head=`<div class="section-head dot-head"><h3 style="margin:0">Dotación de profesorado · curso ${k}</h3><div class="toolbar" style="margin:0"><button class="btn small" onclick="pasteDotStart()">Pegar datos de Claude</button><button class="btn small primary" onclick="editDot('${c.id}','${k}')">${has?'Editar':'Añadir a mano'}</button></div></div>`;
+ if(!has)return head+`<div class="empty">No hay datos de dotación de profesorado para el curso ${k}.</div>`;
+ let h=head;
+ if(P.prim)h+=(P.sec?'<h4 class="dot-sub">Infantil y Primaria</h4>':'')+(dotPrimHasData(d)?dotPrimHTML(d):'<div class="empty dot-empty">Sin datos de Infantil y Primaria.</div>');
+ if(P.sec)h+=dotSecHTML(d,P.prim);
+ return h+`${d.notas?`<div class="note-text dot-notes">${esc(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
 }
-function dotForm(k,d){
- const cat=d.cat||{},real=d.real||{};
+
+/* --- Lectura de listas «SIGLA código (nombre)=número; …» y «NIVEL alumnos/grupos; …» --- */
+function dotParseEsp(v){
+ const out=[];
+ String(v||'').split(/[;\n]/).forEach(p=>{
+  const q=p.trim().match(/^([A-Za-zÁÉÍÓÚÜÑáéíóúüñ+]{1,7})(?:\s+(\d{3}))?(?:\s*\(([^)]*)\))?\s*[=:]\s*(\d+)$/);if(!q)return;
+  const s=q[1].toUpperCase(),known=DOT_SEC_SPECS.find(([x])=>x===s),e={s,c:q[2]||(known?known[1]:''),n:+q[4]};
+  if(q[3]&&q[3].trim()&&(!known||known[2]!==q[3].trim()))e.name=q[3].trim();
+  const prev=out.find(x=>x.s===s);if(prev)prev.n+=e.n;else out.push(e);
+ });
+ return out;
+}
+function dotParseGrupos(v){
+ const out=[];
+ String(v||'').split(/[;\n]/).forEach(p=>{
+  const q=p.trim().match(/^(.+?)\s*[=:]?\s*(\d+)\s*\/\s*(\d+)$/);if(!q)return;
+  let k=normTxt(q[1]).replace(/[^a-z0-9]/g,'').toUpperCase();k=DOT_GR_ALIAS[k]||k;
+  if(!k||out.some(x=>x.k===k))return;out.push({k,a:+q[2],g:+q[3]});
+ });
+ return out;
+}
+function dotParsePairs(v){const o={};String(v||'').split(/[;,\n]/).forEach(p=>{const q=p.trim().match(/^([A-Za-zÁÉÍÓÚÜÑáéíóúüñ+]{1,7})(?:\s+\d{3}(?=[\s=:]))?\s*[=:]?\s*(-?\d+)$/);if(q)o[q[1].toUpperCase()]=+q[2]});return o}
+function dotEspText(list){return (list||[]).map(e=>`${e.s}${e.c?' '+e.c:''}${e.name?` (${e.name})`:''}=${dotNum(e.n)}`).join('; ')}
+function dotPairsText(o){return Object.entries(o||{}).filter(([,n])=>dotNum(n)>0).map(([s,n])=>`${s}=${n}`).join('; ')}
+
+/* --- Formulario --- */
+function dotForm(k,d,P,kind){
+ const cat=d.cat||{},real=d.real||{},sec=d.sec||{};
  const inp=(id,v)=>`<input id="${id}" class="input dot-in" type="number" min="0" step="1" inputmode="numeric" value="${esc(v??'')}">`;
- return `<div class="formgrid"><div class="field"><label for="dotCourse">Curso escolar</label><input id="dotCourse" class="input" style="width:100%" value="${esc(k)}" placeholder="2026/27"></div><div class="field"><label for="dotFecha">Fecha de los datos</label><input id="dotFecha" class="input" type="date" value="${esc(d.fecha||'')}"></div></div>
- <div class="dot-wrap" style="margin-top:12px"><table class="dot-table dot-form"><thead><tr><th class="dot-label"></th><th>UEI</th><th>UEP</th>${DOT_SPECS.map(([s,c])=>`<th>${s}<br><span>${c}</span></th>`).join('')}</tr></thead><tbody>
+ let h=`<div class="formgrid"><div class="field"><label for="dotCourse">Curso escolar</label><input id="dotCourse" class="input" style="width:100%" value="${esc(k)}" placeholder="2026/27"></div><div class="field"><label for="dotFecha">Fecha de los datos</label><input id="dotFecha" class="input" type="date" value="${esc(d.fecha||'')}"></div></div>`;
+ if(P.prim)h+=`${P.sec?'<h4 class="dot-sub" style="margin-top:14px">Infantil y Primaria</h4>':''}<div class="dot-wrap" style="margin-top:12px"><table class="dot-table dot-form"><thead><tr><th class="dot-label"></th><th>UEI</th><th>UEP</th>${DOT_SPECS.map(([s,c])=>`<th>${s}<br><span>${c}</span></th>`).join('')}</tr></thead><tbody>
  <tr><th class="dot-label">Catálogo+Habilitadas</th><td>${inp('dot_uei',d.uei)}</td><td>${inp('dot_uep',d.uep)}</td>${DOT_SPECS.map(([s])=>`<td>${inp('dotc_'+s,cat[s])}</td>`).join('')}</tr>
- <tr><th class="dot-label">Presencia en centro</th><td></td><td></td>${DOT_SPECS.map(([s])=>`<td>${inp('dotr_'+s,real[s])}</td>`).join('')}</tr></tbody></table></div>
+ <tr><th class="dot-label">Presencia en centro</th><td></td><td></td>${DOT_SPECS.map(([s])=>`<td>${inp('dotr_'+s,real[s])}</td>`).join('')}</tr>
+ <tr><th class="dot-label">De ellos, Proa+</th><td></td><td></td>${DOT_SPECS.map(([s])=>`<td>${inp('dotp_'+s,dotNum(d.proa?.[s])||'')}</td>`).join('')}</tr></tbody></table></div>`;
+ if(P.sec){
+  const by={};(sec.grupos||[]).forEach(x=>{by[x.k]=x});
+  const base=kind==='both'?['1ESO','2ESO','3ESO','4ESO']:['1ESO','2ESO','3ESO','4ESO','1BAC','2BAC','CB','CM','CS'];
+  const gk=[...new Set([...base,...(sec.grupos||[]).map(x=>x.k)])];
+  const known=new Set(DOT_SEC_SPECS.map(([s])=>s)),val={};(sec.esp||[]).forEach(e=>{val[e.s]=e.n});
+  const otras=(sec.esp||[]).filter(e=>!known.has(e.s));
+  h+=`<h4 class="dot-sub" style="margin-top:16px">${P.prim?'Secundaria · g':'G'}rupos y alumnado</h4><div class="dot-wrap"><table class="dot-table dot-form"><thead><tr><th class="dot-label"></th>${gk.map(x=>`<th>${esc((DOT_GR[x]||[x])[0])}</th>`).join('')}</tr></thead><tbody>
+  <tr><th class="dot-label">Alumnado</th>${gk.map(x=>`<td>${inp('dotga_'+x,by[x]?.a)}</td>`).join('')}</tr>
+  <tr><th class="dot-label">Grupos</th>${gk.map(x=>`<td>${inp('dotgg_'+x,by[x]?.g)}</td>`).join('')}</tr></tbody></table></div><input type="hidden" id="dotGrKeys" value="${esc(gk.join(','))}">
+  <h4 class="dot-sub" style="margin-top:16px">${P.prim?'Secundaria · p':'P'}rofesorado por especialidad (presencia en centro)</h4><div class="dot-esp-grid">${DOT_SEC_SPECS.map(([s,c,l])=>`<label title="${esc(l)}"><span>${s} <small>${c}</small></span>${inp('dots_'+s,val[s])}</label>`).join('')}</div>
+  <div class="field full" style="margin-top:10px"><label for="dotOtras">Otras especialidades</label><input id="dotOtras" class="input" style="width:100%" value="${esc(dotEspText(otras))}" placeholder="SAI 227 (Sistemas y Aplicaciones Informáticas)=4; PSA 222=2"><p class="muted" style="font-size:12px;margin:4px 0 0">Formato: sigla, código, nombre entre paréntesis (opcional) y número, separadas por punto y coma.</p></div>
+  <div class="field full" style="margin-top:10px"><label for="dotProaSec">Profesorado Proa+ incluido en esas cifras</label><input id="dotProaSec" class="input" style="width:100%" value="${esc(dotPairsText(sec.proa))}" placeholder="MAT=1"></div>`;
+ }
+ return h+`<div class="field full" style="margin-top:12px"><label for="dotProaDet">Detalle del Proa+ (opcional)</label><input id="dotProaDet" class="input" style="width:100%" value="${esc(d.proaDet||'')}" placeholder="sin jornada completa, dentro del horario lectivo"></div>
  <div class="field full" style="margin-top:12px"><label for="dotNotas">Notas</label><textarea id="dotNotas" class="textarea" style="min-height:70px">${esc(d.notas||'')}</textarea></div>`;
 }
 function editDot(cid,k){
  const c=db.centers.find(x=>x.id===cid);if(!c)return;if(!c.dotacion)c.dotacion={};
- openModal(`Dotación de profesorado · ${c.name}`,dotForm(k,c.dotacion[k]||{}),()=>{
+ const d0=c.dotacion[k]||{},P=dotParts(c,d0),kind=dotKind(c);
+ openModal(`Dotación de profesorado · ${c.name}`,dotForm(k,d0,P,kind),()=>{
   const nk=normCourse(document.getElementById('dotCourse').value);
   if(!nk){alert('Indica el curso con el formato 2026/27.');return}
   if(nk!==k&&dotHasData(c.dotacion[nk])&&!confirm(`El curso ${nk} ya tiene datos de dotación. ¿Sustituirlos?`))return;
-  const g=id=>{const v=document.getElementById(id).value.trim();return v===''?'':dotNum(v)};
-  const o={uei:g('dot_uei'),uep:g('dot_uep'),cat:{},real:{},fecha:document.getElementById('dotFecha').value,notas:document.getElementById('dotNotas').value.trim(),updatedAt:nowIso()};
-  DOT_SPECS.forEach(([s])=>{o.cat[s]=g('dotc_'+s);o.real[s]=g('dotr_'+s)});
+  const g=id=>{const el=document.getElementById(id);if(!el)return '';const v=el.value.trim();return v===''?'':dotNum(v)};
+  const o={fecha:document.getElementById('dotFecha').value,notas:document.getElementById('dotNotas').value.trim(),proaDet:document.getElementById('dotProaDet').value.trim(),updatedAt:nowIso()};
+  if(P.prim){o.uei=g('dot_uei');o.uep=g('dot_uep');o.cat={};o.real={};o.proa={};DOT_SPECS.forEach(([s])=>{o.cat[s]=g('dotc_'+s);o.real[s]=g('dotr_'+s);const p=dotNum(g('dotp_'+s));if(p>0)o.proa[s]=p})}
+  if(P.sec){
+   const grupos=document.getElementById('dotGrKeys').value.split(',').filter(Boolean).map(x=>({k:x,a:g('dotga_'+x),g:g('dotgg_'+x)})).filter(x=>x.a!==''||x.g!=='').map(x=>({k:x.k,a:dotNum(x.a),g:dotNum(x.g)}));
+   const esp=DOT_SEC_SPECS.map(([s,cc])=>({s,c:cc,n:dotNum(g('dots_'+s))})).filter(e=>e.n>0);
+   dotParseEsp(document.getElementById('dotOtras').value).forEach(e=>{const p=esp.find(x=>x.s===e.s);if(p)p.n+=e.n;else esp.push(e)});
+   const proa={};Object.entries(dotParsePairs(document.getElementById('dotProaSec').value)).forEach(([s,n])=>{if(n>0&&esp.some(e=>e.s===s))proa[s]=n});
+   if(grupos.length||esp.length)o.sec={grupos,esp,proa};
+  }
+  if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length)o.proaDet='';
   if(nk!==k)delete c.dotacion[k];
   if(dotHasData(o))c.dotacion[nk]=o;else delete c.dotacion[nk];
   centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'caracteristicas');
@@ -60,31 +180,55 @@ function parseDotBlocks(text){
   if(/^FIN$/i.test(t)){cur=null;return}
   const m=t.match(/^([^:]{2,40}):\s*(.*)$/);
   const key=m?normTxt(m[1]):'';
-  const pairs=v=>{const o={};v.split(/[;,]/).forEach(p=>{const q=p.trim().match(/^([A-Za-z]{2,4})(?:\s+0\d\d(?=[\s=:]))?\s*[=:]?\s*(-?\d+)$/);if(q)o[q[1].toUpperCase()]=+q[2]});return o};
+  const sec=()=>cur.sec||(cur.sec={grupos:[],esp:[],proa:{}});
   if(m&&/^codigo/.test(key)){cur.code=m[2].replace(/\s/g,'');lastKey=''}
   else if(m&&/^centro/.test(key)){cur.center=m[2].trim();lastKey=''}
   else if(m&&/^curso/.test(key)){cur.course=normCourse(m[2]);lastKey=''}
   else if(m&&/^fecha/.test(key)){cur.fecha=parseDateAny(m[2])||'';lastKey=''}
-  else if(m&&/^unidades/.test(key)){const o=pairs(m[2]);if('UEI' in o)cur.uei=o.UEI;if('UEP' in o)cur.uep=o.UEP;lastKey=''}
-  else if(m&&/^catalogo/.test(key)){cur.cat=pairs(m[2]);lastKey=''}
-  else if(m&&/^(presencia|reales|real)/.test(key)){cur.real=pairs(m[2]);lastKey=''}
+  else if(m&&/^unidades/.test(key)){const o=dotParsePairs(m[2]);if('UEI' in o)cur.uei=o.UEI;if('UEP' in o)cur.uep=o.UEP;lastKey=''}
+  else if(m&&/^grupos/.test(key)){sec().grupos=dotParseGrupos(m[2]);lastKey=''}
+  else if(m&&/^proa/.test(key)){
+   if(/detalle|nota|descrip/.test(key))cur.proaDet=m[2].trim();
+   else if(/secund/.test(key))cur.proaSec=dotParsePairs(m[2]);
+   else if(/prim|infantil/.test(key))cur.proaPrim=dotParsePairs(m[2]);
+   else cur.proaAny=dotParsePairs(m[2]);
+   lastKey='';
+  }
+  else if(m&&/secund/.test(key)&&/^(presencia|profesorado|especialidades|reales|real|secundaria)/.test(key)){sec().esp=dotParseEsp(m[2]);lastKey=''}
+  else if(m&&/^catalogo/.test(key)){cur.cat=dotParsePairs(m[2]);lastKey=''}
+  else if(m&&/^(presencia|reales|real)/.test(key)){cur.real=dotParsePairs(m[2]);lastKey=''}
   else if(m&&/^notas?/.test(key)){cur.notas=m[2].trim();lastKey='notas'}
   else if(lastKey==='notas'&&t)cur.notas+=(cur.notas?'\n':'')+t;
  });
- return blocks.filter(b=>b.cat||b.real);
+ blocks.forEach(b=>{
+  const prim=!!(b.cat||b.real);
+  if(b.sec&&!b.sec.esp.length&&!b.sec.grupos.length)delete b.sec;
+  if(b.proaAny)Object.entries(b.proaAny).forEach(([s,n])=>{const inSec=!!b.sec&&b.sec.esp.some(e=>e.s===s),inPrim=prim&&DOT_SPECS.some(([x])=>x===s);if(!prim||inSec&&!inPrim)(b.proaSec=b.proaSec||{})[s]=n;else (b.proaPrim=b.proaPrim||{})[s]=n});
+  if(b.sec&&b.proaSec)Object.entries(b.proaSec).forEach(([s,n])=>{if(n>0&&b.sec.esp.some(e=>e.s===s))b.sec.proa[s]=n});
+ });
+ return blocks.filter(b=>b.cat||b.real||b.sec);
 }
 function pasteDotStart(){
  openModal('Pegar dotación de profesorado',`<p style="margin-top:0">Pega aquí uno o varios bloques «DOTACIÓN DE PROFESORADO» preparados por Claude. Cada bloque se guarda en su centro (por el código) y en su curso.</p>
  <div class="toolbar"><button type="button" class="btn" onclick="pasteDotClipboard()">Pegar del portapapeles</button></div>
- <textarea id="dotPaste" class="textarea" style="min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="DOTACIÓN DE PROFESORADO&#10;Código: …&#10;Curso: 2026/27&#10;Unidades: UEI 5; UEP 14&#10;Catálogo+Habilitadas: EI 6; EP 13; …&#10;Presencia en centro: EI 6; EP 12; …&#10;FIN"></textarea>`,()=>{
+ <textarea id="dotPaste" class="textarea" style="min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="DOTACIÓN DE PROFESORADO&#10;Código: …&#10;Curso: 2026/27&#10;Unidades: UEI 5; UEP 14&#10;Catálogo+Habilitadas: EI 6; EP 13; …&#10;Presencia en centro: EI 6; EP 12; …&#10;Grupos: 1ESO 126/5; 2ESO 94/4; …&#10;Presencia secundaria: FIL 001=3; MAT 006=9; …&#10;Proa+ secundaria: MAT=1&#10;FIN"></textarea>
+ <p class="muted" style="font-size:12px">CEIP, CEP, EEI y CRA: líneas «Unidades», «Catálogo+Habilitadas» y «Presencia en centro». IES: líneas «Grupos» y «Presencia secundaria». CPI: todas. El Proa+ va en «Proa+ primaria» o «Proa+ secundaria».</p>`,()=>{
   const blocks=parseDotBlocks(document.getElementById('dotPaste').value);
-  if(!blocks.length){alert('No reconozco el formato. El bloque debe empezar por «DOTACIÓN DE PROFESORADO» y tener las líneas «Catálogo+Habilitadas» y «Presencia en centro».');return}
+  if(!blocks.length){alert('No reconozco el formato. El bloque debe empezar por «DOTACIÓN DE PROFESORADO» y tener las líneas «Catálogo+Habilitadas» y «Presencia en centro» (infantil y primaria) o «Grupos» y «Presencia secundaria» (secundaria).');return}
   const ok=[],bad=[];
   blocks.forEach(b=>{const c=matchCenter(b.center,b.code);if(!c||!b.course){bad.push(`${b.center||b.code||'Sin centro'}${b.course?'':' (sin curso)'}`);return}ok.push([c,b])});
   if(!ok.length){alert('No encuentro en tu registro ninguno de los centros:\n'+bad.join('\n'));return}
-  const repl=ok.filter(([c,b])=>dotHasData(c.dotacion?.[b.course])).map(([c,b])=>`${c.name} (${b.course})`);
+  const repl=ok.filter(([c,b])=>{const p=c.dotacion?.[b.course];return (b.cat||b.real)&&dotPrimHasData(p)||b.sec&&dotSecHasData(p)}).map(([c,b])=>`${c.name} (${b.course})`);
   if(repl.length&&!confirm(`Ya hay datos de dotación y se sustituirán en:\n${repl.join('\n')}\n\n¿Continuar?`))return;
-  ok.forEach(([c,b])=>{if(!c.dotacion)c.dotacion={};const cat={},real={};DOT_SPECS.forEach(([s])=>{cat[s]=b.cat?.[s]??0;real[s]=b.real?.[s]??0});c.dotacion[b.course]={uei:b.uei??'',uep:b.uep??'',cat,real,fecha:b.fecha||'',notas:b.notas||'',updatedAt:nowIso(),source:'claude'}});
+  ok.forEach(([c,b])=>{
+   if(!c.dotacion)c.dotacion={};
+   const prev=c.dotacion[b.course]||{},o={...prev,fecha:b.fecha||prev.fecha||'',notas:b.notas||prev.notas||'',updatedAt:nowIso(),source:'claude'};
+   if(b.cat||b.real){const cat={},real={},proa={};DOT_SPECS.forEach(([s])=>{cat[s]=b.cat?.[s]??0;real[s]=b.real?.[s]??0;const p=dotNum(b.proaPrim?.[s]);if(p>0)proa[s]=p});o.uei=b.uei??'';o.uep=b.uep??'';o.cat=cat;o.real=real;o.proa=proa}
+   if(b.sec)o.sec=b.sec;
+   if(b.proaDet!=null)o.proaDet=b.proaDet;
+   if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length)o.proaDet='';
+   c.dotacion[b.course]=o;
+  });
   save();closeModal();
   alert(`Dotación guardada en ${ok.length} ${ok.length===1?'centro':'centros'}:\n${ok.map(([c,b])=>`${c.name} (${b.course})`).join('\n')}${bad.length?`\n\nNo encontrados:\n${bad.join('\n')}`:''}`);
   if(ok.length===1){centerCourseSel[ok[0][0].id+'.char']=ok[0][1].course;centerDetail(ok[0][0].id,'caracteristicas')}

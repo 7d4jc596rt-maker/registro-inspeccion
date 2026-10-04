@@ -231,3 +231,25 @@ h3.after-block{margin-top:22px}
 .cards6{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media (max-width:900px){.cards6{grid-template-columns:repeat(3,minmax(0,1fr))}.cfdoc{grid-template-columns:1fr}}
 @media (max-width:560px){.cards6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ===== v4.1: dotación en IES y CPI, grupos y alumnado, Proa+ ===== */
+.dot-table thead .dot-label{color:#fff}
+.center-section h4.dot-sub,h4.dot-sub{font-size:12.5px;color:#526174;font-weight:700;margin:18px 0 7px}
+.dot-wrap.fit{display:inline-block;max-width:100%;vertical-align:top}
+.dot-table td{font-variant-numeric:tabular-nums}
+.dot-table thead th.grp-stage{background:#2f5597}
+.dot-table tr.grp-ratio td{font-weight:700}
+.dot-table tr.grp-ratio .dot-label{background:#c9dff2}
+.dot-table thead th.dot-proa-h{box-shadow:inset 0 -4px 0 #f0a400}
+.dot-table td.dot-proa{background:#fff2cc;font-weight:700}
+.proa-tag{display:block;margin-top:3px;font-size:10.5px;font-weight:700;color:#7a4b00;background:#ffd966;border-radius:999px;padding:1px 6px;line-height:1.35}
+.proa-box{margin:10px 0 0;padding:9px 12px;border:1px solid #f0d39a;border-left:4px solid #f0a400;background:#fff9e8;border-radius:0 8px 8px 0;font-size:13px;line-height:1.45}
+.proa-box b.t{color:#7a4b00}
+.dot-keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 16px;font-size:12px;color:#3b465a;margin:8px 0 0;padding:0;list-style:none}
+.dot-keys b{display:inline-block;min-width:38px;color:#172033}
+.empty.dot-empty{padding:14px;text-align:left;font-size:13px}
+.dot-esp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+.dot-esp-grid label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:#4c5667}
+.dot-esp-grid label small{font-weight:500;color:var(--muted)}
+.dot-esp-grid input.dot-in{width:100%!important;min-width:0;padding:6px 4px;text-align:center}
+@media(max-width:600px){.dot-table tbody .dot-label{overflow-wrap:anywhere}}
