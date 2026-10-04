@@ -103,15 +103,15 @@ const CHAR_WIDE=new Set(['comedor','pt','al','cuidadoras','varios']);
 function charHasData(o){return !!o&&CHAR_FIELDS.some(([k])=>String(o[k]||'').trim())}
 function centerCharHTML(c){
  const store=c.caracteristicas||{};
- const kk=(()=>{const courses=[...new Set([currentCourse(),...Object.keys(store)])];let k=centerCourseSel[c.id+'.char']||currentCourse();if(k==='*'||!courses.includes(k))k=currentCourse();return k})();
+ const kk=(()=>{const courses=[...new Set([currentCourse(),...Object.keys(store),...Object.keys(c.dotacion||{})])];let k=centerCourseSel[c.id+'.char']||currentCourse();if(k==='*'||!courses.includes(k))k=currentCourse();return k})();
  return centerCharBaseHTML(c)+centerDotHTML(c,kk);
 }
 function centerCharBaseHTML(c){
  const store=c.caracteristicas||{};
- const courses=[...new Set([currentCourse(),...Object.keys(store)])].sort().reverse();
+ const courses=[...new Set([currentCourse(),...Object.keys(store),...Object.keys(c.dotacion||{})])].sort().reverse();
  let k=centerCourseSel[c.id+'.char']||currentCourse();if(k==='*'||!courses.includes(k))k=currentCourse();
  const d=store[k],prev=courses.filter(x=>x<k&&charHasData(store[x]))[0];
- const sel=`<select id="cCharCourse" class="select" aria-label="Curso escolar" onchange="setCenterCourse('${c.id}','char',this.value)">${courses.map(x=>`<option value="${x}" ${x===k?'selected':''}>Curso ${x}${x===currentCourse()?' (actual)':''}${charHasData(store[x])?'':' · sin datos'}</option>`).join('')}</select>`;
+ const sel=`<select id="cCharCourse" class="select" aria-label="Curso escolar" onchange="setCenterCourse('${c.id}','char',this.value)">${courses.map(x=>`<option value="${x}" ${x===k?'selected':''}>Curso ${x}${x===currentCourse()?' (actual)':''}${charHasData(store[x])?'':(c.dotacion||{})[x]?' · solo dotación':' · sin datos'}</option>`).join('')}</select>`;
  const head=`<div class="section-head"><h3 style="margin:0">Características del centro · curso ${k}</h3><button class="btn small primary" onclick="editCharacteristics('${c.id}','${k}')">${charHasData(d)?'Editar':'Añadir datos'}</button></div><div class="course-bar"><label for="cCharCourse">Curso</label>${sel}</div>`;
  if(!charHasData(d))return head+`<div class="empty">No hay características registradas para el curso ${k}.${prev?` El último curso con datos es ${prev}; puedes consultarlo en el desplegable o partir de él al añadir los de este curso.`:''}</div>`;
  return head+`<dl class="center-data-list char-list">${CHAR_FIELDS.map(([f,l])=>`<div class="${CHAR_WIDE.has(f)?'char-wide':''}"><dt>${l}</dt><dd>${esc(d[f]||'—')}</dd></div>`).join('')}</dl>${d.source==='notion'?'<p class="muted" style="font-size:12px">Importado de Notion.</p>':''}`;

@@ -306,7 +306,11 @@ function parsePastedConsulta(text){
   if(!cur){continue}
   if(line.trim())out[cur]=(out[cur]?out[cur]+'\n':'')+line.trim();
  }
- if(out.contenido!==undefined)out.contenido=out.contenido.replace(/^\n+/,'').replace(/\s+$/,'');
+ if(out.contenido!==undefined){
+  const cl=out.contenido.split('\n'),fences=cl.filter(l=>/^\s*```/.test(l)).length;
+  if(fences%2===1){let i=cl.length-1;while(i>=0&&!/^\s*```\s*$/.test(cl[i]))i--;if(i>=0)cl.length=i}
+  out.contenido=cl.join('\n').replace(/^\n+/,'').replace(/\s+$/,'');
+ }
  return out;
 }
 function claudeConsultaInstructions(){

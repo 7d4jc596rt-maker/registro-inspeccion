@@ -25,9 +25,9 @@ function dotSign(n){return n>0?'+'+n:String(n)}
 function dotRatio(a,g){return g>0?(Math.round(a/g*10)/10).toFixed(1).replace('.',','):'—'}
 function dotProaTag(n){return n>0?`<span class="proa-tag">${n} Proa+</span>`:''}
 function dotSecName(e){return e.name||(DOT_SEC_SPECS.find(([s])=>s===e.s)||[])[2]||''}
-function dotProaBox(items,det){
+function dotProaBox(items,det,per){
  if(!items.length)return '';
- return `<div class="proa-box"><b class="t">Proa+</b> · ${items.map(([n,name,code])=>`${n} ${n===1?'docente':'docentes'} de <b>${esc(name)}${code?` (${esc(code)})`:''}</b>`).join(' y ')}${det?', '+esc(String(det).replace(/[.\s]+$/,'')):''}.</div>`;
+ return `<div class="proa-box"><b class="t">Proa+${per?' '+esc(per):''}</b> · ${items.map(([n,name,code])=>`${n} ${n===1?'docente':'docentes'} de <b>${esc(name)}${code?` (${esc(code)})`:''}</b>`).join(' y ')}${det?', '+esc(String(det).replace(/[.\s]+$/,'')):''}. Localizado en Persoal: provisional de la especialidad, compartido con otro centro.</div>`;
 }
 
 /* --- Infantil y Primaria --- */
@@ -43,7 +43,7 @@ function dotTable(d){
 }
 function dotPrimHTML(d){
  const proa=DOT_SPECS.filter(([s])=>dotNum(d.proa?.[s])>0).map(([s,c,l])=>[dotNum(d.proa[s]),l,c]);
- return dotTable(d)+dotProaBox(proa,d.proaDet)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: docentes que corresponden a esas unidades según el catálogo de EI/EP (archivo CatalogoEsteban). Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${proa.length?' Fondo amarillo: la cifra incluye profesorado Proa+.':''}${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>`;
+ return dotTable(d)+dotProaBox(proa,d.proaDet,d.proaPer)+`<p class="dot-legend">Unidades: XIEAlumnado (catalogadas + habilitadas). Catálogo+Habilitadas: docentes que corresponden a esas unidades según el catálogo de EI/EP (archivo CatalogoEsteban). Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos; los compartidos con base en otro centro cuentan 1 en ALC, PTC u OC; sin Religión. <span class="dot-neg-t">Rojo</span>: menos docentes de los que corresponden. <span class="dot-pos-t">Verde</span>: más.${proa.length?' Fondo amarillo: la cifra incluye profesorado Proa+.':''}${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>`;
 }
 
 /* --- Secundaria --- */
@@ -79,7 +79,7 @@ function dotSecHTML(d,withPrim){
  const gt=dotGruposTable(sec.grupos),st=dotSecTable(sec);
  const keys=(sec.esp||[]).filter(e=>dotSecName(e)&&(dotNum(e.n)>0||dotNum(sec.proa?.[e.s])>0)).map(e=>`<li><b>${esc(e.s)}</b> ${esc(dotSecName(e))}</li>`).join('');
  return `<h4 class="dot-sub">${pre}${withPrim?'g':'G'}rupos y alumnado</h4>${gt?gt+`<p class="dot-legend">XIEAlumnado, régimen ordinario. El alumnado de diversificación se suma a su curso, porque no forma grupo propio.${(sec.grupos||[]).some(x=>/BAC$/.test(x.k))?' En bachillerato, los grupos mixtos entre modalidades se cuentan una sola vez.':''}</p>`:'<div class="empty dot-empty">Sin datos de grupos y alumnado.</div>'}
- <h4 class="dot-sub">${pre}${withPrim?'p':'P'}rofesorado por especialidad</h4>${st?st+dotProaBox(proa,d.proaDet)+`<p class="dot-legend">Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos y sin Religión. Catedráticos y profesores de la misma especialidad se suman. Los compartidos cuentan 1.${proa.length?' Fondo amarillo: la cifra incluye profesorado Proa+.':''}${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${keys?`<ul class="dot-keys">${keys}</ul>`:''}`:'<div class="empty dot-empty">Sin datos de profesorado por especialidad.</div>'}`;
+ <h4 class="dot-sub">${pre}${withPrim?'p':'P'}rofesorado por especialidad</h4>${st?st+dotProaBox(proa,d.proaDet,d.proaPer)+`<p class="dot-legend">Presencia: Persoal 6.5 reducido, solo docentes con presencia física, sin sustitutos y sin Religión. Catedráticos y profesores de la misma especialidad se suman. Los compartidos cuentan 1.${proa.length?' Fondo amarillo: la cifra incluye profesorado Proa+.':''}${d.fecha?` Datos a ${date(d.fecha)}.`:''}</p>${keys?`<ul class="dot-keys">${keys}</ul>`:''}`:'<div class="empty dot-empty">Sin datos de profesorado por especialidad.</div>'}`;
 }
 
 function centerDotHTML(c,k){
@@ -139,7 +139,8 @@ function dotForm(k,d,P,kind){
   <div class="field full" style="margin-top:10px"><label for="dotOtras">Otras especialidades</label><input id="dotOtras" class="input" style="width:100%" value="${esc(dotEspText(otras))}" placeholder="SAI 227 (Sistemas y Aplicaciones Informáticas)=4; PSA 222=2"><p class="muted" style="font-size:12px;margin:4px 0 0">Formato: sigla, código, nombre entre paréntesis (opcional) y número, separadas por punto y coma.</p></div>
   <div class="field full" style="margin-top:10px"><label for="dotProaSec">Profesorado Proa+ incluido en esas cifras</label><input id="dotProaSec" class="input" style="width:100%" value="${esc(dotPairsText(sec.proa))}" placeholder="MAT=1"></div>`;
  }
- return h+`<div class="field full" style="margin-top:12px"><label for="dotProaDet">Detalle del Proa+ (opcional)</label><input id="dotProaDet" class="input" style="width:100%" value="${esc(d.proaDet||'')}" placeholder="sin jornada completa, dentro del horario lectivo"></div>
+ return h+`<div class="field full" style="margin-top:12px"><label for="dotProaPer">Cursos del Proa+ (opcional)</label><input id="dotProaPer" class="input" style="width:100%" value="${esc(d.proaPer||'')}" placeholder="2026/27 – 2027/28"></div>
+ <div class="field full" style="margin-top:12px"><label for="dotProaDet">Detalle del Proa+ (opcional)</label><input id="dotProaDet" class="input" style="width:100%" value="${esc(d.proaDet||'')}" placeholder="sin jornada completa, dentro del horario lectivo"></div>
  <div class="field full" style="margin-top:12px"><label for="dotNotas">Notas</label><textarea id="dotNotas" class="textarea" style="min-height:70px">${esc(d.notas||'')}</textarea></div>`;
 }
 function editDot(cid,k){
@@ -150,7 +151,7 @@ function editDot(cid,k){
   if(!nk){alert('Indica el curso con el formato 2026/27.');return}
   if(nk!==k&&dotHasData(c.dotacion[nk])&&!confirm(`El curso ${nk} ya tiene datos de dotación. ¿Sustituirlos?`))return;
   const g=id=>{const el=document.getElementById(id);if(!el)return '';const v=el.value.trim();return v===''?'':dotNum(v)};
-  const o={fecha:document.getElementById('dotFecha').value,notas:document.getElementById('dotNotas').value.trim(),proaDet:document.getElementById('dotProaDet').value.trim(),updatedAt:nowIso()};
+  const o={fecha:document.getElementById('dotFecha').value,notas:document.getElementById('dotNotas').value.trim(),proaDet:document.getElementById('dotProaDet').value.trim(),proaPer:document.getElementById('dotProaPer').value.trim(),updatedAt:nowIso()};
   if(P.prim){o.uei=g('dot_uei');o.uep=g('dot_uep');o.cat={};o.real={};o.proa={};DOT_SPECS.forEach(([s])=>{o.cat[s]=g('dotc_'+s);o.real[s]=g('dotr_'+s);const p=dotNum(g('dotp_'+s));if(p>0)o.proa[s]=p})}
   if(P.sec){
    const grupos=document.getElementById('dotGrKeys').value.split(',').filter(Boolean).map(x=>({k:x,a:g('dotga_'+x),g:g('dotgg_'+x)})).filter(x=>x.a!==''||x.g!=='').map(x=>({k:x.k,a:dotNum(x.a),g:dotNum(x.g)}));
@@ -159,7 +160,7 @@ function editDot(cid,k){
    const proa={};Object.entries(dotParsePairs(document.getElementById('dotProaSec').value)).forEach(([s,n])=>{if(n>0&&esp.some(e=>e.s===s))proa[s]=n});
    if(grupos.length||esp.length)o.sec={grupos,esp,proa};
   }
-  if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length)o.proaDet='';
+  if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length){o.proaDet='';o.proaPer=''}
   if(nk!==k)delete c.dotacion[k];
   if(dotHasData(o))c.dotacion[nk]=o;else delete c.dotacion[nk];
   centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'caracteristicas');
@@ -188,7 +189,8 @@ function parseDotBlocks(text){
   else if(m&&/^unidades/.test(key)){const o=dotParsePairs(m[2]);if('UEI' in o)cur.uei=o.UEI;if('UEP' in o)cur.uep=o.UEP;lastKey=''}
   else if(m&&/^grupos/.test(key)){sec().grupos=dotParseGrupos(m[2]);lastKey=''}
   else if(m&&/^proa/.test(key)){
-   if(/detalle|nota|descrip/.test(key))cur.proaDet=m[2].trim();
+   if(/period|cursos/.test(key))cur.proaPer=m[2].trim();
+   else if(/detalle|nota|descrip/.test(key))cur.proaDet=m[2].trim();
    else if(/secund/.test(key))cur.proaSec=dotParsePairs(m[2]);
    else if(/prim|infantil/.test(key))cur.proaPrim=dotParsePairs(m[2]);
    else cur.proaAny=dotParsePairs(m[2]);
@@ -211,7 +213,7 @@ function parseDotBlocks(text){
 function pasteDotStart(){
  openModal('Pegar dotación de profesorado',`<p style="margin-top:0">Pega aquí uno o varios bloques «DOTACIÓN DE PROFESORADO» preparados por Claude. Cada bloque se guarda en su centro (por el código) y en su curso.</p>
  <div class="toolbar"><button type="button" class="btn" onclick="pasteDotClipboard()">Pegar del portapapeles</button></div>
- <textarea id="dotPaste" class="textarea" style="min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="DOTACIÓN DE PROFESORADO&#10;Código: …&#10;Curso: 2026/27&#10;Unidades: UEI 5; UEP 14&#10;Catálogo+Habilitadas: EI 6; EP 13; …&#10;Presencia en centro: EI 6; EP 12; …&#10;Grupos: 1ESO 126/5; 2ESO 94/4; …&#10;Presencia secundaria: FIL 001=3; MAT 006=9; …&#10;Proa+ secundaria: MAT=1&#10;FIN"></textarea>
+ <textarea id="dotPaste" class="textarea" style="min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="DOTACIÓN DE PROFESORADO&#10;Código: …&#10;Curso: 2026/27&#10;Unidades: UEI 5; UEP 14&#10;Catálogo+Habilitadas: EI 6; EP 13; …&#10;Presencia en centro: EI 6; EP 12; …&#10;Grupos: 1ESO 126/5; 2ESO 94/4; …&#10;Presencia secundaria: FIL 001=3; MAT 006=9; …&#10;Proa+ secundaria: MAT=1&#10;Proa+ periodo: 2026/27 – 2027/28&#10;FIN"></textarea>
  <p class="muted" style="font-size:12px">CEIP, CEP, EEI y CRA: líneas «Unidades», «Catálogo+Habilitadas» y «Presencia en centro». IES: líneas «Grupos» y «Presencia secundaria». CPI: todas. El Proa+ va en «Proa+ primaria» o «Proa+ secundaria».</p>`,()=>{
   const blocks=parseDotBlocks(document.getElementById('dotPaste').value);
   if(!blocks.length){alert('No reconozco el formato. El bloque debe empezar por «DOTACIÓN DE PROFESORADO» y tener las líneas «Catálogo+Habilitadas» y «Presencia en centro» (infantil y primaria) o «Grupos» y «Presencia secundaria» (secundaria).');return}
@@ -226,7 +228,8 @@ function pasteDotStart(){
    if(b.cat||b.real){const cat={},real={},proa={};DOT_SPECS.forEach(([s])=>{cat[s]=b.cat?.[s]??0;real[s]=b.real?.[s]??0;const p=dotNum(b.proaPrim?.[s]);if(p>0)proa[s]=p});o.uei=b.uei??'';o.uep=b.uep??'';o.cat=cat;o.real=real;o.proa=proa}
    if(b.sec)o.sec=b.sec;
    if(b.proaDet!=null)o.proaDet=b.proaDet;
-   if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length)o.proaDet='';
+   if(b.proaPer!=null)o.proaPer=b.proaPer;
+   if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length){o.proaDet='';o.proaPer=''}
    c.dotacion[b.course]=o;
   });
   save();closeModal();
