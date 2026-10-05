@@ -74,7 +74,7 @@ function showCenterTab(tab){
  const content=document.getElementById('centerContent');if(content)content.scrollTop=0;
 }
 /* ---------- Ficha: actuaciones y visitas por curso ---------- */
-function centerActEvent(a,c){return `<div class="event"><b>${date(a.date)}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)}</b><div><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div>${!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`}
+function centerActEvent(a,c){return `<div class="event${prioClass(a)}"><b>${date(a.date)}${a.mode?' · '+esc(a.mode):''} · ${a.finalizada?'Finalizada':'Pendiente'}${actionMeta(a)} ${prioPill(a)}</b><div><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div>${!a.finalizada?`<button class="btn small" onclick="finishActionFromCenter('${a.id}','${c.id}')">Marcar como finalizada</button>`:''}</div>`}
 function centerActsHTML(c){
  const all=db.actions.filter(a=>a.center===c.name),k=getCenterCourse(c.id,'act');
  const list=all.filter(a=>inCourse(a.date,k)).sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));

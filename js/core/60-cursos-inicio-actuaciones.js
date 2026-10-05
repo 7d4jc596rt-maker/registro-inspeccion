@@ -1,6 +1,23 @@
 /* ======================= VERSIÓN 2 ======================= */
 const APP_TIPOS=['IES','CEIP','CPI','CRA','EEI','CPR','CFEA','CEE','CIFP','EOI','EPA','CMUS','CEEPI','EASD','Otro'];
 const ACTION_MODES=['Correo electrónico','Teléfono','Presencial','REXEL','Otro'];
+/* Versión 4.2: prioridad de las actuaciones (alta, media, baja o vacía) */
+const PRIORITIES=[['alta','Alta'],['media','Media'],['baja','Baja']];
+const PRIO_LABEL={alta:'Alta',media:'Media',baja:'Baja'};
+function prioRank(a){return ({alta:0,media:1,baja:2})[a&&a.priority]??3}
+function normPriority(v){const t=String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();if(/^(alta|alto|urgente|high|1)$/.test(t))return 'alta';if(/^(media|medio|normal|medium|2)$/.test(t))return 'media';if(/^(baja|bajo|low|3)$/.test(t))return 'baja';return ''}
+function prioPill(a){const p=a&&a.priority;return PRIO_LABEL[p]?`<span class="prio prio-${p}" title="Prioridad ${PRIO_LABEL[p].toLowerCase()}">${PRIO_LABEL[p]}</span>`:''}
+function prioClass(a){return PRIO_LABEL[a&&a.priority]?' prio-b-'+a.priority:''}
+function imgCountMeta(a){const n=(a.images||[]).length;return n?` · ${n} ${n===1?'imagen':'imágenes'}`:''}
+/* Tras guardar una actuación se vuelve a la pantalla desde la que se abrió */
+let curCenterId='';
+function afterActionSaved(){
+ if(document.querySelector('.center-fixed-head')&&curCenterId&&db.centers.some(c=>c.id===curCenterId))return centerDetail(curCenterId);
+ if(document.getElementById('actionRows'))return filterActions();
+ const v=document.querySelector('.nav button[data-view].active')?.dataset.view;
+ if(v==='dashboard')return dashboard();
+ registro();
+}
 function nowIso(){return new Date().toISOString()}
 function todayIso(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function dateTime(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?esc(v):d.toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
@@ -66,19 +83,21 @@ function calendarBlock(){
  if(!html.startsWith(head)||!html.endsWith('</div></div>'))return html;
  return homeBlock('calendar','Calendario de plazos · 2026/27',`<button class="btn small primary" onclick="stopEv(event);newManualDeadline()">+ Añadir plazo</button>`,html.slice(head.length,-12));
 }
-function actionMeta(a){const n=(a.updates||[]).length;return n?` · ${n} ${n===1?'actualización':'actualizaciones'}`:''}
+function actionMeta(a){const n=(a.updates||[]).length;return (n?` · ${n} ${n===1?'actualización':'actualizaciones'}`:'')+imgCountMeta(a)}
 function dashboard(){
- const pendingActions=db.actions.filter(x=>!x.finalizada).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+ const pendingActions=db.actions.filter(x=>!x.finalizada).sort((a,b)=>prioRank(a)-prioRank(b)||((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||'')));
  const pending=pendingActions.length;
  const today=todayIso();
  const next=db.visits.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
  const last=db.visits.filter(x=>x.date&&x.date<today).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
- const actionEvents=items=>items.map(a=>`<div class="event"><b>${date(a.date)} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><div>${esc(a.subject)}</div><p class="clamp">${esc(a.action||a.details||'')}</p><button class="btn small" onclick="editAction('${a.id}')">Abrir</button> <button class="btn small" onclick="finishActionFromHome('${a.id}')">Marcar como finalizada</button></div>`).join('')||'<div class="empty">No hay actuaciones pendientes.</div>';
+ const pendingRow=a=>`<div class="event pend-row${prioClass(a)}"><div class="pend-main"><b>${date(a.date)} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div><div class="pend-side">${prioPill(a)}<button class="btn small" onclick="finishActionFromHome('${a.id}')">Finalizar</button></div></div>`;
+ const prioGroups=[['alta','Prioridad alta'],['media','Prioridad media'],['baja','Prioridad baja'],['','Sin prioridad']].map(([p,label])=>[label,pendingActions.filter(a=>(PRIO_LABEL[a.priority]?a.priority:'')===p)]).filter(g=>g[1].length);
+ const withHeads=prioGroups.length>1||(prioGroups.length===1&&prioGroups[0][0]!=='Sin prioridad');
  const go=v=>v==='registroPendientes'?'registroPending()':`nav('${v}')`;
  const card=(n,label,view)=>`<div class="card link" role="button" tabindex="0" onclick="${go(view)}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${go(view)}}"><div class="metric">${n}</div><div class="label">${label}</div></div>`;
  const visitRow=(v,pill)=>`<div class="kpi" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:12px">${date(v.date)}</b><div class="muted" style="font-size:11px">${esc(v.center)}</div></div>${pill}</div>`;
  const visitsBody=`<h3 class="home-sub">Próximas visitas</h3>${next.map(v=>visitRow(v,`<span class="pill">${esc(v.month||'')}</span>`)).join('')||'<div class="empty">No hay visitas próximas.</div>'}<h3 class="home-sub" style="margin-top:18px">Últimas visitas realizadas</h3>${last.map(v=>visitRow(v,'<span class="pill ok">Realizada</span>')).join('')||'<div class="empty">No hay visitas realizadas.</div>'}`;
- const pendingBody=`<h3 class="home-sub">Las 3 más antiguas</h3><div class="timeline">${actionEvents(pendingActions.slice(0,3))}</div><h3 class="home-sub" style="margin-top:18px">Las 3 más recientes</h3><div class="timeline">${actionEvents(pendingActions.slice(-3).reverse())}</div>`;
+ const pendingBody=pending?`<p class="muted pend-note">Ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente.</p>`+prioGroups.map(([label,items])=>`${withHeads?`<h3 class="home-sub pend-head">${label} <span class="pill">${items.length}</span></h3>`:''}<div class="timeline pend-list">${items.map(pendingRow).join('')}</div>`).join(''):'<div class="empty">No hay actuaciones pendientes.</div>';
  document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
  `<div class="cards cards1">${card(pending,'Actuaciones pendientes','registroPendientes')}</div>`+
  homeRequestsPanel()+
@@ -90,28 +109,29 @@ function dashboard(){
 
 /* ---------- Registro de actuaciones ---------- */
 function registro(){
- document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0" selected>Pendientes</option><option value="1">Finalizadas</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
+ document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0" selected>Pendientes</option><option value="1">Finalizadas</option></select><select id="rprio" class="select" aria-label="Prioridad" onchange="filterActions()"><option value="">Todas las prioridades</option>${PRIORITIES.map(([v,l])=>`<option value="${v}">Prioridad ${l.toLowerCase()}</option>`).join('')}<option value="__none">Sin prioridad</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Prioridad</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
  filterActions();
 }
 function registroForCenter(name,course='*'){nav('registro');const i=document.getElementById('rsearch'),k=document.getElementById('rcourse'),st=document.getElementById('rstatus');if(st)st.value='';if(k)k.value=[...k.options].some(o=>o.value===course)?course:'*';if(i){i.value=name;filterActions()}}
 function showAllCoursesPending(){const k=document.getElementById('rcourse');if(k)k.value='*';filterActions()}
 function registroPending(){nav('registro');const s=document.getElementById('rstatus'),k=document.getElementById('rcourse');if(s)s.value='0';if(k)k.value='*';filterActions()}
 function filterActions(){
- const q=normTxt(document.getElementById('rsearch')?.value||''),t=document.getElementById('rtype')?.value||'',s=document.getElementById('rstatus')?.value||'',k=document.getElementById('rcourse')?.value||'*';
+ const q=normTxt(document.getElementById('rsearch')?.value||''),t=document.getElementById('rtype')?.value||'',s=document.getElementById('rstatus')?.value||'',k=document.getElementById('rcourse')?.value||'*',pr=document.getElementById('rprio')?.value||'';
  const a=db.actions.filter(x=>!q||normTxt([x.center,x.student,x.subject,x.details,x.action,...(x.updates||[]).map(u=>u.text)].join(' ')).includes(q))
-  .filter(x=>!t||(t==='__none'?!x.mode:x.mode===t)).filter(x=>s===''||String(x.finalizada?1:0)===s).filter(x=>inCourse(x.date,k))
+  .filter(x=>!t||(t==='__none'?!x.mode:x.mode===t)).filter(x=>s===''||String(x.finalizada?1:0)===s).filter(x=>!pr||(pr==='__none'?!PRIO_LABEL[x.priority]:x.priority===pr)).filter(x=>inCourse(x.date,k))
   .sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
  currentFilteredActions=a;
  const c=document.getElementById('rcount');if(c){const hid=(s==='0'&&k!=='*')?db.actions.filter(x=>!x.finalizada&&!inCourse(x.date,k)).length:0;c.innerHTML=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+esc(k)}`+(hid?` · <button type="button" class="linklike" onclick="showAllCoursesPending()">Hay ${hid} pendiente${hid===1?'':'s'} de otros cursos: verlas</button>`:'');}
  document.getElementById('actionRows').innerHTML=a.map(x=>{
   const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
-  return `<tr><td>${date(x.date)}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button></td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay resultados.</td></tr>';
+  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${(x.images||[]).length?`<div class="muted img-count">${(x.images||[]).length} ${(x.images||[]).length===1?'imagen':'imágenes'}</div>`:''}</td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
 }
 
 /* ---------- Formulario de actuación: fechas e historial ---------- */
 let formUpdates=[];
 function actionForm(x={},warnings=[]){
  formUpdates=(x.updates||[]).map(u=>({...u}));
+ formImages=(x.images||[]).map(m=>({...m}));
  const centerKnown=!x.center||db.centers.some(c=>c.name===x.center);
  const meta=x.id?`<div class="meta-line">Registrada: ${x.createdAt?dateTime(x.createdAt):'sin dato'} · Última modificación: ${x.updatedAt?dateTime(x.updatedAt):'sin cambios'}${x.source==='notion'?' · Importada de Notion':''}</div>`:'<div class="meta-line">La fecha de registro se anotará automáticamente al guardar.</div>';
  return `${warnings.length?`<div class="notice warn-notice" style="margin:0 0 14px">${warnings.map(esc).join('<br>')}</div>`:''}${meta}
@@ -122,8 +142,10 @@ function actionForm(x={},warnings=[]){
   <div class="field"><label for="fcenter">Centro</label><select id="fcenter" class="select"><option value="">— Sin centro —</option>${centerKnown?'':`<option value="${esc(x.center)}" selected>${esc(x.center)} (no registrado)</option>`}${[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
   <div class="field"><label for="fstudent">Persona implicada</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
   <div class="field"><label for="fsubject">Asunto</label><input id="fsubject" class="input" style="width:100%" value="${esc(x.subject)}"></div>
+  <div class="field"><label for="fprio">Prioridad</label><select id="fprio" class="select prio-select" onchange="this.dataset.p=this.value" data-p="${PRIO_LABEL[x.priority]?x.priority:''}"><option value="" ${PRIO_LABEL[x.priority]?'':'selected'}>Sin prioridad</option>${PRIORITIES.map(([v,l])=>`<option value="${v}" ${x.priority===v?'selected':''}>${l}</option>`).join('')}</select></div>
   <div class="field full"><label for="fdetails">Detalles</label><textarea id="fdetails" class="textarea">${esc(x.details)}</textarea></div>
   <div class="field full"><label for="faction">Actuación realizada / respuesta</label><textarea id="faction" class="textarea">${esc(x.action)}</textarea></div>
+  <div class="field full"><label>Imágenes</label>${imgFormBlock()}</div>
   <div class="field full"><label>Actualizaciones</label><div id="fUpdates" class="update-list"></div>
    <div class="update-add"><input id="fuDate" class="input" type="date" value="${todayIso()}" aria-label="Fecha de la actualización"><textarea id="fuText" class="textarea" placeholder="Qué ha cambiado: respuesta recibida, nueva gestión, cierre…" aria-label="Texto de la actualización"></textarea><button type="button" class="btn" onclick="addFormUpdate()">Añadir actualización</button></div></div>
   <div class="field full"><label class="gate-check"><input id="ffinal" type="checkbox" ${x.finalizada?'checked':''}> Actuación finalizada</label></div>
@@ -143,18 +165,18 @@ function removeFormUpdate(id){if(!confirm('¿Eliminar esta actualización?'))ret
 function readActionForm(){
  if(document.getElementById('fuText')?.value.trim())addFormUpdate();
  const v=id=>document.getElementById(id).value;
- return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),details:v('fdetails'),action:v('faction'),finalizada:document.getElementById('ffinal').checked,updates:formUpdates};
+ return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),priority:normPriority(v('fprio')),details:v('fdetails'),action:v('faction'),finalizada:document.getElementById('ffinal').checked,updates:formUpdates,images:formImages.map(m=>({...m}))};
 }
 function newAction(prefill={},warnings=[]){
  openModal('Nueva actuación',actionForm(prefill,warnings),()=>{
   const data=readActionForm();
   db.actions.push({id:uid(),createdAt:nowIso(),updatedAt:'',...data});
-  save();closeModal();registro();
+  save();closeModal();afterActionSaved();imgAfterSave([]);
  });
- renderFormUpdates();
+ renderFormUpdates();renderFormImages();
 }
 function editAction(id){
  const x=db.actions.find(a=>a.id===id);if(!x)return;
- openModal('Actuación',actionForm(x),()=>{Object.assign(x,readActionForm(),{updatedAt:nowIso()});save();closeModal();registro()});
- renderFormUpdates();
+ openModal('Actuación',actionForm(x),()=>{const before=(x.images||[]).map(m=>({...m}));Object.assign(x,readActionForm(),{updatedAt:nowIso()});save();closeModal();afterActionSaved();imgAfterSave(before.filter(m=>!x.images.some(n=>n.id===m.id)))});
+ renderFormUpdates();renderFormImages();
 }

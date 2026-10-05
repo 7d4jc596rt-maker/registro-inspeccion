@@ -1,13 +1,14 @@
 /* ================= Añadidos de la versión web cifrada ================= */
 function ensureShape(){
  if(!db||typeof db!=='object')db=JSON.parse(JSON.stringify(SEED));
- for(const k of ['centers','actions','visits','petitionsRequirements','consultas'])if(!Array.isArray(db[k]))db[k]=[];
+ for(const k of ['centers','actions','visits','petitionsRequirements','consultas','contacts','contactTags'])if(!Array.isArray(db[k]))db[k]=[];
  if(!Array.isArray(db.followupFields))db.followupFields=[...SEED.followupFields];
  for(const k of ['followup','followupNA'])if(!db[k]||typeof db[k]!=='object')db[k]={};
  if(!db.specials||typeof db.specials!=='object')db.specials=JSON.parse(JSON.stringify(SEED.specials));
  if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
  db.centers.forEach(c=>{if(!db.followup[c.id])db.followup[c.id]={}});
- migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();
+ migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();migrateV42();
+ imgAutoTransfer();
 }
 window.__coreGetDb=()=>db;
 window.__coreReplaceData=d=>{db=d;ensureShape();closeModal();nav('dashboard')};
@@ -68,7 +69,7 @@ function datos(){
    <input id="notionFolder" type="file" webkitdirectory multiple hidden onchange="importNotionFolderFiles(event)">
   </div></div>
   <div class="panel"><div class="panelhead"><h2>Exportar</h2></div><div class="panelbody">
-   <div class="toolbar"><button class="btn" onclick="exportCSV('actions')">Actuaciones (CSV)</button><button class="btn" onclick="exportCSV('followup')">Seguimiento (CSV)</button><button class="btn" onclick="exportConsultasJSON()">Consultas (JSON)</button></div>
+   <div class="toolbar"><button class="btn" onclick="exportCSV('actions')">Actuaciones (CSV)</button><button class="btn" onclick="exportCSV('followup')">Seguimiento (CSV)</button><button class="btn" onclick="exportConsultasJSON()">Consultas (JSON)</button><button class="btn" onclick="exportContactsCSV()">Contactos (CSV)</button></div>
    <p class="muted" style="font-size:12px">Los CSV y la copia JSON salen <b>sin cifrar</b>. Guárdalos solo en ubicaciones seguras y bórralos cuando no los necesites.</p>
    <button class="btn" onclick="exportJSON()">Copia completa sin cifrar (JSON)</button>
   </div></div>
@@ -80,6 +81,7 @@ function datos(){
    <div class="card"><div class="metric">${db.visits.length}</div><div class="label">Visitas</div></div>
    <div class="card"><div class="metric">${(db.centerNotes||[]).length}</div><div class="label">Notas de centros</div></div>
    <div class="card"><div class="metric">${db.consultas.length}</div><div class="label">Consultas y procedimientos</div></div>
+   <div class="card"><div class="metric">${db.contacts.length}</div><div class="label">Contactos</div></div>
    <div class="card"><div class="metric">${specialsTotal}</div><div class="label">Registros en otros datos</div></div>
   </div>
   <button class="btn danger" onclick="resetData()">Vaciar el registro…</button>

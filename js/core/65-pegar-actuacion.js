@@ -1,5 +1,5 @@
 /* ---------- Pegar actuación preparada por Claude ---------- */
-const PASTE_KEYS={'fecha':'date','fecha de la actuacion':'date','hora':'time','medio':'mode','medio de comunicacion':'mode','centro':'center','codigo':'code','codigo del centro':'code','persona implicada':'student','persona':'student','persona implicada / alumno/a':'student','alumno/a':'student','alumno':'student','alumna':'student','alumnado':'student','asunto':'subject','detalles':'details','actuacion realizada':'action','actuacion realizada / respuesta':'action','respuesta':'action','estado':'status','finalizada':'status'};
+const PASTE_KEYS={'fecha':'date','fecha de la actuacion':'date','hora':'time','medio':'mode','medio de comunicacion':'mode','centro':'center','codigo':'code','codigo del centro':'code','persona implicada':'student','persona':'student','persona implicada / alumno/a':'student','alumno/a':'student','alumno':'student','alumna':'student','alumnado':'student','asunto':'subject','prioridad':'priority','detalles':'details','actuacion realizada':'action','actuacion realizada / respuesta':'action','respuesta':'action','estado':'status','finalizada':'status'};
 function parsePastedAction(text){
  const out={};let cur=null;
  for(const raw of String(text).replace(/\r/g,'').split('\n')){
@@ -33,6 +33,7 @@ Centro: nombre exacto de la lista de abajo
 Código: código del centro
 Persona implicada: nombre completo (nombre y apellidos) o vacío
 Asunto: una sola línea
+Prioridad: Alta | Media | Baja (déjala vacía si no te la indico)
 Detalles: texto; puede ocupar varias líneas
 Actuación realizada: texto; puede ocupar varias líneas
 Estado: Pendiente | Finalizada
@@ -52,7 +53,7 @@ async function pasteFromClipboard(){
 function pasteActionStart(){
  openModal('Pegar actuación de Claude',`<p style="margin-top:0">Pega aquí el bloque que te ha preparado Claude. Se abrirá el formulario relleno para que lo revises antes de guardar.</p>
  <div class="toolbar"><button type="button" class="btn" onclick="pasteFromClipboard()">Pegar del portapapeles</button><button type="button" class="btn" onclick="copyClaudeInstructions()">Copiar instrucciones para Claude</button></div>
- <textarea id="pasteText" class="textarea" style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="ACTUACIÓN&#10;Fecha: 28/09/2026&#10;Medio: Teléfono&#10;Centro: …&#10;Asunto: …&#10;Detalles: …"></textarea>
+ <textarea id="pasteText" class="textarea" style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px" placeholder="ACTUACIÓN&#10;Fecha: 28/09/2026&#10;Medio: Teléfono&#10;Centro: …&#10;Asunto: …&#10;Prioridad: Alta&#10;Detalles: …"></textarea>
  <p class="muted" style="font-size:12px">Las instrucciones incluyen el formato y la lista de tus centros (nombre y código) para que Claude los escriba igual que en la aplicación.</p>`,()=>{
   const p=parsePastedAction(document.getElementById('pasteText').value);
   if(!p.subject&&!p.details&&!p.action){alert('No reconozco el formato. Comprueba que el texto tenga líneas como «Asunto: …» o «Detalles: …».');return}
@@ -63,7 +64,8 @@ function pasteActionStart(){
   if(p.mode){const exact=ACTION_MODES.find(m=>normTxt(m)===normTxt(p.mode));if(exact)mode=exact;else{const [m,note]=normMode(p.mode);mode=m;if(note)warnings.push(`El medio «${p.mode}» se ha registrado como «Otro».`)}}
   const c=matchCenter(p.center,p.code);
   if((p.center||p.code)&&!c)warnings.push(`No encuentro el centro «${p.center||p.code}»: elígelo en la lista.`);
-  newAction({date:d||todayIso(),time,mode,center:c?c.name:'',student:p.student||'',subject:p.subject||'',details,action:p.action||'',finalizada:/finaliz|cerrad|^s[ií]$/i.test(normTxt(p.status||''))},warnings);
+  if(p.priority&&!normPriority(p.priority)&&!/^(sin prioridad|ninguna|vacio|—|-)?$/.test(normTxt(p.priority)))warnings.push(`No he entendido la prioridad «${p.priority}»: se ha dejado vacía.`);
+  newAction({date:d||todayIso(),time,mode,center:c?c.name:'',student:p.student||'',subject:p.subject||'',priority:normPriority(p.priority),details,action:p.action||'',finalizada:/finaliz|cerrad|^s[ií]$/i.test(normTxt(p.status||''))},warnings);
  });
  document.getElementById('modalSave').textContent='Continuar';
 }

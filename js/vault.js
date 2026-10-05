@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.1.1 (04/10/2026)';
-const APP_FILES_VERSION='4.1.1';
+const APP_VERSION='4.2 (05/10/2026)';
+const APP_FILES_VERSION='4.2';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -238,7 +238,7 @@ function createScreen(error=''){
 }
 
 /* ---------- Arranque de la aplicación ---------- */
-const CORE_FILES=["00-datos.js", "10-base-calendario.js", "20-centros-peticiones.js", "30-visitas.js", "40-seguimiento-otros-datos.js", "50-datos-importar-csv.js", "60-cursos-inicio-actuaciones.js", "65-pegar-actuacion.js", "70-centros.js", "75-dotacion-ficha.js", "80-centro-detalle-exportar.js", "85-importar-notion.js", "90-consultas.js", "92-copias-carpeta.js", "99-arranque.js"];
+const CORE_FILES=["00-datos.js", "10-base-calendario.js", "20-centros-peticiones.js", "30-visitas.js", "40-seguimiento-otros-datos.js", "50-datos-importar-csv.js", "60-cursos-inicio-actuaciones.js", "65-pegar-actuacion.js", "67-imagenes.js", "70-centros.js", "75-dotacion-ficha.js", "80-centro-detalle-exportar.js", "85-importar-notion.js", "90-consultas.js", "92-copias-carpeta.js", "95-contactos.js", "99-arranque.js"];
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar '+src));document.body.appendChild(s)})}
 async function boot(data){
  S.dir=(await idb.get('dir'))||null;
@@ -486,11 +486,12 @@ async function linkDir(){
  if(!CAN_DIR){await dialog('No disponible','<p>Este navegador no permite vincular carpetas. Usa Chrome o Edge en el ordenador.</p>',[{label:'Entendido',cls:'primary'}]);return}
  let h;try{h=await window.showDirectoryPicker({id:'registro-carpeta',mode:'readwrite'})}catch(e){if(e.name!=='AbortError')alert(e.message);return}
  S.dir=h;await idb.set('dir',h);
- try{await h.getDirectoryHandle('Documentos',{create:true});await h.getDirectoryHandle('Copias',{create:true})}catch(e){console.warn(e)}
+ try{await h.getDirectoryHandle('Documentos',{create:true});await h.getDirectoryHandle('Copias',{create:true});await h.getDirectoryHandle('Adjuntos',{create:true})}catch(e){console.warn(e)}
  const t=(await idb.get('cache'))?.text;if(t)await folderBackup(t,true);
- refreshDatos();
+ dirReadyHook();refreshDatos();
 }
-async function allowDir(){if(await dirPerm(true)){const t=(await idb.get('cache'))?.text;if(t)await folderBackup(t,true)}refreshDatos()}
+async function allowDir(){if(await dirPerm(true)){const t=(await idb.get('cache'))?.text;if(t)await folderBackup(t,true);dirReadyHook()}refreshDatos()}
+function dirReadyHook(){try{window.__coreDirReady&&window.__coreDirReady()}catch(e){console.warn(e)}}
 async function unlinkDir(){
  const ok=await dialog('Desvincular la carpeta','<p>La aplicación dejará de escribir copias y de leer documentos en esa carpeta. No se borra nada de la carpeta.</p>',[{label:'Cancelar',value:false},{label:'Desvincular',cls:'primary',value:true}]);
  if(!ok)return;S.dir=null;await idb.del('dir');refreshDatos();
@@ -558,11 +559,35 @@ async function docSave(file){
  return name;
 }
 
+/* Adjuntos (v4.2): imágenes de las actuaciones. Cada archivo llega ya cifrado desde la aplicación
+   (clave propia guardada dentro del registro) y vive en Registro/Adjuntos. */
+async function attDir(create,ask){
+ if(!S.dir||!(await dirPerm(!!ask)))return null;
+ try{return await S.dir.getDirectoryHandle('Adjuntos',{create:!!create})}catch(e){if(e.name!=='NotFoundError')console.warn(e);return null}
+}
+async function attReady(){return !!(S.dir&&await dirPerm(false))}
+async function attWrite(name,bytes){
+ const d=await attDir(true);if(!d)throw new Error('La carpeta de BoxAbalar no está disponible.');
+ const fh=await d.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(bytes);await w.close();
+ const f=await fh.getFile();if(f.size!==bytes.byteLength)throw new Error('El archivo no se escribió completo.');
+ return true;
+}
+async function attRead(name,ask){
+ const d=await attDir(false,ask);if(!d)return null;
+ try{const fh=await d.getFileHandle(name);return new Uint8Array(await (await fh.getFile()).arrayBuffer())}catch(e){if(e.name!=='NotFoundError')console.warn(e);return null}
+}
+async function attDelete(name){const d=await attDir(false);if(!d)return false;try{await d.removeEntry(name);return true}catch(e){return false}}
+async function attList(){
+ const d=await attDir(false);if(!d)return null;
+ const out=[];try{for await(const [n,h] of d.entries())if(h.kind==='file')out.push(n)}catch(e){console.warn(e);return null}
+ return out;
+}
+
 /* ---------- API para la aplicación ---------- */
 window.__vaultPersist=persist;
 window.__vault={
  persist,deliver,exportToCloud,setUi,ui:(k,def)=>k in S.ui?S.ui[k]:def,linkFile,lock,changePassword,setRemember,setAutolock,downloadEncrypted,
- backups:backupsMeta,downloadBackup,restoreBackup,backupNow,dirStatus,linkDir,allowDir,unlinkDir,docOpen,docSave,
+ backups:backupsMeta,downloadBackup,restoreBackup,backupNow,dirStatus,linkDir,allowDir,unlinkDir,docOpen,docSave,attReady,attWrite,attRead,attDelete,attList,canDir:CAN_DIR,
  saveNow:async()=>{S.dirty=true;await flushNow();window.__coreRefreshDatos&&window.__coreRefreshDatos()},
  info:()=>({name:S.name,linked:!!S.handle,canLink:CAN_FS,lastSaved:S.lastSaved,device:S.lastDevice,thisDevice:DEVICE,rev:S.rev,pending:S.pending,remembered:S.remembered,autolock:S.autolock,ios:IS_IOS,version:APP_VERSION})
 };

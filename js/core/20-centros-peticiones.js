@@ -1,6 +1,6 @@
 let currentFilteredActions=[];
 function finishAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;x.updatedAt=new Date().toISOString();save();filterActions();}
-function deleteAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==id);save();filterActions();}
+function deleteAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==id);save();filterActions();imgAfterSave(x.images||[]);}
 function finishActionFromHome(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;x.updatedAt=new Date().toISOString();save();dashboard();}
 function homeBtn(){return `<button class="btn" onclick="nav('dashboard')">← Volver a Inicio</button>`}
 let activeCenterTab='datos';
@@ -78,6 +78,6 @@ function centerFollowupPanel(c){
  const documents=`<div class="tablewrap"><table class="table"><thead><tr><th>Centro</th>${fields.map(f=>`<th>${esc(f)}</th>`).join('')}</tr></thead><tbody><tr><td><b>${esc(c.name)}</b></td>${fields.map(f=>{let na=followNA(c.id,f),hasDate=!!iso(row[f]),state=na?'na':(hasDate?'done':'pending');return `<td class="follow-cell ${state}"><input type="date" class="input" style="min-width:120px" value="${esc(iso(row[f]))}" data-cid="${esc(c.id)}" data-field="${encodeURIComponent(f)}" onchange="setFollowFromInput(this)" oninput="setFollowFromInput(this)" ${na?'disabled':''}><label class="na-toggle"><input type="checkbox" data-cid="${esc(c.id)}" data-field="${encodeURIComponent(f)}" onchange="setFollowNAFromInput(this)" ${na?'checked':''}> N/A</label></td>`}).join('')}</tr></tbody></table></div>`;
  return `<div style="margin-bottom:12px"><button class="btn small" onclick="nav('seguimiento')">Ver seguimiento general</button></div><h3>Documentos</h3>${documents}`;
 }
-function deleteActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==aid);save();centerDetail(cid)}
+function deleteActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==aid);save();centerDetail(cid);imgAfterSave(x.images||[])}
 function finishActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(x){x.finalizada=true;x.updatedAt=new Date().toISOString();save();centerDetail(cid)}}
 function newActionFor(center){newAction();setTimeout(()=>{let e=document.getElementById('fcenter');if(e)e.value=center},0)}
