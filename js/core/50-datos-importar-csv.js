@@ -1,13 +1,13 @@
 /* ================= Añadidos de la versión web cifrada ================= */
 function ensureShape(){
  if(!db||typeof db!=='object')db=JSON.parse(JSON.stringify(SEED));
- for(const k of ['centers','actions','visits','petitionsRequirements','consultas','contacts','contactTags'])if(!Array.isArray(db[k]))db[k]=[];
+ for(const k of ['centers','actions','visits','petitionsRequirements','consultas','contacts','contactTags','reuniones','bibliografia'])if(!Array.isArray(db[k]))db[k]=[];
  if(!Array.isArray(db.followupFields))db.followupFields=[...SEED.followupFields];
  for(const k of ['followup','followupNA'])if(!db[k]||typeof db[k]!=='object')db[k]={};
  if(!db.specials||typeof db.specials!=='object')db.specials=JSON.parse(JSON.stringify(SEED.specials));
  if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
  db.centers.forEach(c=>{if(!db.followup[c.id])db.followup[c.id]={}});
- migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();migrateV42();
+ migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();migrateV42();migrateV43();
  imgAutoTransfer();
 }
 window.__coreGetDb=()=>db;
@@ -60,6 +60,8 @@ function datos(){
    <button class="btn primary" onclick="importFichasStart('')">Importar fichas oficiales…</button>
    <p style="margin-top:16px"><b>Consultas y procedimientos.</b> Elige el archivo <i>consultas_iniciales_v4.json</i> que acompaña a esta versión. Solo añade las fichas que aún no tengas; no modifica las existentes.</p>
    <button class="btn primary" onclick="importConsultasStart()">Importar consultas…</button>
+   <p style="margin-top:16px"><b>Notas de reuniones y bibliografía.</b> Elige el archivo <i>notas_reuniones_y_bibliografia_v4_3.json</i> que acompaña a la versión 4.3. Solo añade las notas y las fichas que aún no tengas; no modifica las existentes.</p>
+   <button class="btn primary" onclick="importPaqueteStart()">Importar notas de reuniones y bibliografía…</button>
    <p style="margin-top:16px"><b>Un CSV suelto.</b> Para tablas sencillas: podrás indicar qué columna corresponde a cada campo.</p>
    <button class="btn" onclick="importNotionStart()">Importar CSV…</button>
    <p style="margin-top:16px"><b>Desde la versión anterior.</b> Restaura una copia JSON guardada con la versión 30. Sustituye todos los datos actuales.</p>
@@ -69,7 +71,7 @@ function datos(){
    <input id="notionFolder" type="file" webkitdirectory multiple hidden onchange="importNotionFolderFiles(event)">
   </div></div>
   <div class="panel"><div class="panelhead"><h2>Exportar</h2></div><div class="panelbody">
-   <div class="toolbar"><button class="btn" onclick="exportCSV('actions')">Actuaciones (CSV)</button><button class="btn" onclick="exportCSV('followup')">Seguimiento (CSV)</button><button class="btn" onclick="exportConsultasJSON()">Consultas (JSON)</button><button class="btn" onclick="exportContactsCSV()">Contactos (CSV)</button></div>
+   <div class="toolbar"><button class="btn" onclick="exportCSV('actions')">Actuaciones (CSV)</button><button class="btn" onclick="exportCSV('followup')">Seguimiento (CSV)</button><button class="btn" onclick="exportConsultasJSON()">Consultas (JSON)</button><button class="btn" onclick="exportContactsCSV()">Contactos (CSV)</button><button class="btn" onclick="exportBiblioCSV()">Bibliografía (CSV)</button><button class="btn" onclick="exportPaqueteJSON()">Notas de reuniones y bibliografía (JSON)</button></div>
    <p class="muted" style="font-size:12px">Los CSV y la copia JSON salen <b>sin cifrar</b>. Guárdalos solo en ubicaciones seguras y bórralos cuando no los necesites.</p>
    <button class="btn" onclick="exportJSON()">Copia completa sin cifrar (JSON)</button>
   </div></div>
@@ -81,6 +83,8 @@ function datos(){
    <div class="card"><div class="metric">${db.visits.length}</div><div class="label">Visitas</div></div>
    <div class="card"><div class="metric">${(db.centerNotes||[]).length}</div><div class="label">Notas de centros</div></div>
    <div class="card"><div class="metric">${db.consultas.length}</div><div class="label">Consultas y procedimientos</div></div>
+   <div class="card"><div class="metric">${db.reuniones.length}</div><div class="label">Notas de reuniones</div></div>
+   <div class="card"><div class="metric">${db.bibliografia.length}</div><div class="label">Fichas de bibliografía</div></div>
    <div class="card"><div class="metric">${db.contacts.length}</div><div class="label">Contactos</div></div>
    <div class="card"><div class="metric">${specialsTotal}</div><div class="label">Registros en otros datos</div></div>
   </div>

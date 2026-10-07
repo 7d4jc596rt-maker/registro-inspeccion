@@ -1,5 +1,5 @@
 /* =====================================================================
-   Versión 4.2 · Imágenes de las actuaciones
+   Versión 4.2 · Imágenes de las actuaciones (desde la 4.3, también de las notas de reuniones)
    - Al añadirlas se reducen a IMG_MAX píxeles de lado mayor (JPEG) y se
      les quita la información de la cámara (fecha, ubicación…).
    - Dentro del archivo cifrado queda siempre una miniatura.
@@ -14,6 +14,10 @@
 const IMG_MAX=1600, IMG_QUALITY=0.82, IMG_THUMB=320, IMG_THUMB_QUALITY=0.6;
 const IMG_MAGIC=[82,73,65,49]; /* «RIA1» */
 let formImages=[];
+/* Versión 4.3: las notas de reuniones también llevan imágenes. Sus archivos usan la extensión «.rimg» para que un
+   equipo que siga con la versión 4.2 en caché no los tome por archivos sin usar de las actuaciones. */
+let imgFormExt='bin';
+const IMG_FILE_RE=/\.(bin|rimg)$/i;
 let imgBusy=null, imgAdding=0;
 let imgKeyCache={raw:'',key:null};
 let imgViewState=null;
@@ -32,7 +36,8 @@ function imgUnb64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
 function imgSafe(u){return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(u||''))?u:''}
 function imgDataBytes(dataUrl){return imgUnb64(String(dataUrl).split(',')[1]||'')}
 function imgSizeTxt(n){return n>=1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB'}
-function imgAll(){const out=[];db.actions.forEach(a=>(a.images||[]).forEach(m=>out.push(m)));return out}
+function imgOwners(){return [...db.actions,...(Array.isArray(db.reuniones)?db.reuniones:[])]}
+function imgAll(){const out=[];imgOwners().forEach(a=>(Array.isArray(a.images)?a.images:[]).forEach(m=>out.push(m)));return out}
 function imgCanFolder(){return !!(window.__vault&&window.__vault.canDir)}
 
 /* ---------- Cifrado de los archivos de la carpeta ---------- */
@@ -82,7 +87,8 @@ async function imgReduce(file){
 }
 
 /* ---------- Formulario de la actuación ---------- */
-function imgFormBlock(){
+function imgFormBlock(ext){
+ imgFormExt=ext==='rimg'?'rimg':'bin';
  return `<div id="fImages" class="img-grid"></div>
  <div class="toolbar img-tools"><button type="button" class="btn" onclick="imgPick()">Añadir imágenes…</button><span id="fImgMsg" class="muted" role="status"></span></div>
  <p class="muted img-help">Se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor. En el ordenador también puedes pegar una captura con Ctrl+V. Los cambios se aplican al pulsar «Guardar».</p>`;
@@ -108,7 +114,7 @@ async function imgAddFiles(files){
    imgMsg(`Preparando ${done+1} de ${files.length}…`);
    try{
     const r=await imgReduce(f),id=uid();
-    formImages.push({id,file:`${todayIso()}-${id}.bin`,name:String(f.name||'imagen').slice(0,120),w:r.w,h:r.h,size:r.size,thumb:r.thumb,data:r.data,addedAt:nowIso()});
+    formImages.push({id,file:`${todayIso()}-${id}.${imgFormExt}`,name:String(f.name||'imagen').slice(0,120),w:r.w,h:r.h,size:r.size,thumb:r.thumb,data:r.data,addedAt:nowIso()});
     renderFormImages();
    }catch(e){console.warn(e);bad.push(f.name||'imagen')}
    done++;
@@ -160,12 +166,12 @@ async function imgAfterSave(removed){
 /* ---------- Visor ---------- */
 function imgFind(id,fromForm){
  if(fromForm&&document.getElementById('fImages'))return {list:formImages,i:formImages.findIndex(m=>m.id===id)};
- for(const a of db.actions){const i=(a.images||[]).findIndex(m=>m.id===id);if(i>=0)return {list:a.images,i}}
+ for(const a of imgOwners()){const i=(Array.isArray(a.images)?a.images:[]).findIndex(m=>m.id===id);if(i>=0)return {list:a.images,i}}
  return {list:[],i:-1};
 }
 function imgViewEnsure(){
  if(document.getElementById('imgView'))return;
- const d=document.createElement('div');d.id='imgView';d.className='imgview';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Imagen de la actuación');
+ const d=document.createElement('div');d.id='imgView';d.className='imgview';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Imagen');
  d.innerHTML=`<div class="imgview-bar"><span id="imgViewInfo"></span><span class="imgview-actions"><button type="button" class="btn small" id="imgViewPrev" aria-label="Imagen anterior">‹</button><button type="button" class="btn small" id="imgViewNext" aria-label="Imagen siguiente">›</button><button type="button" class="btn small" id="imgViewDl">Descargar</button><button type="button" class="btn small primary" id="imgViewClose">Cerrar</button></span></div><div class="imgview-body" id="imgViewBody"><img id="imgViewImg" alt=""></div><div class="imgview-note" id="imgViewNote" hidden></div>`;
  document.body.appendChild(d);
  document.getElementById('imgViewClose').onclick=imgViewClose;
@@ -239,16 +245,16 @@ async function imgPanelHTML(){
  let extra='',nOrph=0;
  if(names){
   const refs=new Set(all.map(m=>m.file).filter(Boolean)),have=new Set(names);
-  nOrph=names.filter(n=>/\.bin$/i.test(n)&&!refs.has(n)).length;
+  nOrph=names.filter(n=>IMG_FILE_RE.test(n)&&!refs.has(n)).length;
   const missing=all.filter(m=>!m.data&&m.file&&!have.has(m.file));
-  extra=`<div><dt>Archivos en «Adjuntos»</dt><dd>${names.length}${nOrph?` · ${nOrph} que ya no usa ninguna actuación`:''}</dd></div>`+
+  extra=`<div><dt>Archivos en «Adjuntos»</dt><dd>${names.length}${nOrph?` · ${nOrph} que ya no usa ninguna actuación ni nota`:''}</dd></div>`+
    (missing.length?`<div><dt>Imágenes sin su archivo</dt><dd><b>${missing.length}</b>: su archivo no está en la carpeta. Puede que BoxAbalar aún no haya terminado de sincronizar.</dd></div>`:'');
  }
  const where=!imgCanFolder()
   ?'En este equipo las imágenes nuevas viajan dentro del archivo cifrado. Se trasladarán a la carpeta «Adjuntos» de BoxAbalar la próxima vez que abras el registro en un ordenador con la carpeta vinculada.'
   :ready?'Las imágenes completas se guardan cifradas en la carpeta «Adjuntos» de BoxAbalar. Dentro del archivo del registro solo queda una miniatura de cada una.'
   :'Para sacar las imágenes del archivo del registro, vincula la carpeta de BoxAbalar (o dale permiso) en el bloque de arriba. Mientras tanto se guardan dentro del archivo cifrado.';
- return `<h3>Imágenes de las actuaciones</h3><p class="muted" style="font-size:12px">${where}</p>
+ return `<h3>Imágenes de las actuaciones y de las notas de reuniones</h3><p class="muted" style="font-size:12px">${where}</p>
   <dl class="center-data-list"><div><dt>Imágenes</dt><dd>${all.length}</dd></div>
   <div><dt>Dentro del archivo</dt><dd>${emb.length?`<b>${emb.length}</b> (${imgSizeTxt(embBytes)}), pendientes de trasladar`:'Ninguna'}</dd></div>${extra}</dl>
   ${(emb.length&&ready)||nOrph?`<div class="toolbar">${emb.length&&ready?`<button class="btn" onclick="imgTransferNow()">Trasladar ahora a la carpeta</button>`:''}${nOrph?`<button class="btn danger" onclick="imgCleanOrphans()">Eliminar ${nOrph===1?'el archivo':`los ${nOrph} archivos`} sin usar…</button>`:''}</div>`:''}`;
@@ -260,9 +266,9 @@ async function imgTransferNow(){
 }
 async function imgCleanOrphans(){
  const names=await window.__vault?.attList?.();if(!names)return;
- const refs=new Set(imgAll().map(m=>m.file).filter(Boolean)),orphans=names.filter(n=>/\.bin$/i.test(n)&&!refs.has(n));
+ const refs=new Set(imgAll().map(m=>m.file).filter(Boolean)),orphans=names.filter(n=>IMG_FILE_RE.test(n)&&!refs.has(n));
  if(!orphans.length)return;
- if(!confirm(`Se eliminarán de la carpeta «Adjuntos» ${orphans.length} ${orphans.length===1?'archivo que no usa':'archivos que no usa'} ninguna actuación de este registro.\n\nHazlo solo si este equipo tiene la versión más reciente del registro. ¿Continuar?`))return;
+ if(!confirm(`Se eliminarán de la carpeta «Adjuntos» ${orphans.length} ${orphans.length===1?'archivo que no usa':'archivos que no usa'} ninguna actuación ni nota de reunión de este registro.\n\nHazlo solo si este equipo tiene la versión más reciente del registro. ¿Continuar?`))return;
  for(const n of orphans)await window.__vault.attDelete(n);
  window.__coreRefreshDatos&&window.__coreRefreshDatos();
 }

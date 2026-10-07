@@ -352,3 +352,39 @@ span.ct-toggle{cursor:default}
  .ct-node{min-height:40px}
 }
 @media(max-width:600px){.ct-newtag{grid-template-columns:1fr}.ct-list{grid-template-columns:1fr}.img-thumb{width:96px;height:96px}}
+
+/* ===================== Versión 4.3 ===================== */
+/* Alumnos por grupo frente a la ratio máxima de la etapa */
+.dot-table tr.grp-ratio td.rt-ok{background:#c6efce;color:#006100}
+.dot-table tr.grp-ratio td.rt-warn{background:#ffeb9c;color:#7a5a00}
+.dot-table tr.grp-ratio td.rt-bad{background:#f8cbad;color:#c00000}
+.rt-chip{display:inline-block;border-radius:4px;padding:0 5px;font-weight:700}
+.rt-chip.rt-ok{background:#c6efce;color:#006100}
+.rt-chip.rt-warn{background:#ffeb9c;color:#7a5a00}
+.rt-chip.rt-bad{background:#f8cbad;color:#c00000}
+/* Seguimiento: centros que no se siguen */
+.follow-skip{margin-top:16px}
+.follow-skip-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 18px}
+.follow-skip-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+/* Notas de reuniones y bibliografía */
+.r-course{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:#fafbfd}
+.r-course>summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none}
+.r-course>summary::-webkit-details-marker{display:none}
+.r-course>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.r-course-title{font-size:14px;font-weight:700;color:var(--accent);margin-right:auto}
+.r-course>summary .special-arrow{transition:transform .15s ease}
+.r-course[open]>summary .special-arrow{transform:rotate(90deg)}
+.r-course[open]>summary{border-bottom:1px solid var(--line)}
+.r-course>.qlist{padding:12px}
+.r-date{font-size:12.5px;margin-left:auto;white-space:nowrap}
+.r-nav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
+.r-nav .btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nbody hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+.nbody .li-cont{margin:6px 0 2px}
+.nbody li{margin:4px 0}
+.nbody p,.nbody li{overflow-wrap:anywhere}
+.b-meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.b-stars{color:#d49a00;font-size:14px;letter-spacing:1px;white-space:nowrap}
+.b-stars .off{color:#d9dee6}
+.qdetail .img-grid{margin-top:6px}
+@media(max-width:600px){.r-date{margin-left:0}.r-nav .btn{flex:1 1 100%}}

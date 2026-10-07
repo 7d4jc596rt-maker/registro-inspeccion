@@ -11,7 +11,7 @@ async function fillBackupPanel(){
  if(!document.getElementById('backupPanel'))return;
  let dirHTML;
  if(!dir.can)dirHTML=`<p class="muted">Este navegador no permite vincular carpetas (iPhone, Safari). En el iPhone los documentos se abren eligiéndolos en la app Archivos, las copias se guardan solo dentro de este equipo y las imágenes nuevas viajan dentro del archivo cifrado.</p>`;
- else if(!dir.linked)dirHTML=`<p>Vincula la carpeta <b>Registro</b> de BoxAbalar (la que contiene el archivo de datos). La aplicación creará dentro tres subcarpetas: <b>Copias</b> (una copia cifrada por día, se conservan las últimas 14), <b>Documentos</b> (los archivos de las fichas de consultas) y <b>Adjuntos</b> (las imágenes de las actuaciones, cifradas).</p>
+ else if(!dir.linked)dirHTML=`<p>Vincula la carpeta <b>Registro</b> de BoxAbalar (la que contiene el archivo de datos). La aplicación creará dentro tres subcarpetas: <b>Copias</b> (una copia cifrada por día, se conservan las últimas 14), <b>Documentos</b> (los archivos de las fichas de consultas, de la bibliografía y de las notas de reuniones) y <b>Adjuntos</b> (las imágenes de las actuaciones y de las notas de reuniones, cifradas).</p>
   <div class="toolbar"><button class="btn primary" onclick="__vault.linkDir()">Vincular carpeta de BoxAbalar…</button></div>`;
  else dirHTML=`<dl class="center-data-list"><div><dt>Carpeta vinculada</dt><dd>${esc(dir.name)}</dd></div>
    <div><dt>Permiso</dt><dd>${dir.ready?'Concedido':'<b>Falta permiso</b> para escribir en la carpeta'}</dd></div>

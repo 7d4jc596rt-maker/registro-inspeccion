@@ -3,7 +3,7 @@ function centerDetail(id,tab=activeCenterTab){
  curCenterId=id;
  if(!['datos','caracteristicas','ficha','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))tab='datos';
  const allActs=db.actions.filter(a=>a.center===c.name);
- const pending=allActs.filter(a=>!a.finalizada).sort((a,b)=>prioRank(a)-prioRank(b)||((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||'')));
+ const pending=allActs.filter(a=>!a.finalizada).sort(actionOrder);
   const centerVisits=db.visits.filter(v=>v.center===c.name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const centerRequests=db.petitionsRequirements.filter(x=>x.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const notes=db.centerNotes.filter(n=>n.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -34,6 +34,6 @@ function csvBlob(rows){return new Blob(['\ufeff'+rows.map(r=>r.map(v=>'"'+String
 function exportFilteredActionsCSV(){download(csvBlob(actionsCsvRows(currentFilteredActions)),'registro-actuaciones-filtrado.csv')}
 function exportCSV(kind){
  if(kind==='actions')return download(csvBlob(actionsCsvRows(db.actions)),'registro-actuaciones.csv');
- const rows=[['Centro',...db.followupFields.map(f=>'Documentos · '+f)],...db.centers.map(c=>[c.name,...db.followupFields.map(f=>followNA(c.id,f)?'N/A':(db.followup[c.id]?.[f]||''))])];
+ const rows=[['Centro',...db.followupFields.map(f=>'Documentos · '+f)],...followCenters().map(c=>[c.name,...db.followupFields.map(f=>followNA(c.id,f)?'N/A':(db.followup[c.id]?.[f]||''))])];
  download(csvBlob(rows),'seguimiento.csv');
 }

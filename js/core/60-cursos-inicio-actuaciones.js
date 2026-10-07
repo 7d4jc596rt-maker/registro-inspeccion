@@ -5,6 +5,9 @@ const ACTION_MODES=['Correo electrónico','Teléfono','Presencial','REXEL','Otro
 const PRIORITIES=[['alta','Alta'],['media','Media'],['baja','Baja']];
 const PRIO_LABEL={alta:'Alta',media:'Media',baja:'Baja'};
 function prioRank(a){return ({alta:0,media:1,baja:2})[a&&a.priority]??3}
+/* Versión 4.3: orden común de Inicio, de la pantalla «Actuaciones» y de las pendientes de cada centro:
+   primero por prioridad (alta, media, baja, sin prioridad) y después de la más antigua a la más reciente. */
+function actionOrder(a,b){return prioRank(a)-prioRank(b)||((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||''))}
 function normPriority(v){const t=String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();if(/^(alta|alto|urgente|high|1)$/.test(t))return 'alta';if(/^(media|medio|normal|medium|2)$/.test(t))return 'media';if(/^(baja|bajo|low|3)$/.test(t))return 'baja';return ''}
 function prioPill(a){const p=a&&a.priority;return PRIO_LABEL[p]?`<span class="prio prio-${p}" title="Prioridad ${PRIO_LABEL[p].toLowerCase()}">${PRIO_LABEL[p]}</span>`:''}
 function prioClass(a){return PRIO_LABEL[a&&a.priority]?' prio-b-'+a.priority:''}
@@ -65,6 +68,29 @@ function migrateV33(){
 /* Versión 3.4: se retira el seguimiento de «Faltas profesorado» y se eliminan definitivamente sus fechas. */
 function migrateV34(){if('teacherAbsenceDates' in db)delete db.teacherAbsenceDates}
 
+/* Versión 4.3: Seguimiento documental.
+   - «Horarios PT/AL/ATE» pasa a llamarse «Documentación PAC» y conserva sus fechas y marcas N/A.
+   - Se retira «Listado NEAE» y se eliminan definitivamente sus fechas y marcas N/A.
+   - Se marcan como «sin seguimiento» los centros que no hay que seguir: no salen en la pantalla «Seguimiento». */
+const FOLLOW_SKIP_V43=[['','CPR FP Apetamcor DAC-AT'],['15033150','CPREX Semente Compostela'],['15033046','CPREX Montesosori Compostela'],['15032315','ESMU de Santiago de Compostela'],['15027575','EMUSPR Estudio'],['15015421','CPR Plurilingüe Juventud'],['15033186','CEMU Profesional Estudio'],['15001151','EMUSPR de Vedra'],['15013254','CFEA de Sergude']];
+function migrateV43(){
+ for(const k of ['reuniones','bibliografia'])if(!Array.isArray(db[k]))db[k]=[];
+ if(db.migratedV43)return;
+ const OLD='Horarios PT/AL/ATE',NEW='Documentación PAC',GONE='Listado NEAE';
+ const f=Array.isArray(db.followupFields)?db.followupFields:[];
+ const i=f.indexOf(OLD);
+ if(i>=0){if(f.includes(NEW))f.splice(i,1);else f[i]=NEW}
+ db.followupFields=f.filter(x=>x!==GONE);
+ for(const store of [db.followup,db.followupNA])for(const row of Object.values(store||{})){
+  if(!row||typeof row!=='object')continue;
+  if(OLD in row){if(!row[NEW])row[NEW]=row[OLD];delete row[OLD]}
+  delete row[GONE];
+ }
+ const key=v=>normTxt(v).replace(/[^a-z0-9]/g,'');
+ db.centers.forEach(c=>{if(FOLLOW_SKIP_V43.some(([code,name])=>(code&&String(c.code??'').trim()===code)||key(c.name)===key(name)))c.sinSeguimiento=true});
+ db.migratedV43=true;
+}
+
 /* ---------- Inicio: bloques desplegables ---------- */
 function homeBlock(key,title,headExtra,body){
  const open=window.__vault?.ui?window.__vault.ui('home.'+key,true)!==false:true;
@@ -85,7 +111,7 @@ function calendarBlock(){
 }
 function actionMeta(a){const n=(a.updates||[]).length;return (n?` · ${n} ${n===1?'actualización':'actualizaciones'}`:'')+imgCountMeta(a)}
 function dashboard(){
- const pendingActions=db.actions.filter(x=>!x.finalizada).sort((a,b)=>prioRank(a)-prioRank(b)||((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||'')));
+ const pendingActions=db.actions.filter(x=>!x.finalizada).sort(actionOrder);
  const pending=pendingActions.length;
  const today=todayIso();
  const next=db.visits.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
@@ -109,7 +135,7 @@ function dashboard(){
 
 /* ---------- Registro de actuaciones ---------- */
 function registro(){
- document.getElementById('main').innerHTML=layout('Registro de actuaciones','Entrada cronológica de consultas, comunicaciones, incidencias y actuaciones',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0" selected>Pendientes</option><option value="1">Finalizadas</option></select><select id="rprio" class="select" aria-label="Prioridad" onchange="filterActions()"><option value="">Todas las prioridades</option>${PRIORITIES.map(([v,l])=>`<option value="${v}">Prioridad ${l.toLowerCase()}</option>`).join('')}<option value="__none">Sin prioridad</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Prioridad</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
+ document.getElementById('main').innerHTML=layout('Registro de actuaciones','Consultas, comunicaciones, incidencias y actuaciones, por prioridad y antigüedad',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0" selected>Pendientes</option><option value="1">Finalizadas</option></select><select id="rprio" class="select" aria-label="Prioridad" onchange="filterActions()"><option value="">Todas las prioridades</option>${PRIORITIES.map(([v,l])=>`<option value="${v}">Prioridad ${l.toLowerCase()}</option>`).join('')}<option value="__none">Sin prioridad</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Prioridad</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
  filterActions();
 }
 function registroForCenter(name,course='*'){nav('registro');const i=document.getElementById('rsearch'),k=document.getElementById('rcourse'),st=document.getElementById('rstatus');if(st)st.value='';if(k)k.value=[...k.options].some(o=>o.value===course)?course:'*';if(i){i.value=name;filterActions()}}
@@ -119,9 +145,9 @@ function filterActions(){
  const q=normTxt(document.getElementById('rsearch')?.value||''),t=document.getElementById('rtype')?.value||'',s=document.getElementById('rstatus')?.value||'',k=document.getElementById('rcourse')?.value||'*',pr=document.getElementById('rprio')?.value||'';
  const a=db.actions.filter(x=>!q||normTxt([x.center,x.student,x.subject,x.details,x.action,...(x.updates||[]).map(u=>u.text)].join(' ')).includes(q))
   .filter(x=>!t||(t==='__none'?!x.mode:x.mode===t)).filter(x=>s===''||String(x.finalizada?1:0)===s).filter(x=>!pr||(pr==='__none'?!PRIO_LABEL[x.priority]:x.priority===pr)).filter(x=>inCourse(x.date,k))
-  .sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+  .sort(actionOrder);
  currentFilteredActions=a;
- const c=document.getElementById('rcount');if(c){const hid=(s==='0'&&k!=='*')?db.actions.filter(x=>!x.finalizada&&!inCourse(x.date,k)).length:0;c.innerHTML=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+esc(k)}`+(hid?` · <button type="button" class="linklike" onclick="showAllCoursesPending()">Hay ${hid} pendiente${hid===1?'':'s'} de otros cursos: verlas</button>`:'');}
+ const c=document.getElementById('rcount');if(c){const hid=(s==='0'&&k!=='*')?db.actions.filter(x=>!x.finalizada&&!inCourse(x.date,k)).length:0;c.innerHTML=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+esc(k)}${a.length>1?' · ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente':''}`+(hid?` · <button type="button" class="linklike" onclick="showAllCoursesPending()">Hay ${hid} pendiente${hid===1?'':'s'} de otros cursos: verlas</button>`:'');}
  document.getElementById('actionRows').innerHTML=a.map(x=>{
   const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
   return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${(x.images||[]).length?`<div class="muted img-count">${(x.images||[]).length} ${(x.images||[]).length===1?'imagen':'imágenes'}</div>`:''}</td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';

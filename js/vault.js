@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.2 (05/10/2026)';
-const APP_FILES_VERSION='4.2';
+const APP_VERSION='4.3 (07/10/2026)';
+const APP_FILES_VERSION='4.3';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -238,7 +238,7 @@ function createScreen(error=''){
 }
 
 /* ---------- Arranque de la aplicación ---------- */
-const CORE_FILES=["00-datos.js", "10-base-calendario.js", "20-centros-peticiones.js", "30-visitas.js", "40-seguimiento-otros-datos.js", "50-datos-importar-csv.js", "60-cursos-inicio-actuaciones.js", "65-pegar-actuacion.js", "67-imagenes.js", "70-centros.js", "75-dotacion-ficha.js", "80-centro-detalle-exportar.js", "85-importar-notion.js", "90-consultas.js", "92-copias-carpeta.js", "95-contactos.js", "99-arranque.js"];
+const CORE_FILES=["00-datos.js", "10-base-calendario.js", "20-centros-peticiones.js", "30-visitas.js", "40-seguimiento-otros-datos.js", "50-datos-importar-csv.js", "60-cursos-inicio-actuaciones.js", "65-pegar-actuacion.js", "67-imagenes.js", "70-centros.js", "75-dotacion-ficha.js", "80-centro-detalle-exportar.js", "85-importar-notion.js", "90-consultas.js", "92-copias-carpeta.js", "95-contactos.js", "96-reuniones.js", "97-bibliografia.js", "99-arranque.js"];
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar '+src));document.body.appendChild(s)})}
 async function boot(data){
  S.dir=(await idb.get('dir'))||null;
@@ -535,23 +535,31 @@ function pickDoc(name){
   inp.click();
  });
 }
-async function docOpen(name){
- name=String(name||'').trim();
+/* Versión 4.3: los documentos de la bibliografía y de las notas de reuniones van en subcarpetas de «Documentos»
+   (sin tildes en el nombre, para que no haya diferencias entre Mac, Windows y BoxAbalar). */
+const DOC_SUBS=['Bibliografia','Reuniones'];
+const docSub=s=>DOC_SUBS.includes(s)?s:'';
+async function docOpen(name,sub){
+ name=String(name||'').trim();sub=docSub(sub);
  if(!name)return {ok:false,msg:'El documento no tiene nombre.'};
  if(S.dir){
   try{
    if(await dirPerm(true)){
-    const d=await S.dir.getDirectoryHandle('Documentos');
-    const fh=await d.getFileHandle(name);
+    const root=await S.dir.getDirectoryHandle('Documentos');
+    let fh=null;
+    if(sub){try{fh=await (await root.getDirectoryHandle(sub)).getFileHandle(name)}catch(e){if(e.name!=='NotFoundError'&&e.name!=='TypeMismatchError')throw e}}
+    if(!fh)fh=await root.getFileHandle(name);
     openBlobFile(await fh.getFile());return {ok:true};
    }
   }catch(e){if(e.name!=='NotFoundError'&&e.name!=='TypeMismatchError')console.warn(e)}
  }
  return pickDoc(name);
 }
-async function docSave(file){
+async function docSave(file,sub){
  if(!S.dir||!(await dirPerm(true)))throw new Error('Primero vincula la carpeta de BoxAbalar en «Datos y seguridad».');
- const d=await S.dir.getDirectoryHandle('Documentos',{create:true});
+ sub=docSub(sub);
+ let d=await S.dir.getDirectoryHandle('Documentos',{create:true});
+ if(sub)d=await d.getDirectoryHandle(sub,{create:true});
  const exists=async n=>{try{await d.getFileHandle(n);return true}catch{return false}};
  let name=file.name.replace(/[\\/:*?"<>|]/g,'_');
  if(await exists(name)){const m=name.match(/^(.*?)(\.[^.]*)?$/);let k=2,n2;do{n2=`${m[1]} (${k++})${m[2]||''}`}while(await exists(n2));name=n2}
