@@ -102,6 +102,7 @@ function migrateV44(){
   if(a.finalizada&&a.priority)a.priority='';
   if('pdfs' in a&&!Array.isArray(a.pdfs))delete a.pdfs;
  });
+ if('docTrash' in db&&!Array.isArray(db.docTrash))delete db.docTrash;
 }
 
 /* ---------- Inicio: bloques desplegables ---------- */

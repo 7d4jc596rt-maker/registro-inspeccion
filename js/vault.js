@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.4 (10/10/2026)';
-const APP_FILES_VERSION='4.4';
+const APP_VERSION='4.5 (10/10/2026)';
+const APP_FILES_VERSION='4.5';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -536,8 +536,9 @@ function pickDoc(name){
  });
 }
 /* Versión 4.3: los documentos de la bibliografía y de las notas de reuniones van en subcarpetas de «Documentos»
-   (sin tildes en el nombre, para que no haya diferencias entre Mac, Windows y BoxAbalar). */
-const DOC_SUBS=['Bibliografia','Reuniones'];
+   (sin tildes en el nombre, para que no haya diferencias entre Mac, Windows y BoxAbalar).
+   Versión 4.5: «Actuaciones», con los PDF adjuntos a las actuaciones (sin cifrar). */
+const DOC_SUBS=['Bibliografia','Reuniones','Actuaciones'];
 const docSub=s=>DOC_SUBS.includes(s)?s:'';
 async function docOpen(name,sub){
  name=String(name||'').trim();sub=docSub(sub);
@@ -564,10 +565,29 @@ async function docSave(file,sub){
  let name=file.name.replace(/[\\/:*?"<>|]/g,'_');
  if(await exists(name)){const m=name.match(/^(.*?)(\.[^.]*)?$/);let k=2,n2;do{n2=`${m[1]} (${k++})${m[2]||''}`}while(await exists(n2));name=n2}
  const fh=await d.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(file);await w.close();
+ if((await fh.getFile()).size!==file.size)throw new Error('El archivo no se escribió completo.');
  return name;
 }
+/* Versión 4.5: lectura y borrado de un documento de una subcarpeta (los PDF de las actuaciones) */
+async function docSubDir(sub,ask){
+ sub=docSub(sub);if(!sub||!S.dir||!(await dirPerm(!!ask)))return null;
+ try{return await (await S.dir.getDirectoryHandle('Documentos')).getDirectoryHandle(sub)}
+ catch(e){if(e.name!=='NotFoundError'&&e.name!=='TypeMismatchError')console.warn(e);return null}
+}
+async function docRead(name,sub,ask){
+ const d=await docSubDir(sub,ask);if(!d)return null;
+ try{return new Uint8Array(await (await (await d.getFileHandle(name)).getFile()).arrayBuffer())}
+ catch(e){if(e.name!=='NotFoundError'&&e.name!=='TypeMismatchError')console.warn(e);return null}
+}
+/* true si el archivo ya no está (borrado ahora o inexistente); false si este equipo no ha podido borrarlo.
+   Solo en «Actuaciones»: es la única subcarpeta cuyos archivos crea y retira la propia aplicación. */
+async function docDelete(name,sub){
+ if(sub!=='Actuaciones'||!name||!S.dir||!(await dirPerm(false)))return false;
+ try{const d=await (await S.dir.getDirectoryHandle('Documentos')).getDirectoryHandle(sub);await d.removeEntry(name);return true}
+ catch(e){if(e.name==='NotFoundError')return true;console.warn(e);return false}
+}
 
-/* Adjuntos (v4.2): imágenes de las actuaciones y, desde la v4.4, sus PDF. Cada archivo llega ya cifrado desde la aplicación
+/* Adjuntos (v4.2): imágenes de las actuaciones y de las notas de reuniones. Cada archivo llega ya cifrado desde la aplicación
    (clave propia guardada dentro del registro) y vive en Registro/Adjuntos. */
 async function attDir(create,ask){
  if(!S.dir||!(await dirPerm(!!ask)))return null;
@@ -595,7 +615,7 @@ async function attList(){
 window.__vaultPersist=persist;
 window.__vault={
  persist,deliver,exportToCloud,setUi,ui:(k,def)=>k in S.ui?S.ui[k]:def,linkFile,lock,changePassword,setRemember,setAutolock,downloadEncrypted,
- backups:backupsMeta,downloadBackup,restoreBackup,backupNow,dirStatus,linkDir,allowDir,unlinkDir,docOpen,docSave,attReady,attWrite,attRead,attDelete,attList,canDir:CAN_DIR,
+ backups:backupsMeta,downloadBackup,restoreBackup,backupNow,dirStatus,linkDir,allowDir,unlinkDir,docOpen,docSave,docRead,docDelete,attReady,attWrite,attRead,attDelete,attList,canDir:CAN_DIR,
  saveNow:async()=>{S.dirty=true;await flushNow();window.__coreRefreshDatos&&window.__coreRefreshDatos()},
  info:()=>({name:S.name,linked:!!S.handle,canLink:CAN_FS,lastSaved:S.lastSaved,device:S.lastDevice,thisDevice:DEVICE,rev:S.rev,pending:S.pending,remembered:S.remembered,autolock:S.autolock,ios:IS_IOS,version:APP_VERSION})
 };

@@ -10,13 +10,18 @@
      ordenador con la carpeta vinculada, que la traslada.
    - Las imágenes se cifran con una clave propia (db.attKey) que va dentro
      del registro: así siguen sirviendo aunque cambies la contraseña.
-   Versión 4.4 · PDF adjuntos a las actuaciones (a.pdfs)
-   - Se guardan tal cual, sin reducir, cifrados con la misma clave que las imágenes,
-     en la carpeta «Adjuntos» (un archivo .rpdf por PDF). No llevan miniatura.
-   - Con la carpeta disponible, el PDF se escribe en «Adjuntos» en el momento de
-     añadirlo (si se cancela el formulario, se borra). Sin carpeta (iPhone), viaja
-     dentro del archivo cifrado, con un tamaño máximo menor, hasta que el registro
-     se abre en un ordenador con la carpeta vinculada.
+   Versión 4.5 · PDF adjuntos a las actuaciones (a.pdfs)
+   - Se guardan tal cual, SIN CIFRAR y con su nombre original, en la carpeta
+     «Documentos › Actuaciones» de BoxAbalar (como los PDF de la bibliografía).
+     En el registro queda {id,name,doc,size}: «doc» es el nombre del archivo en esa carpeta.
+   - Con la carpeta disponible, el PDF se copia al añadirlo (si se cancela el
+     formulario, se borra). Sin carpeta (iPhone), viaja dentro del archivo cifrado,
+     con un tamaño máximo menor, hasta que el registro se abre en un ordenador con la
+     carpeta vinculada, que lo saca a «Documentos › Actuaciones».
+   - Los PDF que la versión 4.4 guardó cifrados en «Adjuntos» (.rpdf) se convierten
+     solos al abrir el registro en un ordenador con la carpeta vinculada.
+   - Un equipo que no puede borrar de la carpeta (iPhone) anota en db.docTrash los
+     archivos que hay que borrar; lo hace el siguiente ordenador que abra el registro.
    ===================================================================== */
 const IMG_MAX=1600, IMG_QUALITY=0.82, IMG_THUMB=320, IMG_THUMB_QUALITY=0.6;
 const IMG_MAGIC=[82,73,65,49]; /* «RIA1» */
@@ -24,9 +29,9 @@ let formImages=[];
 /* Versión 4.3: las notas de reuniones también llevan imágenes. Sus archivos usan la extensión «.rimg» para que un
    equipo que siga con la versión 4.2 en caché no los tome por archivos sin usar de las actuaciones. */
 let imgFormExt='bin';
-/* Versión 4.4: los PDF usan «.rpdf», por el mismo motivo */
+/* Versión 4.4: los PDF cifrados usaban «.rpdf»; desde la 4.5 los PDF van sin cifrar a «Documentos › Actuaciones» */
 const IMG_FILE_RE=/\.(bin|rimg|rpdf)$/i;
-const PDF_MAX=30*1048576, PDF_MAX_EMBED=5*1048576;
+const PDF_MAX=30*1048576, PDF_MAX_EMBED=5*1048576, PDF_SUB='Actuaciones', PDF_OLD_RE=/\.rpdf$/i;
 let formPdfs=[], formPdfNew=[], formSeq=0;
 let pdfViewState=null;
 let imgBusy=null, imgAdding=0;
@@ -50,7 +55,7 @@ function imgSizeTxt(n){return n>=1048576?(n/1048576).toFixed(1).replace('.',',')
 function imgOwners(){return [...db.actions,...(Array.isArray(db.reuniones)?db.reuniones:[])]}
 function imgAll(){const out=[];imgOwners().forEach(a=>(Array.isArray(a.images)?a.images:[]).forEach(m=>out.push(m)));return out}
 function pdfAll(){const out=[];db.actions.forEach(a=>(Array.isArray(a.pdfs)?a.pdfs:[]).forEach(m=>out.push(m)));return out}
-/* Todos los adjuntos cifrados (imágenes y PDF) y los de un registro concreto */
+/* Todos los adjuntos (imágenes y PDF) y los de un registro concreto */
 function attAll(){return [...imgAll(),...pdfAll()]}
 function attOf(x){return [...(Array.isArray(x&&x.images)?x.images:[]),...(Array.isArray(x&&x.pdfs)?x.pdfs:[])]}
 function imgCanFolder(){return !!(window.__vault&&window.__vault.canDir)}
@@ -107,7 +112,7 @@ function imgFormBlock(ext,withPdf){
  imgFormExt=ext==='rimg'?'rimg':'bin';
  return `<div id="fImages" class="img-grid"></div>${withPdf?'<ul id="fPdfs" class="pdf-list" aria-label="PDF adjuntos" hidden></ul>':''}
  <div class="toolbar img-tools"><button type="button" class="btn" onclick="imgPick()">${withPdf?'Añadir imágenes o PDF…':'Añadir imágenes…'}</button><span id="fImgMsg" class="muted" role="status"></span></div>
- <p class="muted img-help">${withPdf?`Las imágenes se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor. Los PDF se guardan tal cual, cifrados (hasta ${PDF_MAX/1048576} MB cada uno).`:`Se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor.`} En el ordenador también puedes pegar una captura con Ctrl+V. Los cambios se aplican al pulsar «Guardar».</p>`;
+ <p class="muted img-help">${withPdf?`Las imágenes se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor. Los PDF se guardan tal cual y <b>sin cifrar</b> en BoxAbalar › Registro › Documentos › ${PDF_SUB} (hasta ${PDF_MAX/1048576} MB cada uno): no adjuntes PDF con datos personales.`:`Se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor.`} En el ordenador también puedes pegar una captura con Ctrl+V. Los cambios se aplican al pulsar «Guardar».</p>`;
 }
 function renderFormImages(){
  const box=document.getElementById('fImages');if(!box)return;
@@ -116,7 +121,7 @@ function renderFormImages(){
  box.innerHTML=formImages.map((m,i)=>`<figure class="img-thumb"><button type="button" class="img-open" onclick="imgView('${esc(m.id)}',true)" aria-label="Ver la imagen ${i+1}"><img src="${imgSafe(m.thumb)}" alt="Imagen ${i+1}${m.name?': '+esc(m.name):''}"></button>${m.data?`<span class="img-flag" title="La imagen completa va dentro del archivo cifrado hasta que se traslade a la carpeta «Adjuntos»">en el archivo</span>`:''}<button type="button" class="img-del" aria-label="Quitar la imagen ${i+1}" title="Quitar" onclick="imgRemoveForm('${esc(m.id)}')">×</button></figure>`).join('')||none;
  box.hidden=!box.innerHTML;
  if(pbox){
-  pbox.innerHTML=formPdfs.map(m=>`<li class="pdf-item"><span class="pdf-ico" aria-hidden="true">PDF</span><span class="pdf-main"><button type="button" class="subject-link pdf-name" title="Abrir el PDF" onclick="pdfOpen('${esc(m.id)}',true)">${esc(m.name||'documento.pdf')}</button><span class="muted pdf-meta">${m.size?imgSizeTxt(m.size):''}${m.data?`${m.size?' · ':''}<span title="El PDF va dentro del archivo cifrado hasta que se traslade a la carpeta «Adjuntos»">en el archivo</span>`:''}</span></span><button type="button" class="pdf-del" aria-label="Quitar el PDF ${esc(m.name||'')}" title="Quitar" onclick="pdfRemoveForm('${esc(m.id)}')">×</button></li>`).join('');
+  pbox.innerHTML=formPdfs.map(m=>`<li class="pdf-item"><span class="pdf-ico" aria-hidden="true">PDF</span><span class="pdf-main"><button type="button" class="subject-link pdf-name" title="Abrir el PDF" onclick="pdfOpen('${esc(m.id)}',true)">${esc(m.name||'documento.pdf')}</button><span class="muted pdf-meta">${m.size?imgSizeTxt(m.size):''}${m.data?`${m.size?' · ':''}<span title="El PDF va dentro del archivo cifrado hasta que se traslade a la carpeta «Documentos › Actuaciones»">en el archivo</span>`:''}</span></span><button type="button" class="pdf-del" aria-label="Quitar el PDF ${esc(m.name||'')}" title="Quitar" onclick="pdfRemoveForm('${esc(m.id)}')">×</button></li>`).join('');
   pbox.hidden=!formPdfs.length;
  }
 }
@@ -165,52 +170,93 @@ document.addEventListener('paste',e=>{
  e.preventDefault();imgAddFiles(files);
 });
 
-/* ---------- PDF del formulario de la actuación (versión 4.4) ---------- */
+/* ---------- PDF del formulario de la actuación (versiones 4.4 y 4.5) ---------- */
 function pdfLooksOk(bytes){const n=Math.min(bytes.length,1024)-4;for(let i=0;i<n;i++)if(bytes[i]===37&&bytes[i+1]===80&&bytes[i+2]===68&&bytes[i+3]===70&&bytes[i+4]===45)return true;return false} /* «%PDF-» */
-function pdfDropFile(file){try{Promise.resolve(window.__vault?.attDelete?.(file)).catch(e=>console.warn(e))}catch(e){console.warn(e)}}
+/* Nombre con el que se guarda en la carpeta: el original, sin caracteres que Windows o BoxAbalar no admiten */
+function pdfCleanName(name){
+ let base=String(name||'').replace(/\.pdf$/i,'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().replace(/^\.+/,'').replace(/[. ]+$/,'');
+ if(base.length>120)base=base.slice(0,120).trim();
+ return (base||'documento')+'.pdf';
+}
+function pdfDocUsed(doc){return !!doc&&pdfAll().some(p=>p.doc===doc)}
+/* Borra de «Documentos › Actuaciones» un PDF que ya no usa ninguna actuación. Si este equipo no puede borrarlo
+   (iPhone, carpeta sin permiso), lo deja anotado para el siguiente ordenador que abra el registro. */
+async function pdfDocDrop(doc){
+ if(!doc||pdfDocUsed(doc))return;
+ let ok=false;try{ok=!!(await window.__vault?.docDelete?.(doc,PDF_SUB))}catch(e){console.warn(e)}
+ if(ok)return;
+ if(!Array.isArray(db.docTrash))db.docTrash=[];
+ if(!db.docTrash.includes(doc)){db.docTrash.push(doc);if(db.docTrash.length>500)db.docTrash.shift();save()}
+}
+async function pdfDocWrite(name,bytes){return window.__vault.docSave(new File([bytes],pdfCleanName(name),{type:'application/pdf'}),PDF_SUB)}
 /* Al abrir el formulario de una actuación */
 function pdfFormStart(list){pdfFormDiscard();formPdfs=(Array.isArray(list)?list:[]).map(m=>({...m}))}
-/* Al guardar: los PDF escritos durante esta edición se quedan */
+/* Al guardar: los PDF copiados durante esta edición se quedan */
 function pdfFormKeep(){formPdfNew=[]}
-/* Al cerrar cualquier formulario: se borran de «Adjuntos» los PDF añadidos que no se llegaron a guardar */
+/* Al cerrar cualquier formulario: se borran de la carpeta los PDF añadidos que no se llegaron a guardar */
 function pdfFormDiscard(){
  formSeq++;
- const files=formPdfNew;formPdfNew=[];
- if(!files.length)return;
- const used=new Set(attAll().map(m=>m.file));
- files.forEach(f=>{if(!used.has(f))pdfDropFile(f)});
+ const docs=formPdfNew;formPdfNew=[];
+ docs.forEach(d=>{pdfDocDrop(d)});
 }
 /* Devuelve '' si se ha añadido, o el motivo por el que no */
 async function pdfAddFile(f,seq){
  const name=String(f.name||'documento.pdf').slice(0,160);
  if(!f.size)return `«${name}» está vacío.`;
- let ready=false;try{ready=!!(await window.__vault?.attReady?.())}catch(e){console.warn(e)}
+ let ready=false;try{ready=!!(window.__vault?.docSave&&await window.__vault.attReady?.())}catch(e){console.warn(e)}
  if(f.size>(ready?PDF_MAX:PDF_MAX_EMBED))return ready
   ?`«${name}» ocupa ${imgSizeTxt(f.size)} y el máximo es ${PDF_MAX/1048576} MB.`
   :`«${name}» ocupa ${imgSizeTxt(f.size)}. En este equipo los PDF viajan dentro del archivo cifrado y el máximo es ${PDF_MAX_EMBED/1048576} MB: añádelo desde un ordenador con la carpeta de BoxAbalar vinculada y con permiso.`;
  const bytes=new Uint8Array(await f.arrayBuffer());
  if(!pdfLooksOk(bytes))return `«${name}» no es un PDF válido.`;
- const id=uid(),m={id,file:`${todayIso()}-${id}.rpdf`,name,size:bytes.length,addedAt:nowIso()};
+ const id=uid(),m={id,name,size:bytes.length,addedAt:nowIso()};
  if(ready){
-  try{await window.__vault.attWrite(m.file,await imgEncrypt(id,bytes));m.storedAt=nowIso()}
+  try{m.doc=await pdfDocWrite(name,bytes);m.storedAt=nowIso()}
   catch(e){
-   console.warn('No se pudo escribir el PDF en la carpeta',e);
-   if(bytes.length>PDF_MAX_EMBED)return `No se pudo guardar «${name}» en la carpeta «Adjuntos». Comprueba en «Datos y seguridad» que la carpeta de BoxAbalar está vinculada y con permiso.`;
+   console.warn('No se pudo copiar el PDF a la carpeta',e);
+   if(bytes.length>PDF_MAX_EMBED)return `No se pudo copiar «${name}» a la carpeta «Documentos › ${PDF_SUB}». Comprueba en «Datos y seguridad» que la carpeta de BoxAbalar está vinculada y con permiso.`;
   }
  }
- if(seq!==formSeq){if(m.storedAt)pdfDropFile(m.file);return ''}
- if(m.storedAt)formPdfNew.push(m.file);else m.data='data:application/pdf;base64,'+imgB64(bytes);
+ if(seq!==formSeq){if(m.doc)pdfDocDrop(m.doc);return ''}
+ if(m.doc)formPdfNew.push(m.doc);
+ else{m.data='data:application/pdf;base64,'+imgB64(bytes);m.file=`${todayIso()}-${id}.rpdf`} /* «file»: solo por si un equipo con la 4.4 en caché lo traslada */
  formPdfs.push(m);renderFormImages();
  return '';
 }
 function pdfRemoveForm(id){
  const m=formPdfs.find(p=>p.id===id);if(!m)return;
  formPdfs=formPdfs.filter(p=>p.id!==id);
- if(formPdfNew.includes(m.file)){formPdfNew=formPdfNew.filter(f=>f!==m.file);pdfDropFile(m.file)}
+ if(m.doc&&formPdfNew.includes(m.doc)){formPdfNew=formPdfNew.filter(d=>d!==m.doc);pdfDocDrop(m.doc)}
  renderFormImages();
 }
 
-/* ---------- Traslado a la carpeta «Adjuntos» ---------- */
+/* ---------- Traslado a la carpeta: imágenes a «Adjuntos» (cifradas) y PDF a «Documentos › Actuaciones» ---------- */
+async function pdfTransferPending(r){
+ const v=window.__vault;if(!v.docSave)return;
+ /* 1) archivos que otro equipo no pudo borrar */
+ if(Array.isArray(db.docTrash)&&db.docTrash.length&&v.docDelete){
+  const left=[];
+  for(const d of db.docTrash){
+   if(pdfDocUsed(d))continue;
+   let ok=false;try{ok=!!(await v.docDelete(d,PDF_SUB))}catch(e){console.warn(e)}
+   if(!ok)left.push(d);
+  }
+  if(left.length!==db.docTrash.length){db.docTrash=left;r.moved++}
+ }
+ /* 2) PDF que viajan dentro del registro y 3) PDF cifrados por la versión 4.4 */
+ for(const m of pdfAll()){
+  if(m.doc)continue;
+  try{
+   let bytes=null;const old=!m.data&&PDF_OLD_RE.test(String(m.file||''))?m.file:'';
+   if(m.data)bytes=imgDataBytes(m.data);
+   else if(old){const buf=await v.attRead(old,false);if(buf)bytes=await imgDecrypt(m.id,buf)}
+   if(!bytes)continue; /* el archivo cifrado aún no ha llegado a este equipo: se intentará la próxima vez */
+   m.doc=await pdfDocWrite(m.name,bytes);
+   delete m.data;delete m.file;m.storedAt=nowIso();r.moved++;
+   if(old){try{await v.attDelete(old)}catch(e){console.warn(e)}}
+  }catch(e){console.warn('No se pudo trasladar el PDF',e);r.failed++}
+ }
+}
 async function imgTransferPending(){
  if(imgBusy)return imgBusy;
  imgBusy=(async()=>{
@@ -218,14 +264,15 @@ async function imgTransferPending(){
   try{
    if(!window.__vault||!window.__vault.attReady||!(await window.__vault.attReady()))return r;
    r.ready=true;
-   for(const m of attAll()){
+   for(const m of imgAll()){
     if(!m.data)continue;
     try{
      if(!m.file)m.file=`${String(m.addedAt||nowIso()).slice(0,10)}-${m.id}.bin`;
      await window.__vault.attWrite(m.file,await imgEncrypt(m.id,imgDataBytes(m.data)));
      delete m.data;m.storedAt=nowIso();r.moved++;
-    }catch(e){console.warn('No se pudo trasladar el adjunto',e);r.failed++}
+    }catch(e){console.warn('No se pudo trasladar la imagen',e);r.failed++}
    }
+   await pdfTransferPending(r);
    if(r.moved)save();
   }catch(e){console.warn(e)}
   return r;
@@ -237,7 +284,11 @@ window.__coreDirReady=()=>{imgTransferPending().then(()=>{window.__coreRefreshDa
 /* Tras guardar o eliminar una actuación: borra de la carpeta los archivos de las imágenes y los PDF quitados y traslada los nuevos */
 async function imgAfterSave(removed){
  try{
-  for(const m of removed||[]){if(m&&m.file&&!m.data&&!attAll().some(n=>n.file===m.file))await window.__vault?.attDelete?.(m.file)}
+  for(const m of removed||[]){
+   if(!m)continue;
+   if(m.doc){await pdfDocDrop(m.doc);continue}
+   if(m.file&&!m.data&&!attAll().some(n=>n.file===m.file))await window.__vault?.attDelete?.(m.file);
+  }
  }catch(e){console.warn(e)}
  await imgTransferPending();
 }
@@ -316,8 +367,9 @@ function imgViewDownload(){
  download(st.blob,base+'.jpg');
 }
 
-/* ---------- Abrir un PDF (versión 4.4) ----------
-   El PDF se descifra en memoria y se abre en otra pestaña (en el iPhone, con el menú de compartir).
+/* ---------- Abrir un PDF (versiones 4.4 y 4.5) ----------
+   El PDF se lee de «Documentos › Actuaciones» (o del registro, si aún viaja dentro) y se abre en otra pestaña
+   (en el iPhone, con el menú de compartir).
    Si el navegador bloquea la pestaña, o en el iPhone, queda este panel con el botón para abrirlo. */
 function pdfIos(){return !!(window.__vault?.info?.().ios)}
 function pdfFind(id,fromForm){
@@ -350,7 +402,7 @@ function pdfViewOpenTab(){
 }
 function pdfViewReady(st,bytes,auto){
  if(pdfViewState!==st)return;
- if(!pdfLooksOk(bytes)){pdfViewMsg('El archivo descifrado no es un PDF válido.');return}
+ if(!pdfLooksOk(bytes)){pdfViewMsg('El archivo no es un PDF válido.');return}
  st.blob=new Blob([bytes],{type:'application/pdf'});st.url=URL.createObjectURL(st.blob);
  document.getElementById('pdfViewOpen').disabled=false;document.getElementById('pdfViewDl').disabled=false;
  document.getElementById('pdfViewNote').hidden=true;
@@ -367,24 +419,40 @@ async function pdfOpen(id,fromForm){
  open.textContent=ios?'Abrir o guardar':'Abrir en otra pestaña';open.disabled=true;dl.disabled=true;dl.hidden=ios;
  note.hidden=true;note.innerHTML='';pdfViewMsg('Preparando el PDF…');
  document.getElementById('pdfView').classList.add('show');
+ const old=!m.doc&&PDF_OLD_RE.test(String(m.file||'')); /* cifrado por la versión 4.4 y aún sin convertir */
  try{
   if(m.data)return pdfViewReady(st,imgDataBytes(m.data),true);
-  const buf=m.file?await window.__vault?.attRead?.(m.file,true):null;
-  if(pdfViewState!==st)return;
-  if(buf)return pdfViewReady(st,await imgDecrypt(m.id,buf),true);
+  if(m.doc){
+   const bytes=await window.__vault?.docRead?.(m.doc,PDF_SUB,true);
+   if(pdfViewState!==st)return;
+   if(bytes)return pdfViewReady(st,bytes,true);
+  }else if(old){
+   const buf=await window.__vault?.attRead?.(m.file,true);
+   if(pdfViewState!==st)return;
+   if(buf)return pdfViewReady(st,await imgDecrypt(m.id,buf),true);
+  }
  }catch(e){console.warn(e)}
  if(pdfViewState!==st)return;
- pdfViewMsg('En este equipo no se ha podido leer el PDF.');
+ pdfViewMsg(imgCanFolder()?'En este equipo no se ha podido leer el PDF.':'Elige el archivo para abrirlo.');
  note.hidden=false;
- note.innerHTML=`<p>El PDF está cifrado en BoxAbalar › Registro › Adjuntos, en el archivo <b>${esc(m.file||'')}</b>${imgCanFolder()?'. Comprueba en «Datos y seguridad» que la carpeta está vinculada y con permiso, y que BoxAbalar ha terminado de sincronizar.':', y este equipo no puede leer esa carpeta por sí solo.'}</p><button type="button" class="btn small" id="pdfViewPick">Elegir ese archivo…</button>`;
- document.getElementById('pdfViewPick').onclick=()=>pdfViewPickFile(st);
+ const why=imgCanFolder()?'. Comprueba en «Datos y seguridad» que la carpeta está vinculada y con permiso, y que BoxAbalar ha terminado de sincronizar.':', y este equipo no puede leer esa carpeta por sí solo.';
+ note.innerHTML=(old
+  ?`<p>El PDF está cifrado en BoxAbalar › Registro › Adjuntos, en el archivo <b>${esc(m.file||'')}</b>${why}</p>`
+  :`<p>El PDF está en BoxAbalar › Registro › Documentos › ${PDF_SUB}, con el nombre <b>${esc(m.doc||m.name||'')}</b>${why}${imgCanFolder()?'':' También puedes abrirlo directamente desde la app Archivos.'}</p>`)
+  +`<button type="button" class="btn small" id="pdfViewPick">Elegir ese archivo…</button>`;
+ document.getElementById('pdfViewPick').onclick=()=>pdfViewPickFile(st,old);
 }
-function pdfViewPickFile(st){
+function pdfViewPickFile(st,old){
  const inp=document.createElement('input');inp.type='file';inp.hidden=true;document.body.appendChild(inp);
  inp.onchange=async()=>{
   const f=inp.files[0];inp.remove();if(!f||pdfViewState!==st)return;
-  try{pdfViewReady(st,await imgDecrypt(st.m.id,new Uint8Array(await f.arrayBuffer())),false)}
-  catch(e){alert(`Ese archivo no corresponde a este PDF. Busca «${st.m.file}» en BoxAbalar › Registro › Adjuntos.`)}
+  try{
+   let bytes=new Uint8Array(await f.arrayBuffer());
+   if(old)bytes=await imgDecrypt(st.m.id,bytes);
+   if(!pdfLooksOk(bytes))throw new Error('no es un PDF');
+   pdfViewReady(st,bytes,false);
+   if(!old&&st.m.doc&&f.name!==st.m.doc)pdfViewMsg(`Has elegido «${f.name}», que no coincide con el nombre anotado («${st.m.doc}»). ${document.getElementById('pdfViewMsg').textContent}`);
+  }catch(e){alert(old?`Ese archivo no corresponde a este PDF. Busca «${st.m.file}» en BoxAbalar › Registro › Adjuntos.`:`Ese archivo no es un PDF. Busca «${st.m.doc||st.m.name}» en BoxAbalar › Registro › Documentos › ${PDF_SUB}.`)}
  };
  inp.addEventListener('cancel',()=>inp.remove());
  inp.click();
@@ -405,8 +473,8 @@ async function imgPanelHTML(){
    (missing.length?`<div><dt>Adjuntos sin su archivo</dt><dd><b>${missing.length}</b>: su archivo no está en la carpeta. Puede que BoxAbalar aún no haya terminado de sincronizar.</dd></div>`:'');
  }
  const where=!imgCanFolder()
-  ?`En este equipo las imágenes y los PDF nuevos viajan dentro del archivo cifrado (los PDF, hasta ${PDF_MAX_EMBED/1048576} MB cada uno). Se trasladarán a la carpeta «Adjuntos» de BoxAbalar la próxima vez que abras el registro en un ordenador con la carpeta vinculada.`
-  :ready?'Las imágenes completas y los PDF se guardan cifrados en la carpeta «Adjuntos» de BoxAbalar. Dentro del archivo del registro solo queda una miniatura de cada imagen y el nombre de cada PDF.'
+  ?`En este equipo las imágenes y los PDF nuevos viajan dentro del archivo cifrado (los PDF, hasta ${PDF_MAX_EMBED/1048576} MB cada uno). Saldrán a las carpetas de BoxAbalar la próxima vez que abras el registro en un ordenador con la carpeta vinculada.`
+  :ready?`Las imágenes completas se guardan cifradas en la carpeta «Adjuntos» de BoxAbalar. Los PDF de las actuaciones se guardan <b>sin cifrar</b>, con su nombre, en «Documentos › ${PDF_SUB}». Dentro del archivo del registro solo queda una miniatura de cada imagen y el nombre de cada PDF.`
   :'Para sacar las imágenes y los PDF del archivo del registro, vincula la carpeta de BoxAbalar (o dale permiso) en el bloque de arriba. Mientras tanto se guardan dentro del archivo cifrado.';
  return `<h3>Imágenes y PDF de las actuaciones y de las notas de reuniones</h3><p class="muted" style="font-size:12px">${where}</p>
   <dl class="center-data-list"><div><dt>Imágenes</dt><dd>${nImg}</dd></div>
@@ -421,7 +489,7 @@ async function imgTransferNow(){
 }
 async function imgCleanOrphans(){
  const names=await window.__vault?.attList?.();if(!names)return;
- const refs=new Set([...attAll().map(m=>m.file),...formPdfNew].filter(Boolean)),orphans=names.filter(n=>IMG_FILE_RE.test(n)&&!refs.has(n));
+ const refs=new Set(attAll().map(m=>m.file).filter(Boolean)),orphans=names.filter(n=>IMG_FILE_RE.test(n)&&!refs.has(n));
  if(!orphans.length)return;
  if(!confirm(`Se eliminarán de la carpeta «Adjuntos» ${orphans.length} ${orphans.length===1?'archivo que no usa':'archivos que no usa'} ninguna actuación ni nota de reunión de este registro.\n\nHazlo solo si este equipo tiene la versión más reciente del registro. ¿Continuar?`))return;
  for(const n of orphans)await window.__vault.attDelete(n);
