@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.5 (10/10/2026)';
-const APP_FILES_VERSION='4.5';
+const APP_VERSION='4.6 (10/10/2026)';
+const APP_FILES_VERSION='4.6';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -486,7 +486,7 @@ async function linkDir(){
  if(!CAN_DIR){await dialog('No disponible','<p>Este navegador no permite vincular carpetas. Usa Chrome o Edge en el ordenador.</p>',[{label:'Entendido',cls:'primary'}]);return}
  let h;try{h=await window.showDirectoryPicker({id:'registro-carpeta',mode:'readwrite'})}catch(e){if(e.name!=='AbortError')alert(e.message);return}
  S.dir=h;await idb.set('dir',h);
- try{await h.getDirectoryHandle('Documentos',{create:true});await h.getDirectoryHandle('Copias',{create:true});await h.getDirectoryHandle('Adjuntos',{create:true})}catch(e){console.warn(e)}
+ try{await h.getDirectoryHandle('Documentos',{create:true});await h.getDirectoryHandle('Copias',{create:true})}catch(e){console.warn(e)}
  const t=(await idb.get('cache'))?.text;if(t)await folderBackup(t,true);
  dirReadyHook();refreshDatos();
 }
@@ -537,7 +537,8 @@ function pickDoc(name){
 }
 /* Versión 4.3: los documentos de la bibliografía y de las notas de reuniones van en subcarpetas de «Documentos»
    (sin tildes en el nombre, para que no haya diferencias entre Mac, Windows y BoxAbalar).
-   Versión 4.5: «Actuaciones», con los PDF adjuntos a las actuaciones (sin cifrar). */
+   Versión 4.5: «Actuaciones», con los PDF adjuntos a las actuaciones (sin cifrar). Desde la 4.6, también las imágenes
+   de las actuaciones; las de las notas de reuniones van a «Reuniones». */
 const DOC_SUBS=['Bibliografia','Reuniones','Actuaciones'];
 const docSub=s=>DOC_SUBS.includes(s)?s:'';
 async function docOpen(name,sub){
@@ -568,7 +569,7 @@ async function docSave(file,sub){
  if((await fh.getFile()).size!==file.size)throw new Error('El archivo no se escribió completo.');
  return name;
 }
-/* Versión 4.5: lectura y borrado de un documento de una subcarpeta (los PDF de las actuaciones) */
+/* Versión 4.5: lectura y borrado de un documento de una subcarpeta (imágenes y PDF adjuntos) */
 async function docSubDir(sub,ask){
  sub=docSub(sub);if(!sub||!S.dir||!(await dirPerm(!!ask)))return null;
  try{return await (await S.dir.getDirectoryHandle('Documentos')).getDirectoryHandle(sub)}
@@ -580,15 +581,16 @@ async function docRead(name,sub,ask){
  catch(e){if(e.name!=='NotFoundError'&&e.name!=='TypeMismatchError')console.warn(e);return null}
 }
 /* true si el archivo ya no está (borrado ahora o inexistente); false si este equipo no ha podido borrarlo.
-   Solo en «Actuaciones»: es la única subcarpeta cuyos archivos crea y retira la propia aplicación. */
+   Solo en «Actuaciones» y «Reuniones», donde la aplicación guarda (y retira) los adjuntos; nunca en la raíz de
+   «Documentos» ni en «Bibliografia». La aplicación solo pide borrar archivos que ella misma escribió. */
 async function docDelete(name,sub){
- if(sub!=='Actuaciones'||!name||!S.dir||!(await dirPerm(false)))return false;
+ if(!['Actuaciones','Reuniones'].includes(sub)||!name||!S.dir||!(await dirPerm(false)))return false;
  try{const d=await (await S.dir.getDirectoryHandle('Documentos')).getDirectoryHandle(sub);await d.removeEntry(name);return true}
  catch(e){if(e.name==='NotFoundError')return true;console.warn(e);return false}
 }
 
-/* Adjuntos (v4.2): imágenes de las actuaciones y de las notas de reuniones. Cada archivo llega ya cifrado desde la aplicación
-   (clave propia guardada dentro del registro) y vive en Registro/Adjuntos. */
+/* Adjuntos (versiones 4.2 a 4.5): archivos cifrados por la aplicación en Registro/Adjuntos. Desde la 4.6 ya no se
+   escribe ahí: solo se leen para convertirlos y se borran cuando el usuario lo pide. */
 async function attDir(create,ask){
  if(!S.dir||!(await dirPerm(!!ask)))return null;
  try{return await S.dir.getDirectoryHandle('Adjuntos',{create:!!create})}catch(e){if(e.name!=='NotFoundError')console.warn(e);return null}

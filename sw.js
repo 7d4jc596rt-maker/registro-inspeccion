@@ -1,7 +1,7 @@
-/* Service worker del Registro de actuaciones · versión 4.5
+/* Service worker del Registro de actuaciones · versión 4.6
    Guarda la aplicación (solo código, nunca datos) para poder abrirla sin conexión.
    La versión nueva se instala entera y empieza a usarse cuando se cierran todas las ventanas. */
-const CACHE='registro-inspeccion-4.5';
+const CACHE='registro-inspeccion-4.6';
 const FILES=["./", "index.html", "css/app.css", "js/vault.js", "js/core/00-datos.js", "js/core/10-base-calendario.js", "js/core/20-centros-peticiones.js", "js/core/30-visitas.js", "js/core/40-seguimiento-otros-datos.js", "js/core/50-datos-importar-csv.js", "js/core/60-cursos-inicio-actuaciones.js", "js/core/65-pegar-actuacion.js", "js/core/67-imagenes.js", "js/core/70-centros.js", "js/core/75-dotacion-ficha.js", "js/core/80-centro-detalle-exportar.js", "js/core/85-importar-notion.js", "js/core/90-consultas.js", "js/core/92-copias-carpeta.js", "js/core/95-contactos.js", "js/core/96-reuniones.js", "js/core/97-bibliografia.js", "js/core/99-arranque.js", "manifest.webmanifest", "icon-180.png", "icon-512.png"];
 self.addEventListener('install',e=>{
  e.waitUntil(caches.open(CACHE).then(c=>Promise.all(FILES.map(f=>c.add(new Request(f,{cache:'reload'})).catch(()=>{})))));

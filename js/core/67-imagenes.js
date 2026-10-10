@@ -1,37 +1,33 @@
 /* =====================================================================
-   Versión 4.2 · Imágenes de las actuaciones (desde la 4.3, también de las notas de reuniones)
-   - Al añadirlas se reducen a IMG_MAX píxeles de lado mayor (JPEG) y se
-     les quita la información de la cámara (fecha, ubicación…).
-   - Dentro del archivo cifrado queda siempre una miniatura.
-   - La imagen completa se guarda cifrada en la carpeta «Adjuntos» de
-     BoxAbalar (un archivo .bin por imagen). Si el equipo no puede escribir
-     en la carpeta (iPhone, Safari, carpeta sin vincular), la imagen completa
-     viaja dentro del archivo cifrado hasta que el registro se abre en un
-     ordenador con la carpeta vinculada, que la traslada.
-   - Las imágenes se cifran con una clave propia (db.attKey) que va dentro
-     del registro: así siguen sirviendo aunque cambies la contraseña.
-   Versión 4.5 · PDF adjuntos a las actuaciones (a.pdfs)
-   - Se guardan tal cual, SIN CIFRAR y con su nombre original, en la carpeta
-     «Documentos › Actuaciones» de BoxAbalar (como los PDF de la bibliografía).
-     En el registro queda {id,name,doc,size}: «doc» es el nombre del archivo en esa carpeta.
-   - Con la carpeta disponible, el PDF se copia al añadirlo (si se cancela el
-     formulario, se borra). Sin carpeta (iPhone), viaja dentro del archivo cifrado,
-     con un tamaño máximo menor, hasta que el registro se abre en un ordenador con la
-     carpeta vinculada, que lo saca a «Documentos › Actuaciones».
-   - Los PDF que la versión 4.4 guardó cifrados en «Adjuntos» (.rpdf) se convierten
-     solos al abrir el registro en un ordenador con la carpeta vinculada.
+   Imágenes de las actuaciones y de las notas de reuniones, y PDF de las actuaciones
+   (versiones 4.2 a 4.6)
+   - Las imágenes se reducen al añadirlas a IMG_MAX píxeles de lado mayor (JPEG) y se
+     les quita la información de la cámara (fecha, ubicación…). Los PDF se guardan tal cual.
+   - Dentro del archivo cifrado del registro queda una miniatura de cada imagen y el
+     nombre de cada PDF.
+   - Desde la 4.6 (los PDF, desde la 4.5), el archivo completo se guarda SIN CIFRAR en la
+     carpeta «Documentos» de BoxAbalar: los de las actuaciones en «Actuaciones» y las
+     imágenes de las notas de reuniones en «Reuniones». En el registro queda «doc» (el
+     nombre del archivo en esa carpeta) y «sub» (la subcarpeta).
+   - Si el equipo no puede escribir en la carpeta (iPhone, carpeta sin vincular), el
+     archivo viaja dentro del registro cifrado («data») hasta que el registro se abre en
+     un ordenador con la carpeta vinculada, que lo saca a «Documentos».
+   - Lo que las versiones 4.2 a 4.5 guardaron cifrado en «Adjuntos» (.bin, .rimg, .rpdf,
+     con la clave db.attKey) se convierte solo cuando su archivo está en la carpeta. Los
+     archivos cifrados antiguos NO se borran al convertir: quedan como «sin usar» y los
+     elimina el usuario desde el panel de «Datos y seguridad».
    - Un equipo que no puede borrar de la carpeta (iPhone) anota en db.docTrash los
      archivos que hay que borrar; lo hace el siguiente ordenador que abra el registro.
    ===================================================================== */
 const IMG_MAX=1600, IMG_QUALITY=0.82, IMG_THUMB=320, IMG_THUMB_QUALITY=0.6;
 const IMG_MAGIC=[82,73,65,49]; /* «RIA1» */
 let formImages=[];
-/* Versión 4.3: las notas de reuniones también llevan imágenes. Sus archivos usan la extensión «.rimg» para que un
-   equipo que siga con la versión 4.2 en caché no los tome por archivos sin usar de las actuaciones. */
+/* «bin» = formulario de una actuación; «rimg» = formulario de una nota de reunión. Son las extensiones de los archivos
+   cifrados de las versiones anteriores; se siguen anotando en «file» mientras la imagen viaja dentro del registro,
+   por si la traslada un equipo que tenga una versión anterior en caché. */
 let imgFormExt='bin';
-/* Versión 4.4: los PDF cifrados usaban «.rpdf»; desde la 4.5 los PDF van sin cifrar a «Documentos › Actuaciones» */
 const IMG_FILE_RE=/\.(bin|rimg|rpdf)$/i;
-const PDF_MAX=30*1048576, PDF_MAX_EMBED=5*1048576, PDF_SUB='Actuaciones', PDF_OLD_RE=/\.rpdf$/i;
+const PDF_MAX=30*1048576, PDF_MAX_EMBED=5*1048576, PDF_SUB='Actuaciones';
 let formPdfs=[], formPdfNew=[], formSeq=0;
 let pdfViewState=null;
 let imgBusy=null, imgAdding=0;
@@ -57,10 +53,20 @@ function imgAll(){const out=[];imgOwners().forEach(a=>(Array.isArray(a.images)?a
 function pdfAll(){const out=[];db.actions.forEach(a=>(Array.isArray(a.pdfs)?a.pdfs:[]).forEach(m=>out.push(m)));return out}
 /* Todos los adjuntos (imágenes y PDF) y los de un registro concreto */
 function attAll(){return [...imgAll(),...pdfAll()]}
+/* Cada adjunto con la subcarpeta de «Documentos» que le corresponde */
+function attTargets(){
+ const out=[];
+ db.actions.forEach(a=>{(Array.isArray(a.images)?a.images:[]).forEach(m=>out.push({m,sub:'Actuaciones',kind:'img'}));(Array.isArray(a.pdfs)?a.pdfs:[]).forEach(m=>out.push({m,sub:'Actuaciones',kind:'pdf'}))});
+ (Array.isArray(db.reuniones)?db.reuniones:[]).forEach(x=>(Array.isArray(x.images)?x.images:[]).forEach(m=>out.push({m,sub:'Reuniones',kind:'img'})));
+ return out;
+}
+function attSubOf(m){return m&&m.sub==='Reuniones'?'Reuniones':'Actuaciones'}
+/* Cifrado por una versión anterior y todavía sin convertir */
+function attIsOld(m){return !!m&&!m.doc&&!m.data&&IMG_FILE_RE.test(String(m.file||''))}
 function attOf(x){return [...(Array.isArray(x&&x.images)?x.images:[]),...(Array.isArray(x&&x.pdfs)?x.pdfs:[])]}
 function imgCanFolder(){return !!(window.__vault&&window.__vault.canDir)}
 
-/* ---------- Cifrado de los archivos de la carpeta ---------- */
+/* ---------- Cifrado de las versiones 4.2 a 4.5 (solo se usa ya para leer y convertir lo antiguo) ---------- */
 async function imgCryptoKey(create){
  if(!db.attKey){if(!create)return null;db.attKey=imgB64(crypto.getRandomValues(new Uint8Array(32)))}
  if(imgKeyCache.raw!==db.attKey)imgKeyCache={raw:db.attKey,key:await crypto.subtle.importKey('raw',imgUnb64(db.attKey),'AES-GCM',false,['encrypt','decrypt'])};
@@ -112,13 +118,13 @@ function imgFormBlock(ext,withPdf){
  imgFormExt=ext==='rimg'?'rimg':'bin';
  return `<div id="fImages" class="img-grid"></div>${withPdf?'<ul id="fPdfs" class="pdf-list" aria-label="PDF adjuntos" hidden></ul>':''}
  <div class="toolbar img-tools"><button type="button" class="btn" onclick="imgPick()">${withPdf?'Añadir imágenes o PDF…':'Añadir imágenes…'}</button><span id="fImgMsg" class="muted" role="status"></span></div>
- <p class="muted img-help">${withPdf?`Las imágenes se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor. Los PDF se guardan tal cual y <b>sin cifrar</b> en BoxAbalar › Registro › Documentos › ${PDF_SUB} (hasta ${PDF_MAX/1048576} MB cada uno): no adjuntes PDF con datos personales.`:`Se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor.`} En el ordenador también puedes pegar una captura con Ctrl+V. Los cambios se aplican al pulsar «Guardar».</p>`;
+ <p class="muted img-help">${withPdf?`Las imágenes se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor; los PDF se guardan tal cual (hasta ${PDF_MAX/1048576} MB cada uno). Unas y otros van <b>sin cifrar</b> a BoxAbalar › Registro › Documentos › ${PDF_SUB}: no adjuntes nada con datos personales.`:`Se reducen automáticamente a ${IMG_MAX} píxeles de lado mayor y se guardan <b>sin cifrar</b> en BoxAbalar › Registro › Documentos › Reuniones.`} En el ordenador también puedes pegar una captura con Ctrl+V. Los cambios se aplican al pulsar «Guardar».</p>`;
 }
 function renderFormImages(){
  const box=document.getElementById('fImages');if(!box)return;
  const pbox=document.getElementById('fPdfs');
  const none=pbox?(formPdfs.length?'':'<p class="muted img-none">Sin imágenes ni PDF.</p>'):'<p class="muted img-none">Sin imágenes.</p>';
- box.innerHTML=formImages.map((m,i)=>`<figure class="img-thumb"><button type="button" class="img-open" onclick="imgView('${esc(m.id)}',true)" aria-label="Ver la imagen ${i+1}"><img src="${imgSafe(m.thumb)}" alt="Imagen ${i+1}${m.name?': '+esc(m.name):''}"></button>${m.data?`<span class="img-flag" title="La imagen completa va dentro del archivo cifrado hasta que se traslade a la carpeta «Adjuntos»">en el archivo</span>`:''}<button type="button" class="img-del" aria-label="Quitar la imagen ${i+1}" title="Quitar" onclick="imgRemoveForm('${esc(m.id)}')">×</button></figure>`).join('')||none;
+ box.innerHTML=formImages.map((m,i)=>`<figure class="img-thumb"><button type="button" class="img-open" onclick="imgView('${esc(m.id)}',true)" aria-label="Ver la imagen ${i+1}"><img src="${imgSafe(m.thumb)}" alt="Imagen ${i+1}${m.name?': '+esc(m.name):''}"></button>${m.data?`<span class="img-flag" title="La imagen completa va dentro del archivo cifrado hasta que salga a la carpeta «Documentos» de BoxAbalar">en el archivo</span>`:''}<button type="button" class="img-del" aria-label="Quitar la imagen ${i+1}" title="Quitar" onclick="imgRemoveForm('${esc(m.id)}')">×</button></figure>`).join('')||none;
  box.hidden=!box.innerHTML;
  if(pbox){
   pbox.innerHTML=formPdfs.map(m=>`<li class="pdf-item"><span class="pdf-ico" aria-hidden="true">PDF</span><span class="pdf-main"><button type="button" class="subject-link pdf-name" title="Abrir el PDF" onclick="pdfOpen('${esc(m.id)}',true)">${esc(m.name||'documento.pdf')}</button><span class="muted pdf-meta">${m.size?imgSizeTxt(m.size):''}${m.data?`${m.size?' · ':''}<span title="El PDF va dentro del archivo cifrado hasta que se traslade a la carpeta «Documentos › Actuaciones»">en el archivo</span>`:''}</span></span><button type="button" class="pdf-del" aria-label="Quitar el PDF ${esc(m.name||'')}" title="Quitar" onclick="pdfRemoveForm('${esc(m.id)}')">×</button></li>`).join('');
@@ -172,22 +178,49 @@ document.addEventListener('paste',e=>{
 
 /* ---------- PDF del formulario de la actuación (versiones 4.4 y 4.5) ---------- */
 function pdfLooksOk(bytes){const n=Math.min(bytes.length,1024)-4;for(let i=0;i<n;i++)if(bytes[i]===37&&bytes[i+1]===80&&bytes[i+2]===68&&bytes[i+3]===70&&bytes[i+4]===45)return true;return false} /* «%PDF-» */
-/* Nombre con el que se guarda en la carpeta: el original, sin caracteres que Windows o BoxAbalar no admiten */
-function pdfCleanName(name){
- let base=String(name||'').replace(/\.pdf$/i,'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().replace(/^\.+/,'').replace(/[. ]+$/,'');
- if(base.length>120)base=base.slice(0,120).trim();
- return (base||'documento')+'.pdf';
+/* Nombres con los que se guardan en la carpeta, sin caracteres que Windows o BoxAbalar no admiten */
+function docCleanBase(name,max=120){
+ let base=String(name||'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().replace(/^\.+/,'').replace(/[. ]+$/,'');
+ if(base.length>max)base=base.slice(0,max).trim();
+ return base;
 }
-function pdfDocUsed(doc){return !!doc&&pdfAll().some(p=>p.doc===doc)}
-/* Borra de «Documentos › Actuaciones» un PDF que ya no usa ninguna actuación. Si este equipo no puede borrarlo
-   (iPhone, carpeta sin permiso), lo deja anotado para el siguiente ordenador que abra el registro. */
-async function pdfDocDrop(doc){
- if(!doc||pdfDocUsed(doc))return;
- let ok=false;try{ok=!!(await window.__vault?.docDelete?.(doc,PDF_SUB))}catch(e){console.warn(e)}
+/* PDF: su nombre original */
+function pdfCleanName(name){return (docCleanBase(String(name||'').replace(/\.pdf$/i,''))||'documento')+'.pdf'}
+/* Imagen: la fecha en que se añadió y su nombre (los de la cámara o los de una captura no dicen nada por sí solos) */
+function imgDocName(m,ext){
+ const d=/^\d{4}-\d{2}-\d{2}/.test(String(m.addedAt||''))?String(m.addedAt).slice(0,10):todayIso();
+ return `${d} ${docCleanBase(String(m.name||'').replace(/\.[A-Za-z0-9]{1,5}$/,''),80)||'imagen'}.${ext||'jpg'}`;
+}
+/* Formato real de la imagen: las que añade la aplicación son siempre JPEG; las importadas pueden ser PNG o WebP */
+function imgKind(b){
+ if(!b||b.length<12)return '';
+ if(b[0]===0xFF&&b[1]===0xD8&&b[2]===0xFF)return 'jpeg';
+ if(b[0]===0x89&&b[1]===0x50&&b[2]===0x4E&&b[3]===0x47)return 'png';
+ if(b[0]===0x52&&b[1]===0x49&&b[2]===0x46&&b[3]===0x46&&b[8]===0x57&&b[9]===0x45&&b[10]===0x42&&b[11]===0x50)return 'webp';
+ return '';
+}
+function imgLooksOk(bytes){return !!imgKind(bytes)}
+function imgBlob(bytes){return new Blob([bytes],{type:'image/'+(imgKind(bytes)||'jpeg')})}
+/* ¿Sigue usando alguien ese archivo de «Documentos › sub»? En «Reuniones» cuentan también los documentos anotados a mano */
+function docUsed(doc,sub){
+ if(!doc)return false;
+ if(attTargets().some(t=>t.m.doc===doc&&attSubOf(t.m)===sub))return true;
+ return sub==='Reuniones'&&(Array.isArray(db.reuniones)?db.reuniones:[]).some(x=>(Array.isArray(x.documentos)?x.documentos:[]).some(d=>d&&d.nombre===doc));
+}
+function docTrashKey(doc,sub){return sub==='Reuniones'?'Reuniones/'+doc:doc}
+function docTrashParse(k){k=String(k);return k.startsWith('Reuniones/')?[k.slice(10),'Reuniones']:[k,'Actuaciones']}
+/* Borra de «Documentos › sub» un archivo que ya no usa nadie. Si este equipo no puede borrarlo (iPhone, carpeta sin
+   permiso), lo deja anotado para el siguiente ordenador que abra el registro. */
+async function docDrop(doc,sub){
+ sub=sub==='Reuniones'?'Reuniones':'Actuaciones';
+ if(!doc||docUsed(doc,sub))return;
+ let ok=false;try{ok=!!(await window.__vault?.docDelete?.(doc,sub))}catch(e){console.warn(e)}
  if(ok)return;
  if(!Array.isArray(db.docTrash))db.docTrash=[];
- if(!db.docTrash.includes(doc)){db.docTrash.push(doc);if(db.docTrash.length>500)db.docTrash.shift();save()}
+ const k=docTrashKey(doc,sub);
+ if(!db.docTrash.includes(k)){db.docTrash.push(k);if(db.docTrash.length>500)db.docTrash.shift();save()}
 }
+function pdfDocDrop(doc){return docDrop(doc,PDF_SUB)}
 async function pdfDocWrite(name,bytes){return window.__vault.docSave(new File([bytes],pdfCleanName(name),{type:'application/pdf'}),PDF_SUB)}
 /* Al abrir el formulario de una actuación */
 function pdfFormStart(list){pdfFormDiscard();formPdfs=(Array.isArray(list)?list:[]).map(m=>({...m}))}
@@ -230,31 +263,34 @@ function pdfRemoveForm(id){
  renderFormImages();
 }
 
-/* ---------- Traslado a la carpeta: imágenes a «Adjuntos» (cifradas) y PDF a «Documentos › Actuaciones» ---------- */
-async function pdfTransferPending(r){
+/* ---------- Traslado a «Documentos» de lo que viaja dentro del registro y de lo cifrado por versiones anteriores ---------- */
+async function attTransferAll(r){
  const v=window.__vault;if(!v.docSave)return;
  /* 1) archivos que otro equipo no pudo borrar */
  if(Array.isArray(db.docTrash)&&db.docTrash.length&&v.docDelete){
   const left=[];
-  for(const d of db.docTrash){
-   if(pdfDocUsed(d))continue;
-   let ok=false;try{ok=!!(await v.docDelete(d,PDF_SUB))}catch(e){console.warn(e)}
-   if(!ok)left.push(d);
+  for(const k of db.docTrash){
+   const [doc,sub]=docTrashParse(k);
+   if(docUsed(doc,sub))continue;
+   let ok=false;try{ok=!!(await v.docDelete(doc,sub))}catch(e){console.warn(e)}
+   if(!ok)left.push(k);
   }
   if(left.length!==db.docTrash.length){db.docTrash=left;r.moved++}
  }
- /* 2) PDF que viajan dentro del registro y 3) PDF cifrados por la versión 4.4 */
- for(const m of pdfAll()){
+ /* 2) lo que viaja dentro del registro y 3) lo cifrado en «Adjuntos» por las versiones 4.2 a 4.5.
+       El archivo cifrado antiguo no se borra aquí: si el registro no llegara a guardarse, seguiría haciendo falta. */
+ for(const {m,sub,kind} of attTargets()){
   if(m.doc)continue;
   try{
-   let bytes=null;const old=!m.data&&PDF_OLD_RE.test(String(m.file||''))?m.file:'';
+   let bytes=null;
    if(m.data)bytes=imgDataBytes(m.data);
-   else if(old){const buf=await v.attRead(old,false);if(buf)bytes=await imgDecrypt(m.id,buf)}
+   else if(attIsOld(m)){const buf=await v.attRead(m.file,false);if(buf)bytes=await imgDecrypt(m.id,buf)}
    if(!bytes)continue; /* el archivo cifrado aún no ha llegado a este equipo: se intentará la próxima vez */
-   m.doc=await pdfDocWrite(m.name,bytes);
-   delete m.data;delete m.file;m.storedAt=nowIso();r.moved++;
-   if(old){try{await v.attDelete(old)}catch(e){console.warn(e)}}
-  }catch(e){console.warn('No se pudo trasladar el PDF',e);r.failed++}
+   if(!(kind==='pdf'?pdfLooksOk(bytes):imgLooksOk(bytes)))throw new Error('contenido no reconocido');
+   if(kind==='pdf')m.doc=await pdfDocWrite(m.name,bytes);
+   else{const k=imgKind(bytes);m.doc=await v.docSave(new File([bytes],imgDocName(m,k==='jpeg'?'jpg':k),{type:'image/'+k}),sub)}
+   m.sub=sub;delete m.data;delete m.file;m.storedAt=nowIso();r.moved++;
+  }catch(e){console.warn('No se pudo trasladar el adjunto',e);r.failed++}
  }
 }
 async function imgTransferPending(){
@@ -264,15 +300,7 @@ async function imgTransferPending(){
   try{
    if(!window.__vault||!window.__vault.attReady||!(await window.__vault.attReady()))return r;
    r.ready=true;
-   for(const m of imgAll()){
-    if(!m.data)continue;
-    try{
-     if(!m.file)m.file=`${String(m.addedAt||nowIso()).slice(0,10)}-${m.id}.bin`;
-     await window.__vault.attWrite(m.file,await imgEncrypt(m.id,imgDataBytes(m.data)));
-     delete m.data;m.storedAt=nowIso();r.moved++;
-    }catch(e){console.warn('No se pudo trasladar la imagen',e);r.failed++}
-   }
-   await pdfTransferPending(r);
+   await attTransferAll(r);
    if(r.moved)save();
   }catch(e){console.warn(e)}
   return r;
@@ -281,12 +309,12 @@ async function imgTransferPending(){
 }
 function imgAutoTransfer(){setTimeout(()=>{imgTransferPending().then(r=>{if(r&&r.moved)window.__coreRefreshDatos&&window.__coreRefreshDatos()})},0)}
 window.__coreDirReady=()=>{imgTransferPending().then(()=>{window.__coreRefreshDatos&&window.__coreRefreshDatos()})};
-/* Tras guardar o eliminar una actuación: borra de la carpeta los archivos de las imágenes y los PDF quitados y traslada los nuevos */
+/* Tras guardar o eliminar una actuación o una nota: borra de la carpeta los archivos de las imágenes y los PDF quitados y traslada los nuevos */
 async function imgAfterSave(removed){
  try{
   for(const m of removed||[]){
    if(!m)continue;
-   if(m.doc){await pdfDocDrop(m.doc);continue}
+   if(m.doc){await docDrop(m.doc,attSubOf(m));continue}
    if(m.file&&!m.data&&!attAll().some(n=>n.file===m.file))await window.__vault?.attDelete?.(m.file);
   }
  }catch(e){console.warn(e)}
@@ -335,28 +363,43 @@ async function imgViewShow(list,i){
  document.getElementById('imgViewPrev').disabled=i===0;document.getElementById('imgViewNext').disabled=i===list.length-1;
  img.src=imgSafe(m.thumb);img.alt=m.name||`Imagen ${i+1}`;img.classList.add('is-thumb');
  note.hidden=true;note.innerHTML='';dl.disabled=true;
- const full=bytes=>{if(imgViewState!==st)return;st.blob=new Blob([bytes],{type:'image/jpeg'});st.url=URL.createObjectURL(st.blob);img.src=st.url;img.classList.remove('is-thumb');dl.disabled=false;note.hidden=true};
+ const full=bytes=>{if(imgViewState!==st)return;st.blob=imgBlob(bytes);st.url=URL.createObjectURL(st.blob);img.src=st.url;img.classList.remove('is-thumb');dl.disabled=false;note.hidden=true};
+ const old=attIsOld(m),sub=attSubOf(m);
  try{
   if(m.data&&imgSafe(m.data))return full(imgDataBytes(m.data));
-  const buf=m.file?await window.__vault?.attRead?.(m.file,true):null;
-  if(imgViewState!==st)return;
-  if(buf)return full(await imgDecrypt(m.id,buf));
+  if(m.doc){
+   const bytes=await window.__vault?.docRead?.(m.doc,sub,true);
+   if(imgViewState!==st)return;
+   if(bytes&&imgLooksOk(bytes))return full(bytes);
+  }else if(old){
+   const buf=await window.__vault?.attRead?.(m.file,true);
+   if(imgViewState!==st)return;
+   if(buf)return full(await imgDecrypt(m.id,buf));
+  }
  }catch(e){console.warn(e)}
  if(imgViewState!==st)return;
  note.hidden=false;
- note.innerHTML=`<p>Se muestra la <b>miniatura</b>. La imagen completa está cifrada en BoxAbalar › Registro › Adjuntos, en el archivo <b>${esc(m.file||'')}</b>${imgCanFolder()?'. En este equipo no se ha podido leer: comprueba en «Datos y seguridad» que la carpeta está vinculada y con permiso, y que BoxAbalar ha terminado de sincronizar.':', y este equipo no puede leer esa carpeta por sí solo.'}</p><button type="button" class="btn small" id="imgViewPick">Elegir ese archivo…</button>`;
- document.getElementById('imgViewPick').onclick=()=>imgViewPickFile(st);
+ const why=imgCanFolder()?'. En este equipo no se ha podido leer: comprueba en «Datos y seguridad» que la carpeta está vinculada y con permiso, y que BoxAbalar ha terminado de sincronizar.':', y este equipo no puede leer esa carpeta por sí solo.';
+ note.innerHTML=`<p>Se muestra la <b>miniatura</b>. `+(old
+  ?`La imagen completa está cifrada en BoxAbalar › Registro › Adjuntos, en el archivo <b>${esc(m.file||'')}</b>${why}`
+  :`La imagen completa está en BoxAbalar › Registro › Documentos › ${sub}, con el nombre <b>${esc(m.doc||'')}</b>${why}${imgCanFolder()?'':' También puedes abrirla directamente desde la app Archivos.'}`)
+  +`</p><button type="button" class="btn small" id="imgViewPick">Elegir ese archivo…</button>`;
+ document.getElementById('imgViewPick').onclick=()=>imgViewPickFile(st,old);
 }
-function imgViewPickFile(st){
+function imgViewPickFile(st,old){
  const inp=document.createElement('input');inp.type='file';inp.hidden=true;document.body.appendChild(inp);
  inp.onchange=async()=>{
   const f=inp.files[0];inp.remove();if(!f||imgViewState!==st)return;
   try{
-   const bytes=await imgDecrypt(st.m.id,new Uint8Array(await f.arrayBuffer()));
-   st.blob=new Blob([bytes],{type:'image/jpeg'});st.url=URL.createObjectURL(st.blob);
+   let bytes=new Uint8Array(await f.arrayBuffer());
+   if(old)bytes=await imgDecrypt(st.m.id,bytes);
+   if(!imgLooksOk(bytes))throw new Error('no es una imagen');
+   st.blob=imgBlob(bytes);st.url=URL.createObjectURL(st.blob);
    const img=document.getElementById('imgViewImg');img.src=st.url;img.classList.remove('is-thumb');
-   document.getElementById('imgViewDl').disabled=false;document.getElementById('imgViewNote').hidden=true;
-  }catch(e){alert(`Ese archivo no corresponde a esta imagen. Busca «${st.m.file}» en BoxAbalar › Registro › Adjuntos.`)}
+   document.getElementById('imgViewDl').disabled=false;
+   const note=document.getElementById('imgViewNote'),other=!old&&st.m.doc&&f.name!==st.m.doc;
+   note.hidden=!other;if(other)note.innerHTML=`<p>Has elegido «${esc(f.name)}», que no coincide con el nombre anotado («${esc(st.m.doc)}»).</p>`;
+  }catch(e){alert(old?`Ese archivo no corresponde a esta imagen. Busca «${st.m.file}» en BoxAbalar › Registro › Adjuntos.`:`Ese archivo no es la imagen. Busca «${st.m.doc}» en BoxAbalar › Registro › Documentos › ${attSubOf(st.m)}.`)}
  };
  inp.addEventListener('cancel',()=>inp.remove());
  inp.click();
@@ -364,7 +407,7 @@ function imgViewPickFile(st){
 function imgViewDownload(){
  const st=imgViewState;if(!st||!st.blob)return;
  const base=String(st.m.name||'imagen').replace(/\.[^.]*$/,'').replace(/[\\/:*?"<>|]/g,'_')||'imagen';
- download(st.blob,base+'.jpg');
+ download(st.blob,base+({'image/png':'.png','image/webp':'.webp'}[st.blob.type]||'.jpg'));
 }
 
 /* ---------- Abrir un PDF (versiones 4.4 y 4.5) ----------
@@ -419,7 +462,7 @@ async function pdfOpen(id,fromForm){
  open.textContent=ios?'Abrir o guardar':'Abrir en otra pestaña';open.disabled=true;dl.disabled=true;dl.hidden=ios;
  note.hidden=true;note.innerHTML='';pdfViewMsg('Preparando el PDF…');
  document.getElementById('pdfView').classList.add('show');
- const old=!m.doc&&PDF_OLD_RE.test(String(m.file||'')); /* cifrado por la versión 4.4 y aún sin convertir */
+ const old=attIsOld(m); /* cifrado por la versión 4.4 y aún sin convertir */
  try{
   if(m.data)return pdfViewReady(st,imgDataBytes(m.data),true);
   if(m.doc){
@@ -461,26 +504,29 @@ function pdfViewPickFile(st,old){
 /* ---------- Panel de «Datos y seguridad» ---------- */
 async function imgPanelHTML(){
  const nImg=imgAll().length,nPdf=pdfAll().length;
- const all=attAll(),emb=all.filter(m=>m.data),embBytes=emb.reduce((s,m)=>s+Math.round(m.data.length*3/4),0);
+ const all=attAll(),emb=all.filter(m=>m.data),embBytes=emb.reduce((s,m)=>s+Math.round(m.data.length*3/4),0),olds=all.filter(attIsOld);
  const ready=!!(window.__vault&&window.__vault.attReady&&await window.__vault.attReady());
  const names=ready?await window.__vault.attList():null;
  let extra='',nOrph=0;
- if(names){
+ if(olds.length)extra+=`<div><dt>Cifrados por versiones anteriores</dt><dd><b>${olds.length}</b>, pendientes de pasar a «Documentos». Se convierten solos cuando su archivo está en la carpeta «Adjuntos» de este equipo.</dd></div>`;
+ if(names&&names.length){
   const refs=new Set(all.map(m=>m.file).filter(Boolean)),have=new Set(names);
   nOrph=names.filter(n=>IMG_FILE_RE.test(n)&&!refs.has(n)).length;
-  const missing=all.filter(m=>!m.data&&m.file&&!have.has(m.file));
-  extra=`<div><dt>Archivos en «Adjuntos»</dt><dd>${names.length}${nOrph?` · ${nOrph} que ya no usa ninguna actuación ni nota`:''}</dd></div>`+
-   (missing.length?`<div><dt>Adjuntos sin su archivo</dt><dd><b>${missing.length}</b>: su archivo no está en la carpeta. Puede que BoxAbalar aún no haya terminado de sincronizar.</dd></div>`:'');
+  const missing=olds.filter(m=>!have.has(m.file));
+  extra+=`<div><dt>Archivos en «Adjuntos» (versiones anteriores)</dt><dd>${names.length}${nOrph?` · ${nOrph} que ya no hacen falta`:''}</dd></div>`+
+   (missing.length?`<div><dt>Cifrados sin su archivo</dt><dd><b>${missing.length}</b>: su archivo no está en «Adjuntos». Puede que BoxAbalar aún no haya terminado de sincronizar.</dd></div>`:'');
  }
  const where=!imgCanFolder()
-  ?`En este equipo las imágenes y los PDF nuevos viajan dentro del archivo cifrado (los PDF, hasta ${PDF_MAX_EMBED/1048576} MB cada uno). Saldrán a las carpetas de BoxAbalar la próxima vez que abras el registro en un ordenador con la carpeta vinculada.`
-  :ready?`Las imágenes completas se guardan cifradas en la carpeta «Adjuntos» de BoxAbalar. Los PDF de las actuaciones se guardan <b>sin cifrar</b>, con su nombre, en «Documentos › ${PDF_SUB}». Dentro del archivo del registro solo queda una miniatura de cada imagen y el nombre de cada PDF.`
+  ?`En este equipo las imágenes y los PDF nuevos viajan dentro del archivo cifrado (los PDF, hasta ${PDF_MAX_EMBED/1048576} MB cada uno). Saldrán a la carpeta «Documentos» de BoxAbalar la próxima vez que abras el registro en un ordenador con la carpeta vinculada.`
+  :ready?`Las imágenes y los PDF se guardan <b>sin cifrar</b> en la carpeta «Documentos» de BoxAbalar: los de las actuaciones en «${PDF_SUB}» y las imágenes de las notas de reuniones en «Reuniones». Dentro del archivo del registro solo queda una miniatura de cada imagen y el nombre de cada PDF.`
   :'Para sacar las imágenes y los PDF del archivo del registro, vincula la carpeta de BoxAbalar (o dale permiso) en el bloque de arriba. Mientras tanto se guardan dentro del archivo cifrado.';
+ const pend=emb.length+olds.length;
  return `<h3>Imágenes y PDF de las actuaciones y de las notas de reuniones</h3><p class="muted" style="font-size:12px">${where}</p>
   <dl class="center-data-list"><div><dt>Imágenes</dt><dd>${nImg}</dd></div>
   <div><dt>PDF</dt><dd>${nPdf}</dd></div>
   <div><dt>Dentro del archivo</dt><dd>${emb.length?`<b>${emb.length}</b> (${imgSizeTxt(embBytes)}), pendientes de trasladar`:'Ninguno'}</dd></div>${extra}</dl>
-  ${(emb.length&&ready)||nOrph?`<div class="toolbar">${emb.length&&ready?`<button class="btn" onclick="imgTransferNow()">Trasladar ahora a la carpeta</button>`:''}${nOrph?`<button class="btn danger" onclick="imgCleanOrphans()">Eliminar ${nOrph===1?'el archivo':`los ${nOrph} archivos`} sin usar…</button>`:''}</div>`:''}`;
+  ${nOrph?`<p class="muted" style="font-size:12px">Los archivos de «Adjuntos» que ya no hacen falta son las copias cifradas de lo que ya está en «Documentos». Comprueba antes que las imágenes se abren bien y elimínalos después.</p>`:''}
+  ${(pend&&ready)||nOrph?`<div class="toolbar">${pend&&ready?`<button class="btn" onclick="imgTransferNow()">Trasladar ahora a la carpeta</button>`:''}${nOrph?`<button class="btn danger" onclick="imgCleanOrphans()">Eliminar ${nOrph===1?'el archivo':`los ${nOrph} archivos`} de «Adjuntos» que ya no hacen falta…</button>`:''}</div>`:''}`;
 }
 async function imgTransferNow(){
  const r=await imgTransferPending();
@@ -491,7 +537,7 @@ async function imgCleanOrphans(){
  const names=await window.__vault?.attList?.();if(!names)return;
  const refs=new Set(attAll().map(m=>m.file).filter(Boolean)),orphans=names.filter(n=>IMG_FILE_RE.test(n)&&!refs.has(n));
  if(!orphans.length)return;
- if(!confirm(`Se eliminarán de la carpeta «Adjuntos» ${orphans.length} ${orphans.length===1?'archivo que no usa':'archivos que no usa'} ninguna actuación ni nota de reunión de este registro.\n\nHazlo solo si este equipo tiene la versión más reciente del registro. ¿Continuar?`))return;
+ if(!confirm(`Se eliminarán de la carpeta «Adjuntos» ${orphans.length} ${orphans.length===1?'archivo cifrado que ya no usa':'archivos cifrados que ya no usa'} ninguna actuación ni nota de reunión de este registro.\n\nHazlo solo si este equipo tiene la versión más reciente del registro y ya has comprobado que las imágenes se abren bien. ¿Continuar?`))return;
  for(const n of orphans)await window.__vault.attDelete(n);
  window.__coreRefreshDatos&&window.__coreRefreshDatos();
 }

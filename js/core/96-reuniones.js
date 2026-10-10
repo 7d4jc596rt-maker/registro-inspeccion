@@ -4,7 +4,8 @@
    db.reuniones = [{id,seedId,titulo,fecha,tipo,contenido,documentos:[{nombre,descripcion}],
                     images:[…],creado,modificado,origen}]
    - El texto usa el formato sencillo de nFmt (definido aquí; lo usa también la bibliografía).
-   - Las imágenes siguen el mismo sistema cifrado que las de las actuaciones (67-imagenes.js).
+   - Las imágenes siguen el mismo sistema que las de las actuaciones (67-imagenes.js): desde la 4.6, sin cifrar,
+     en BoxAbalar › Registro › Documentos › Reuniones.
    - Los documentos no van en el archivo cifrado: solo su nombre. Los archivos viven en
      BoxAbalar › Registro › Documentos › Reuniones.
    ===================================================================== */
