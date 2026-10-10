@@ -113,5 +113,5 @@ function deleteSpecialRecord(name,rowIndex){
  m.rows.splice(rowIndex,1);if(name==='Dep. Orientación'){if(Array.isArray(m.nonOccupied))m.nonOccupied.splice(rowIndex,1);if(Array.isArray(m.catalogMismatch))m.catalogMismatch.splice(rowIndex,1);}save();especiales();
 }
 function openModal(title,body,onSave){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('show');document.getElementById('modalSave').textContent='Guardar';document.getElementById('modalSave').onclick=onSave;const mb=document.querySelector('#modal .modalbox');if(mb)mb.scrollTop=0;document.getElementById('modalBody').scrollTop=0}
-function closeModal(){document.getElementById('modal').classList.remove('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show');if(typeof pdfFormDiscard==='function')pdfFormDiscard()}
 function download(blob,name){if(window.__vault)return window.__vault.deliver(blob,name);let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}

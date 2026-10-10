@@ -1,7 +1,7 @@
 let currentFilteredActions=[];
-function finishAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;x.updatedAt=new Date().toISOString();save();filterActions();}
-function deleteAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==id);save();filterActions();imgAfterSave(x.images||[]);}
-function finishActionFromHome(id){let x=db.actions.find(a=>a.id===id);if(!x)return;x.finalizada=true;x.updatedAt=new Date().toISOString();save();dashboard();}
+function finishAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;markFinished(x);save();filterActions();}
+function deleteAction(id){let x=db.actions.find(a=>a.id===id);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==id);save();filterActions();imgAfterSave(attOf(x));}
+function finishActionFromHome(id){let x=db.actions.find(a=>a.id===id);if(!x)return;markFinished(x);save();dashboard();}
 function homeBtn(){return `<button class="btn" onclick="nav('dashboard')">← Volver a Inicio</button>`}
 let activeCenterTab='datos';
 function centerRequestForm(x){return `<div class="formgrid"><div class="field"><label>Tipo</label><input class="input" value="${esc(x.type)}" readonly></div><div class="field"><label>Fecha</label><input id="requestDate" type="date" class="input" value="${esc(x.date||'')}"></div><div class="field full"><label>Asunto</label><input id="requestSubject" class="input" style="width:100%" value="${esc(x.subject||'')}"></div><div class="field full"><label>Detalles</label><textarea id="requestDetails" class="textarea">${esc(x.details||'')}</textarea></div><div class="field full"><label><input id="requestFinished" type="checkbox" ${x.finalizada?'checked':''}> Finalizado</label></div></div>`}
@@ -79,6 +79,6 @@ function centerFollowupPanel(c){
  const skip=c.sinSeguimiento?`<div class="notice" style="margin-bottom:12px">Este centro está fuera del seguimiento: no aparece en la pantalla general «Seguimiento». <button class="linklike" type="button" onclick="setFollowSkip('${esc(c.id)}',false,true)">Volver a incluirlo</button></div>`:'';
  return `${skip}<div class="toolbar" style="margin-bottom:12px"><button class="btn small" onclick="nav('seguimiento')">Ver seguimiento general</button>${c.sinSeguimiento?'':`<button class="btn small" type="button" onclick="setFollowSkip('${esc(c.id)}',true,true)">Quitar este centro del seguimiento general</button>`}</div><h3>Documentos</h3>${documents}`;
 }
-function deleteActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==aid);save();centerDetail(cid);imgAfterSave(x.images||[])}
-function finishActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(x){x.finalizada=true;x.updatedAt=new Date().toISOString();save();centerDetail(cid)}}
+function deleteActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(!x)return;if(!confirm('¿Eliminar esta actuación? Esta acción no se puede deshacer.'))return;db.actions=db.actions.filter(a=>a.id!==aid);save();centerDetail(cid);imgAfterSave(attOf(x))}
+function finishActionFromCenter(aid,cid){let x=db.actions.find(a=>a.id===aid);if(x){markFinished(x);save();centerDetail(cid)}}
 function newActionFor(center){newAction();setTimeout(()=>{let e=document.getElementById('fcenter');if(e)e.value=center},0)}

@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.3 (07/10/2026)';
-const APP_FILES_VERSION='4.3';
+const APP_VERSION='4.4 (10/10/2026)';
+const APP_FILES_VERSION='4.4';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);
@@ -567,7 +567,7 @@ async function docSave(file,sub){
  return name;
 }
 
-/* Adjuntos (v4.2): imágenes de las actuaciones. Cada archivo llega ya cifrado desde la aplicación
+/* Adjuntos (v4.2): imágenes de las actuaciones y, desde la v4.4, sus PDF. Cada archivo llega ya cifrado desde la aplicación
    (clave propia guardada dentro del registro) y vive en Registro/Adjuntos. */
 async function attDir(create,ask){
  if(!S.dir||!(await dirPerm(!!ask)))return null;

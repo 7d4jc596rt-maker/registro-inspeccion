@@ -7,7 +7,7 @@ function ensureShape(){
  if(!db.specials||typeof db.specials!=='object')db.specials=JSON.parse(JSON.stringify(SEED.specials));
  if(!db.specials['Días no lectivos'])db.specials['Días no lectivos']={headers:['CENTRO','Fecha','Estado'],rows:[]};
  db.centers.forEach(c=>{if(!db.followup[c.id])db.followup[c.id]={}});
- migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();migrateV42();migrateV43();
+ migrateSpecialTables();applyOrientationCatalog();migrateV2();migrateV33();migrateV34();migrateV42();migrateV43();migrateV44();
  imgAutoTransfer();
 }
 window.__coreGetDb=()=>db;

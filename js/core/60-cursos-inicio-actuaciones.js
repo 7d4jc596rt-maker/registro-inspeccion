@@ -11,7 +11,11 @@ function actionOrder(a,b){return prioRank(a)-prioRank(b)||((a.date||'')+(a.time|
 function normPriority(v){const t=String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();if(/^(alta|alto|urgente|high|1)$/.test(t))return 'alta';if(/^(media|medio|normal|medium|2)$/.test(t))return 'media';if(/^(baja|bajo|low|3)$/.test(t))return 'baja';return ''}
 function prioPill(a){const p=a&&a.priority;return PRIO_LABEL[p]?`<span class="prio prio-${p}" title="Prioridad ${PRIO_LABEL[p].toLowerCase()}">${PRIO_LABEL[p]}</span>`:''}
 function prioClass(a){return PRIO_LABEL[a&&a.priority]?' prio-b-'+a.priority:''}
-function imgCountMeta(a){const n=(a.images||[]).length;return n?` · ${n} ${n===1?'imagen':'imágenes'}`:''}
+/* Versión 4.4: las actuaciones llevan también PDF adjuntos (a.pdfs), además de imágenes (a.images) */
+function attCountTxt(a){const n=(a.images||[]).length,p=(a.pdfs||[]).length;return [n?`${n} ${n===1?'imagen':'imágenes'}`:'',p?`${p} PDF`:''].filter(Boolean).join(' · ')}
+function imgCountMeta(a){const t=attCountTxt(a);return t?' · '+t:''}
+/* Versión 4.4: una actuación finalizada no lleva prioridad, para que deje de salir marcada en los listados */
+function markFinished(x){x.finalizada=true;x.priority='';x.updatedAt=nowIso()}
 /* Tras guardar una actuación se vuelve a la pantalla desde la que se abrió */
 let curCenterId='';
 function afterActionSaved(){
@@ -91,6 +95,15 @@ function migrateV43(){
  db.migratedV43=true;
 }
 
+/* Versión 4.4: se quita la prioridad a las actuaciones finalizadas (también a las que ya lo estaban, y a las que
+   se finalicen desde un equipo que siga con una versión anterior en caché). */
+function migrateV44(){
+ db.actions.forEach(a=>{
+  if(a.finalizada&&a.priority)a.priority='';
+  if('pdfs' in a&&!Array.isArray(a.pdfs))delete a.pdfs;
+ });
+}
+
 /* ---------- Inicio: bloques desplegables ---------- */
 function homeBlock(key,title,headExtra,body){
  const open=window.__vault?.ui?window.__vault.ui('home.'+key,true)!==false:true;
@@ -150,7 +163,7 @@ function filterActions(){
  const c=document.getElementById('rcount');if(c){const hid=(s==='0'&&k!=='*')?db.actions.filter(x=>!x.finalizada&&!inCourse(x.date,k)).length:0;c.innerHTML=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+esc(k)}${a.length>1?' · ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente':''}`+(hid?` · <button type="button" class="linklike" onclick="showAllCoursesPending()">Hay ${hid} pendiente${hid===1?'':'s'} de otros cursos: verlas</button>`:'');}
  document.getElementById('actionRows').innerHTML=a.map(x=>{
   const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
-  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${(x.images||[]).length?`<div class="muted img-count">${(x.images||[]).length} ${(x.images||[]).length===1?'imagen':'imágenes'}</div>`:''}</td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
+  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${attCountTxt(x)?`<div class="muted img-count">${attCountTxt(x)}</div>`:''}</td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
 }
 
 /* ---------- Formulario de actuación: fechas e historial ---------- */
@@ -158,6 +171,7 @@ let formUpdates=[];
 function actionForm(x={},warnings=[]){
  formUpdates=(x.updates||[]).map(u=>({...u}));
  formImages=(x.images||[]).map(m=>({...m}));
+ pdfFormStart(x.pdfs);
  const centerKnown=!x.center||db.centers.some(c=>c.name===x.center);
  const meta=x.id?`<div class="meta-line">Registrada: ${x.createdAt?dateTime(x.createdAt):'sin dato'} · Última modificación: ${x.updatedAt?dateTime(x.updatedAt):'sin cambios'}${x.source==='notion'?' · Importada de Notion':''}</div>`:'<div class="meta-line">La fecha de registro se anotará automáticamente al guardar.</div>';
  return `${warnings.length?`<div class="notice warn-notice" style="margin:0 0 14px">${warnings.map(esc).join('<br>')}</div>`:''}${meta}
@@ -168,13 +182,13 @@ function actionForm(x={},warnings=[]){
   <div class="field"><label for="fcenter">Centro</label><select id="fcenter" class="select"><option value="">— Sin centro —</option>${centerKnown?'':`<option value="${esc(x.center)}" selected>${esc(x.center)} (no registrado)</option>`}${[...db.centers].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
   <div class="field"><label for="fstudent">Persona implicada</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
   <div class="field"><label for="fsubject">Asunto</label><input id="fsubject" class="input" style="width:100%" value="${esc(x.subject)}"></div>
-  <div class="field"><label for="fprio">Prioridad</label><select id="fprio" class="select prio-select" onchange="this.dataset.p=this.value" data-p="${PRIO_LABEL[x.priority]?x.priority:''}"><option value="" ${PRIO_LABEL[x.priority]?'':'selected'}>Sin prioridad</option>${PRIORITIES.map(([v,l])=>`<option value="${v}" ${x.priority===v?'selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="field"><label for="fprio">Prioridad</label><select id="fprio" class="select prio-select" onchange="this.dataset.p=this.value" data-p="${PRIO_LABEL[x.priority]?x.priority:''}"><option value="" ${PRIO_LABEL[x.priority]?'':'selected'}>Sin prioridad</option>${PRIORITIES.map(([v,l])=>`<option value="${v}" ${x.priority===v?'selected':''}>${l}</option>`).join('')}</select><p id="fprioHint" class="muted prio-hint" hidden>Las actuaciones finalizadas no llevan prioridad.</p></div>
   <div class="field full"><label for="fdetails">Detalles</label><textarea id="fdetails" class="textarea">${esc(x.details)}</textarea></div>
   <div class="field full"><label for="faction">Actuación realizada / respuesta</label><textarea id="faction" class="textarea">${esc(x.action)}</textarea></div>
-  <div class="field full"><label>Imágenes</label>${imgFormBlock()}</div>
+  <div class="field full"><label>Imágenes y PDF</label>${imgFormBlock('bin',true)}</div>
   <div class="field full"><label>Actualizaciones</label><div id="fUpdates" class="update-list"></div>
    <div class="update-add"><input id="fuDate" class="input" type="date" value="${todayIso()}" aria-label="Fecha de la actualización"><textarea id="fuText" class="textarea" placeholder="Qué ha cambiado: respuesta recibida, nueva gestión, cierre…" aria-label="Texto de la actualización"></textarea><button type="button" class="btn" onclick="addFormUpdate()">Añadir actualización</button></div></div>
-  <div class="field full"><label class="gate-check"><input id="ffinal" type="checkbox" ${x.finalizada?'checked':''}> Actuación finalizada</label></div>
+  <div class="field full"><label class="gate-check"><input id="ffinal" type="checkbox" ${x.finalizada?'checked':''} onchange="prioSyncFinal()"> Actuación finalizada</label></div>
  </div>`;
 }
 function renderFormUpdates(){
@@ -188,21 +202,28 @@ function addFormUpdate(){
  t.value='';renderFormUpdates();
 }
 function removeFormUpdate(id){if(!confirm('¿Eliminar esta actualización?'))return;formUpdates=formUpdates.filter(u=>u.id!==id);renderFormUpdates()}
+/* Al marcar «Actuación finalizada» se quita la prioridad; si se desmarca sin haber guardado, se recupera la que tenía */
+function prioSyncFinal(){
+ const f=document.getElementById('ffinal'),s=document.getElementById('fprio'),h=document.getElementById('fprioHint');if(!f||!s)return;
+ if(f.checked){if(s.value)s.dataset.prev=s.value;s.value='';s.disabled=true}
+ else{s.disabled=false;if(s.dataset.prev){s.value=s.dataset.prev;delete s.dataset.prev}}
+ s.dataset.p=s.value;if(h)h.hidden=!f.checked;
+}
 function readActionForm(){
  if(document.getElementById('fuText')?.value.trim())addFormUpdate();
- const v=id=>document.getElementById(id).value;
- return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),priority:normPriority(v('fprio')),details:v('fdetails'),action:v('faction'),finalizada:document.getElementById('ffinal').checked,updates:formUpdates,images:formImages.map(m=>({...m}))};
+ const v=id=>document.getElementById(id).value,fin=document.getElementById('ffinal').checked;
+ return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),priority:fin?'':normPriority(v('fprio')),details:v('fdetails'),action:v('faction'),finalizada:fin,updates:formUpdates,images:formImages.map(m=>({...m})),pdfs:formPdfs.map(m=>({...m}))};
 }
 function newAction(prefill={},warnings=[]){
  openModal('Nueva actuación',actionForm(prefill,warnings),()=>{
   const data=readActionForm();
   db.actions.push({id:uid(),createdAt:nowIso(),updatedAt:'',...data});
-  save();closeModal();afterActionSaved();imgAfterSave([]);
+  pdfFormKeep();save();closeModal();afterActionSaved();imgAfterSave([]);
  });
- renderFormUpdates();renderFormImages();
+ renderFormUpdates();renderFormImages();prioSyncFinal();
 }
 function editAction(id){
  const x=db.actions.find(a=>a.id===id);if(!x)return;
- openModal('Actuación',actionForm(x),()=>{const before=(x.images||[]).map(m=>({...m}));Object.assign(x,readActionForm(),{updatedAt:nowIso()});save();closeModal();afterActionSaved();imgAfterSave(before.filter(m=>!x.images.some(n=>n.id===m.id)))});
- renderFormUpdates();renderFormImages();
+ openModal('Actuación',actionForm(x),()=>{const before=attOf(x).map(m=>({...m}));Object.assign(x,readActionForm(),{updatedAt:nowIso()});pdfFormKeep();save();closeModal();afterActionSaved();imgAfterSave(before.filter(m=>!attOf(x).some(n=>n.id===m.id)))});
+ renderFormUpdates();renderFormImages();prioSyncFinal();
 }

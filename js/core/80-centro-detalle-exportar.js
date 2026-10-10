@@ -27,8 +27,8 @@ function centerDetail(id,tab=activeCenterTab){
 
 /* ---------- Exportación CSV ---------- */
 function actionsCsvRows(list){
- return [['Fecha actuación','Prioridad','Medio','Centro','Persona implicada','Asunto','Detalles','Actuación','Actualizaciones','Imágenes','Finalizada','Registrada','Última modificación'],
-  ...list.map(x=>[x.date,PRIO_LABEL[x.priority]||'',x.mode,x.center,x.student,x.subject,x.details,x.action,(x.updates||[]).map(u=>`${u.date}: ${u.text}`).join(' | '),(x.images||[]).length||'',x.finalizada?'Sí':'No',x.createdAt||'',x.updatedAt||''])];
+ return [['Fecha actuación','Prioridad','Medio','Centro','Persona implicada','Asunto','Detalles','Actuación','Actualizaciones','Imágenes','PDF','Finalizada','Registrada','Última modificación'],
+  ...list.map(x=>[x.date,PRIO_LABEL[x.priority]||'',x.mode,x.center,x.student,x.subject,x.details,x.action,(x.updates||[]).map(u=>`${u.date}: ${u.text}`).join(' | '),(x.images||[]).length||'',(x.pdfs||[]).map(m=>m.name).join(' | '),x.finalizada?'Sí':'No',x.createdAt||'',x.updatedAt||''])];
 }
 function csvBlob(rows){return new Blob(['\ufeff'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n')],{type:'text/csv;charset=utf-8'})}
 function exportFilteredActionsCSV(){download(csvBlob(actionsCsvRows(currentFilteredActions)),'registro-actuaciones-filtrado.csv')}
