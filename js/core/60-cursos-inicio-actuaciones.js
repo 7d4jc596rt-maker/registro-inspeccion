@@ -34,7 +34,7 @@ function stopEv(e){e.preventDefault();e.stopPropagation()}
 function courseOf(v){
  if(!v)return '';
  let y,m;const x=String(v).match(/^(\d{4})-(\d{2})/);
- if(x){y=+x[1];m=+x[2]}else{const d=new Date(v);if(isNaN(d))return '';y=d.getFullYear();m=d.getMonth()+1}
+ if(x){y=+x[1];m=+x[2]}else{const p=typeof parseDateAny==='function'?parseDateAny(v):'';if(p){y=+p.slice(0,4);m=+p.slice(5,7)}else{const d=new Date(v);if(isNaN(d))return '';y=d.getFullYear();m=d.getMonth()+1}}
  const s=m>=9?y:y-1;return `${s}/${String((s+1)%100).padStart(2,'0')}`;
 }
 function currentCourse(){return courseOf(todayIso())}
@@ -104,6 +104,44 @@ function migrateV44(){
  });
  if('docTrash' in db&&!Array.isArray(db.docTrash))delete db.docTrash;
 }
+
+/* Versión 4.7: Seguimiento documental reducido a cinco documentos, en este orden.
+   «PGA» pasa a llamarse «PXA» y conserva sus fechas y marcas N/A; el resto de documentos se eliminan
+   definitivamente con sus fechas y marcas N/A.
+   Además, las fechas de las visitas se normalizan (AAAA-MM-DD) para que se cuenten en su curso. */
+const FOLLOW_FIELDS_V47=['Acta claustro adscripción','Entrega programaciones','DOC','PXA','Memoria final'];
+function migrateV47(){
+ if(!db.migratedV47){
+  for(const store of [db.followup,db.followupNA])for(const row of Object.values(store||{})){
+   if(!row||typeof row!=='object')continue;
+   if('PGA' in row){if(!row.PXA)row.PXA=row.PGA;delete row.PGA}
+   for(const k of Object.keys(row))if(!FOLLOW_FIELDS_V47.includes(k))delete row[k];
+  }
+  db.followupFields=[...FOLLOW_FIELDS_V47];
+  db.migratedV47=true;
+ }
+ const months=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+ db.visits.forEach(v=>{
+  if(!v||!v.date)return;
+  const d=anyDateIso(v.date);
+  if(d&&d!==v.date){v.date=d;if(!v.month)v.month=months[Number(d.slice(5,7))-1]}
+ });
+ db.centers.forEach(c=>{if(c.comedor&&typeof c.comedor!=='object')c.comedor={gestion:'',comensales:'',obs:String(c.comedor)}});
+}
+/* Fecha en formato AAAA-MM-DD a partir de cualquier forma habitual (AAAA-MM-DD, DD/MM/AAAA, «14 de octubre de 2026»…) */
+function anyDateIso(v){
+ if(!v)return '';
+ const s=String(v).trim(),m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+ if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+ const p=typeof parseDateAny==='function'?parseDateAny(s):'';if(p)return p;
+ const d=new Date(s);if(isNaN(d))return '';
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+/* Visitas por curso. Una visita sin fecha reconocible se muestra en el curso actual, marcada «Sin fecha»,
+   para que no quede oculta y se le pueda poner la fecha. */
+function visitCourse(v){return courseOf(anyDateIso(v&&v.date))||currentCourse()}
+function visitInCourse(v,course){return course==='*'||visitCourse(v)===course}
+function visitHasDate(v){return !!anyDateIso(v&&v.date)}
 
 /* ---------- Inicio: bloques desplegables ---------- */
 function homeBlock(key,title,headExtra,body){
@@ -226,5 +264,15 @@ function newAction(prefill={},warnings=[]){
 function editAction(id){
  const x=db.actions.find(a=>a.id===id);if(!x)return;
  openModal('Actuación',actionForm(x),()=>{const before=attOf(x).map(m=>({...m}));Object.assign(x,readActionForm(),{updatedAt:nowIso()});pdfFormKeep();save();closeModal();afterActionSaved();imgAfterSave(before.filter(m=>!attOf(x).some(n=>n.id===m.id)))});
+ /* Versión 4.7: botón «Eliminar actuación» en la ventana de edición */
+ const foot=document.querySelector('#modal .modalfoot');
+ if(foot){const b=document.createElement('button');b.id='modalDelete';b.type='button';b.className='btn danger modal-delete';b.textContent='Eliminar actuación';b.onclick=()=>deleteActionFromModal(id);foot.insertBefore(b,foot.firstChild)}
  renderFormUpdates();renderFormImages();prioSyncFinal();
+}
+function deleteActionFromModal(id){
+ const x=db.actions.find(a=>a.id===id);if(!x)return;
+ const n=attOf(x).length;
+ if(!confirm(`¿Eliminar la actuación «${x.subject||'(sin asunto)'}»${x.center?' de '+x.center:''}?${n?`\n\nTambién se borrarán ${n===1?'su archivo adjunto':'sus '+n+' archivos adjuntos'} (imágenes o PDF).`:''}\n\nEsta acción no se puede deshacer.`))return;
+ db.actions=db.actions.filter(a=>a.id!==id);
+ save();closeModal();afterActionSaved();imgAfterSave(attOf(x));
 }

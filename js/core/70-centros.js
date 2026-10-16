@@ -67,7 +67,7 @@ function editCenterNote(id,cid){
 }
 function deleteCenterNote(id,cid){if(!confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.'))return;db.centerNotes=db.centerNotes.filter(n=>n.id!==id);save();centerDetail(cid,'notas')}
 function showCenterTab(tab){
- if(!['datos','caracteristicas','ficha','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))return;
+ if(!['datos','otros','ficha','actuaciones','notas','visitas','peticiones','seguimiento'].includes(tab))return;
  activeCenterTab=tab;
  document.querySelectorAll('.center-menu-button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===tab)));
  document.querySelectorAll('.center-section').forEach(p=>{p.hidden=p.dataset.tab!==tab});
@@ -86,10 +86,10 @@ function centerActsHTML(c){
 }
 function centerVisitsHTML(c){
  const all=db.visits.filter(v=>v.center===c.name),k=getCenterCourse(c.id,'vis');
- const list=all.filter(v=>inCourse(v.date,k)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const list=all.filter(v=>visitInCourse(v,k)).sort((a,b)=>(iso(b.date)||'9').localeCompare(iso(a.date)||'9'));
  return `<h3>Visitas ${k==='*'?'de todos los cursos':'del curso '+k} (${list.length})</h3>
- <div class="course-bar"><label for="cVisCourse">Curso</label>${courseSelect('cVisCourse',courseList(all.map(v=>v.date)),k,`setCenterCourse('${c.id}','vis',this.value)`)}<span class="muted">${all.length} en total en este centro</span></div>
- <div class="timeline">${list.map(v=>`<div class="event"><b>${date(v.date)}</b><div class="note-text">${esc(v.obs||v.notes||v.observations||'Visita al centro')}</div><button class="btn small" type="button" onclick="editVisitFromCenter('${v.id}','${c.id}')">Editar</button></div>`).join('')||`<div class="empty">No hay visitas en ${k==='*'?'ningún curso':'el curso '+k}.</div>`}</div>`;
+ <div class="course-bar"><label for="cVisCourse">Curso</label>${courseSelect('cVisCourse',courseList(all.map(v=>anyDateIso(v.date))),k,`setCenterCourse('${c.id}','vis',this.value)`)}<span class="muted">${all.length} en total en este centro</span></div>
+ <div class="timeline">${list.map(v=>`<div class="event"><b>${visitHasDate(v)?date(iso(v.date)):'Sin fecha <span class="muted">· edítala para indicar la fecha</span>'}</b><div class="note-text">${esc(v.obs||v.notes||v.observations||'Visita al centro')}</div><button class="btn small" type="button" onclick="editVisitFromCenter('${v.id}','${c.id}')">Editar</button></div>`).join('')||`<div class="empty">No hay visitas en ${k==='*'?'ningún curso':'el curso '+k}.</div>`}</div>`;
 }
 function setCenterCourse(cid,kind,val){
  centerCourseSel[cid+'.'+kind]=val;const c=db.centers.find(x=>x.id===cid);if(!c)return;
@@ -133,6 +133,6 @@ function editCharacteristics(cid,k){
   const o={};CHAR_FIELDS.forEach(([f])=>{o[f]=document.getElementById('ch_'+f).value.trim()});o.updatedAt=nowIso();
   if(nk!==k)delete c.caracteristicas[k];
   if(charHasData(o))c.caracteristicas[nk]=o;else delete c.caracteristicas[nk];
-  centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'caracteristicas');
+  centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'datos');
  });
 }

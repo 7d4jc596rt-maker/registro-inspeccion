@@ -1,16 +1,16 @@
 function centerDetail(id,tab=activeCenterTab){
  const c=db.centers.find(x=>x.id===id);if(!c)return;
  curCenterId=id;
- if(!['datos','caracteristicas','ficha','actuaciones','notas','visitas','peticiones','seguimiento','otros'].includes(tab))tab='datos';
+ if(!['datos','otros','ficha','actuaciones','notas','visitas','peticiones','seguimiento'].includes(tab))tab='datos';
  const allActs=db.actions.filter(a=>a.center===c.name);
  const pending=allActs.filter(a=>!a.finalizada).sort(actionOrder);
   const centerVisits=db.visits.filter(v=>v.center===c.name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const centerRequests=db.petitionsRequirements.filter(x=>x.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const notes=db.centerNotes.filter(n=>n.centerId===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  const field=(label,value)=>`<div><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
- const tabs=[['datos','Datos del centro'],['caracteristicas','Características del centro'],['ficha','Ficha oficial'],['actuaciones','Actuaciones'],['notas','Notas del centro'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['otros','Otros datos'],['peticiones','Peticiones y requerimientos']];
+ const tabs=[['datos','Datos del centro'],['otros','Otros datos'],['ficha','Ficha oficial'],['actuaciones','Actuaciones'],['notas','Notas del centro'],['visitas','Visitas'],['seguimiento','Seguimiento documental'],['peticiones','Peticiones y requerimientos']];
  const cur=currentCourse(),inCur=x=>courseOf(x.date)===cur;
- const counts={actuaciones:pending.length,notas:notes.length,visitas:centerVisits.filter(inCur).length,peticiones:centerRequests.filter(inCur).length};
+ const counts={actuaciones:pending.length,notas:notes.length,visitas:centerVisits.filter(v=>visitInCourse(v,cur)).length,peticiones:centerRequests.filter(inCur).length};
  const menuButtons=tabs.map(([key,label])=>`<button id="center-menu-${key}" class="center-menu-button" type="button" data-tab="${key}" aria-controls="center-panel-${key}" aria-pressed="${key===tab}" onclick="showCenterTab('${key}')">${label}${counts[key]?` <span class="menu-count" title="${key==='notas'?'Notas del centro':key==='actuaciones'?'Actuaciones sin finalizar':'Curso '+cur}">${counts[key]}</span>`:''}</button>`).join('');
  const leadership=(cls,label,value)=>`<div class="leadership-role ${cls}"><dt>${label}</dt><dd>${esc(value||'—')}</dd></div>`;
  const empty=(col,row)=>`<div class="leadership-empty" style="grid-column:${col};grid-row:${row}" aria-hidden="true"></div>`;
@@ -21,8 +21,29 @@ function centerDetail(id,tab=activeCenterTab){
  const visits=`<div id="centerVisitsCourse">${centerVisitsHTML(c)}</div>`;
  const requests=`<h3>Peticiones y requerimientos (${centerRequests.length})</h3><div class="timeline">${centerRequests.map(x=>`<div class="event"><b>${esc(x.type)} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div>${esc(x.subject)}</div><p>${esc(x.details||'')}</p><button class="btn small" type="button" onclick="editCenterRequest('${x.id}','${c.id}')">Editar</button> ${x.finalizada?'':`<button class="btn small" type="button" onclick="finishCenterRequest('${x.id}','${c.id}')">Marcar como finalizado</button>`}</div>`).join('')||'<div class="empty">No hay peticiones ni requerimientos registrados.</div>'}</div>`;
  const sec=(key,html)=>`<section id="center-panel-${key}" class="center-section" role="region" aria-labelledby="center-menu-${key}" data-tab="${key}" ${tab===key?'':'hidden'}>${html}</section>`;
- document.getElementById('main').innerHTML=`<header class="center-fixed-head"><div class="center-identity-row"><div class="center-identity"><h1>${esc(c.name)}</h1><span>${esc(c.town)}${c.code?' · código '+esc(c.code):''}</span></div><div class="center-head-actions"><button class="btn" onclick="nav('centros')">Volver</button><button class="btn" onclick="editCenter('${c.id}')">Editar datos</button><button class="btn primary" onclick="newActionForCenter('${c.id}')">+ Actuación</button><button class="btn primary" onclick="newCenterNote('${c.id}')">+ Nota</button><button class="btn primary" onclick="newVisitForCenter('${c.id}')">+ Visita</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Petición')">+ Petición</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Requerimiento')">+ Requerimiento</button></div></div></header><div class="panel center-workspace"><nav class="center-menu" aria-label="Secciones de la ficha">${menuButtons}</nav><div class="center-content" id="centerContent">${sec('datos',data)}${sec('caracteristicas',`<div id="centerChar">${centerCharHTML(c)}</div>`)}${sec('ficha',`<div id="centerFicha">${centerFichaHTML(c)}</div>`)}${sec('actuaciones',actions)}${sec('notas',notesHtml)}${sec('visitas',visits)}${sec('seguimiento',`<h3>Seguimiento</h3>${centerFollowupPanel(c)}`)}${sec('otros',`<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}${centerSpecialCard(c,'Días no lectivos','Días no lectivos')}</div>`)}${sec('peticiones',requests)}</div></div>`;
+ document.getElementById('main').innerHTML=`<header class="center-fixed-head"><div class="center-identity-row"><div class="center-identity"><h1>${esc(c.name)}</h1><span>${esc(c.town)}${c.code?' · código '+esc(c.code):''}</span></div><div class="center-head-actions"><button class="btn" onclick="nav('centros')">Volver</button><button class="btn" onclick="editCenter('${c.id}')">Editar datos</button><button class="btn primary" onclick="newActionForCenter('${c.id}')">+ Actuación</button><button class="btn primary" onclick="newCenterNote('${c.id}')">+ Nota</button><button class="btn primary" onclick="newVisitForCenter('${c.id}')">+ Visita</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Petición')">+ Petición</button><button class="btn primary" onclick="newCenterRequest('${c.id}','Requerimiento')">+ Requerimiento</button></div></div></header><div class="panel center-workspace"><nav class="center-menu" aria-label="Secciones de la ficha">${menuButtons}</nav><div class="center-content" id="centerContent">${sec('datos',data)}${sec('otros',centerOtrosHTML(c))}${sec('ficha',`<div id="centerFicha">${centerFichaHTML(c)}</div>`)}${sec('actuaciones',actions)}${sec('notas',notesHtml)}${sec('visitas',visits)}${sec('seguimiento',`<h3>Seguimiento</h3>${centerFollowupPanel(c)}`)}${sec('peticiones',requests)}</div></div>`;
  activeCenterTab=tab;
+}
+
+/* Versión 4.7: «Otros datos» del centro, justo debajo de «Datos del centro». Sin «Días no lectivos» y con el
+   bloque «Comedor» (Gestión, Nº comensales, Observaciones), que se guarda en la ficha del centro (c.comedor). */
+function centerOtrosHTML(c){
+ return `<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerComedorCard(c)}${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}</div>`;
+}
+const COMEDOR_FIELDS=[['gestion','Gestión'],['comensales','Nº comensales'],['obs','Observaciones']];
+function centerComedorCard(c){
+ const d=(c.comedor&&typeof c.comedor==='object')?c.comedor:{},has=COMEDOR_FIELDS.some(([k])=>String(d[k]||'').trim());
+ return `<div class="panel center-extra-card"><div class="panelhead"><h3>Comedor</h3><button class="btn small primary" type="button" onclick="editComedor('${esc(c.id)}')">${has?'Editar':'Añadir datos'}</button></div><div class="panelbody"><dl class="center-data-list">${COMEDOR_FIELDS.map(([k,l])=>`<div><dt>${l}</dt><dd class="note-text">${esc(d[k]||'—')}</dd></div>`).join('')}</dl></div></div>`;
+}
+function editComedor(cid){
+ const c=db.centers.find(x=>x.id===cid);if(!c)return;
+ const d=(c.comedor&&typeof c.comedor==='object')?c.comedor:{};
+ openModal('Comedor · '+c.name,`<div class="formgrid"><div class="field"><label for="comGestion">Gestión</label><input id="comGestion" class="input" style="width:100%" value="${esc(d.gestion||'')}"></div><div class="field"><label for="comComensales">Nº comensales</label><input id="comComensales" class="input" style="width:100%" value="${esc(d.comensales||'')}"></div><div class="field full"><label for="comObs">Observaciones</label><textarea id="comObs" class="textarea">${esc(d.obs||'')}</textarea></div></div>`,()=>{
+  const v=id=>document.getElementById(id).value.trim();
+  const o={gestion:v('comGestion'),comensales:v('comComensales'),obs:document.getElementById('comObs').value.trim()};
+  if(COMEDOR_FIELDS.some(([k])=>o[k]))c.comedor={...o,updatedAt:nowIso()};else delete c.comedor;
+  save();closeModal();centerDetail(cid,'otros');
+ });
 }
 
 /* ---------- Exportación CSV ---------- */

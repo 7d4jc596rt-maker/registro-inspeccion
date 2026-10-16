@@ -403,3 +403,8 @@ span.ct-toggle{cursor:default}
 .b-stars .off{color:#d9dee6}
 .qdetail .img-grid{margin-top:6px}
 @media(max-width:600px){.r-date{margin-left:0}.r-nav .btn{flex:1 1 100%}}
+/* Versión 4.7: botón «Eliminar actuación» a la izquierda del pie de la ventana de edición */
+.modalfoot .modal-delete{margin-right:auto;border-color:#f1c4c4}
+.modalfoot .modal-delete:hover,.modalfoot .modal-delete:focus-visible{background:#fdeaea}
+.modalfoot{gap:8px}
+@media(max-width:700px){#modal .modalfoot{flex-wrap:wrap}#modal .modalfoot .modal-delete{flex-basis:100%;margin-right:0;order:3}}

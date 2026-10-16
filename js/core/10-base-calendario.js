@@ -1,6 +1,6 @@
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function date(v){if(!v)return ''; let d=new Date(v); return isNaN(d)?esc(v):d.toLocaleDateString('es-ES');}
-function iso(v){return v?new Date(v).toISOString().slice(0,10):''}
+function iso(v){if(!v)return '';const s=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);if(s)return s[0];const d=typeof anyDateIso==='function'?anyDateIso(v):'';if(d)return d;const x=new Date(v);return isNaN(x)?'':x.toISOString().slice(0,10)}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function nav(view){document.querySelectorAll('.nav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view)); render(view)}
 document.querySelectorAll('.nav button[data-view]').forEach(b=>b.onclick=()=>nav(b.dataset.view));
