@@ -195,13 +195,13 @@ function editDot(cid,k){
   if(!Object.keys(o.proa||{}).length&&!Object.keys(o.sec?.proa||{}).length){o.proaDet='';o.proaPer=''}
   if(nk!==k)delete c.dotacion[k];
   if(dotHasData(o))c.dotacion[nk]=o;else delete c.dotacion[nk];
-  centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'datos');
+  centerCourseSel[cid+'.char']=nk;save();closeModal();centerDetail(cid,'dotacion');
  });
 }
 function deleteDot(cid,k){
  const c=db.centers.find(x=>x.id===cid);if(!c||!c.dotacion)return;
  if(!confirm(`¿Eliminar la dotación de profesorado del curso ${k}?`))return;
- delete c.dotacion[k];save();centerDetail(cid,'datos');
+ delete c.dotacion[k];save();centerDetail(cid,'dotacion');
 }
 /* Bloques «DOTACIÓN DE PROFESORADO» preparados por Claude (uno o varios) */
 function parseDotBlocks(text){
@@ -267,7 +267,7 @@ function pasteDotStart(){
   });
   save();closeModal();
   alert(`Dotación guardada en ${ok.length} ${ok.length===1?'centro':'centros'}:\n${ok.map(([c,b])=>`${c.name} (${b.course})`).join('\n')}${bad.length?`\n\nNo encontrados:\n${bad.join('\n')}`:''}`);
-  if(ok.length===1){centerCourseSel[ok[0][0].id+'.char']=ok[0][1].course;centerDetail(ok[0][0].id,'datos')}
+  if(ok.length===1){centerCourseSel[ok[0][0].id+'.char']=ok[0][1].course;centerDetail(ok[0][0].id,'dotacion')}
  });
  document.getElementById('modalSave').textContent='Guardar';
 }

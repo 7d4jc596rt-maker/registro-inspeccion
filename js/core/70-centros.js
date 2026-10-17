@@ -67,7 +67,7 @@ function editCenterNote(id,cid){
 }
 function deleteCenterNote(id,cid){if(!confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.'))return;db.centerNotes=db.centerNotes.filter(n=>n.id!==id);save();centerDetail(cid,'notas')}
 function showCenterTab(tab){
- if(!['datos','otros','ficha','actuaciones','notas','visitas','peticiones','seguimiento'].includes(tab))return;
+ if(!['datos','dotacion','otros','ficha','actuaciones','notas','visitas','peticiones','seguimiento'].includes(tab))return;
  activeCenterTab=tab;
  document.querySelectorAll('.center-menu-button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===tab)));
  document.querySelectorAll('.center-section').forEach(p=>{p.hidden=p.dataset.tab!==tab});
@@ -93,11 +93,20 @@ function centerVisitsHTML(c){
 }
 function setCenterCourse(cid,kind,val){
  centerCourseSel[cid+'.'+kind]=val;const c=db.centers.find(x=>x.id===cid);if(!c)return;
- const box={act:'centerActsCourse',vis:'centerVisitsCourse',char:'centerChar',ficha:'centerFicha'}[kind],fn={act:centerActsHTML,vis:centerVisitsHTML,char:centerCharHTML,ficha:centerFichaHTML}[kind];
+ const box={act:'centerActsCourse',vis:'centerVisitsCourse',char:'centerDot',ficha:'centerFicha'}[kind],fn={act:centerActsHTML,vis:centerVisitsHTML,char:centerDotTabHTML,ficha:centerFichaHTML}[kind];
  const el=document.getElementById(box);if(el){el.innerHTML=fn(c);document.getElementById({act:'cActCourse',vis:'cVisCourse',char:'cCharCourse',ficha:'cFichaCourse'}[kind])?.focus()}
 }
 
-/* ---------- Ficha: características del centro por curso ---------- */
+/* Versión 4.8: apartado «Dotación» de la ficha, con su selector de curso (curso actual por defecto).
+   Usa la misma selección de curso que tenían las antiguas «Características del centro». */
+function centerDotTabHTML(c){
+ const courses=[...new Set([currentCourse(),...Object.keys(c.dotacion||{})])].sort().reverse();
+ let k=centerCourseSel[c.id+'.char']||currentCourse();if(k==='*'||!courses.includes(k))k=currentCourse();
+ const sel=`<div class="course-bar"><label for="cCharCourse">Curso</label><select id="cCharCourse" class="select" aria-label="Curso escolar" onchange="setCenterCourse('${c.id}','char',this.value)">${courses.map(x=>`<option value="${x}" ${x===k?'selected':''}>Curso ${x}${x===currentCourse()?' (actual)':''}${(c.dotacion||{})[x]?'':' · sin datos'}</option>`).join('')}</select></div>`;
+ if(!dotApplies(c))return `<h3>Dotación de profesorado</h3><div class="empty">La tabla de dotación de profesorado se usa en los centros públicos de Infantil y Primaria, en los IES y en los CPI.</div>`;
+ return sel+centerDotHTML(c,k);
+}
+/* ---------- Ficha: características del centro por curso (sin uso desde la 4.7; los datos se conservan) ---------- */
 const CHAR_FIELDS=[['linea','Línea y unidades'],['alumnos','Nº alumnos'],['profesores','Nº profesores'],['transporte','Transporte'],['comedor','Comedor'],['pt','PT'],['al','AL'],['cuidadoras','Cuidadoras'],['varios','Varios']];
 const CHAR_WIDE=new Set(['comedor','pt','al','cuidadoras','varios']);
 function charHasData(o){return !!o&&CHAR_FIELDS.some(([k])=>String(o[k]||'').trim())}

@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.7 (16/10/2026)';
-const APP_FILES_VERSION='4.7';
+const APP_VERSION='4.8 (17/10/2026)';
+const APP_FILES_VERSION='4.8';
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
 const DEFAULT_NAME='registro-inspeccion-cifrado.json';
 const $=id=>document.getElementById(id);

@@ -143,6 +143,23 @@ function visitCourse(v){return courseOf(anyDateIso(v&&v.date))||currentCourse()}
 function visitInCourse(v,course){return course==='*'||visitCourse(v)===course}
 function visitHasDate(v){return !!anyDateIso(v&&v.date)}
 
+/* Versión 4.8: el texto del antiguo campo «Comedor» de las características generales pasa a las Observaciones
+   del bloque «Comedor». Si había texto en varios cursos, cada uno va precedido de su curso. Se hace una sola vez. */
+function migrateV48(){
+ if(db.migratedV48)return;
+ db.centers.forEach(c=>{
+  const store=c.caracteristicas||{};
+  const items=Object.keys(store).sort().map(k=>[k,String(store[k]?.comedor||'').trim()]).filter(([,t])=>t);
+  if(!items.length)return;
+  const txt=items.length===1?items[0][1]:items.map(([k,t])=>`${k}: ${t}`).join('\n');
+  const d=(c.comedor&&typeof c.comedor==='object')?c.comedor:{gestion:'',comensales:'',obs:''};
+  const prev=String(d.obs||'').trim();
+  if(prev.includes(txt))return;
+  c.comedor={...d,obs:prev?prev+'\n\n'+txt:txt,updatedAt:nowIso()};
+ });
+ db.migratedV48=true;
+}
+
 /* ---------- Inicio: bloques desplegables ---------- */
 function homeBlock(key,title,headExtra,body){
  const open=window.__vault?.ui?window.__vault.ui('home.'+key,true)!==false:true;
