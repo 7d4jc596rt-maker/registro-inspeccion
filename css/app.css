@@ -410,3 +410,6 @@ span.ct-toggle{cursor:default}
 @media(max-width:700px){#modal .modalfoot{flex-wrap:wrap}#modal .modalfoot .modal-delete{flex-basis:100%;margin-right:0;order:3}}
 /* Versión 4.8: versión de la aplicación bajo el nombre */
 .brand .brand-ver{display:block;font-size:11px;font-weight:500;color:#bfe6fb;margin-top:3px;letter-spacing:.02em}
+
+/* Versión 4.9: vacantes negativas (alumnado por encima de la ratio) */
+.dot-table td.vac-neg{color:#c00000;font-weight:700}
