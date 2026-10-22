@@ -138,7 +138,7 @@ function centerDotHTML(c,k){
  let h=head;
  if(P.prim)h+=dotPrimHasData(d)?dotPrimHTML(d,P.sec):(P.sec?'<h4 class="dot-sub">Infantil y Primaria</h4>':'')+'<div class="empty dot-empty">Sin datos de Infantil y Primaria.</div>';
  if(P.sec)h+=dotSecHTML(d,P.prim);
- return h+`${d.notas?`<div class="note-text dot-notes">${esc(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
+ return h+`${d.notas?`<div class="md-view dot-notes">${mdRender(d.notas)}</div>`:''}<div style="margin-top:8px"><button class="btn small danger" onclick="deleteDot('${c.id}','${k}')">Eliminar la dotación de este curso</button></div>`;
 }
 
 /* --- Lectura de listas «SIGLA código (nombre)=número; …» y «NIVEL alumnos/grupos; …» --- */

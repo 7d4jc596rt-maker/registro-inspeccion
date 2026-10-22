@@ -1,5 +1,5 @@
 function visitas(){document.getElementById('main').innerHTML=layout('Visitas','Planificación anual de visitas a centros',homeBtn()+`<button class="btn primary" onclick="newVisit()">+ Nueva visita</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="vsearch" class="input" placeholder="Buscar centro" oninput="renderVisitsTable()"><select id="vmonth" class="select" onchange="renderVisitsTable()"><option value="">Todos los meses</option>${['SEP','OCT','NOV','DIC','ENE','FEB','MAR','ABR','MAY','JUN'].map(m=>`<option>${m}</option>`).join('')}</select>${courseSelect('vcourse',courseList(db.visits.map(v=>anyDateIso(v.date))),currentCourse(),'renderVisitsTable()')}<span id="vcount" class="pill"></span><button class="btn" type="button" onclick="exportVisitsMonthPDF()">Exportar PDF del mes</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Mes</th><th>Centro</th><th>Observaciones</th><th></th></tr></thead><tbody id="visitRows"></tbody></table></div></div></div>`;renderVisitsTable()}
-function renderVisitsTable(){let q=(document.getElementById('vsearch')?.value||'').toLowerCase(),m=document.getElementById('vmonth')?.value||'',k=document.getElementById('vcourse')?.value||'*';let a=db.visits.filter(x=>!q||String(x.center||'').toLowerCase().includes(q)).filter(x=>!m||x.month===m).filter(x=>visitInCourse(x,k)).sort((a,b)=>String(iso(a.date)||'').localeCompare(String(iso(b.date)||'')));const vc=document.getElementById('vcount');if(vc)vc.textContent=`${a.length} ${a.length===1?'visita':'visitas'}`;document.getElementById('visitRows').innerHTML=a.map(x=>`<tr><td>${date(x.date)}</td><td>${esc(x.month)}</td><td><b>${esc(x.center)}</b></td><td><div class="clamp">${esc(x.obs)}</div></td><td><button class="btn small" onclick="editVisit('${x.id}')">Editar</button> <button class="btn small danger" type="button" title="Eliminar visita" aria-label="Eliminar visita" onclick="deleteVisit('${x.id}')">🗑️</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No hay visitas.</td></tr>'}
+function renderVisitsTable(){let q=(document.getElementById('vsearch')?.value||'').toLowerCase(),m=document.getElementById('vmonth')?.value||'',k=document.getElementById('vcourse')?.value||'*';let a=db.visits.filter(x=>!q||String(x.center||'').toLowerCase().includes(q)).filter(x=>!m||x.month===m).filter(x=>visitInCourse(x,k)).sort((a,b)=>String(iso(a.date)||'').localeCompare(String(iso(b.date)||'')));const vc=document.getElementById('vcount');if(vc)vc.textContent=`${a.length} ${a.length===1?'visita':'visitas'}`;document.getElementById('visitRows').innerHTML=a.map(x=>`<tr><td>${date(x.date)}</td><td>${esc(x.month)}</td><td><b>${esc(x.center)}</b></td><td><div class="clamp">${esc(mdPlain(x.obs))}</div></td><td><button class="btn small" onclick="editVisit('${x.id}')">Editar</button> <button class="btn small danger" type="button" title="Eliminar visita" aria-label="Eliminar visita" onclick="deleteVisit('${x.id}')">🗑️</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No hay visitas.</td></tr>'}
 function exportVisitsMonthPDF(){
  const month=document.getElementById('vmonth')?.value||'';
  if(!month){alert('Selecciona un mes para exportar sus visitas.');return;}
@@ -40,7 +40,7 @@ function visitsMonthPDF(month,visits){
  };
  start();
  for(const visit of visits){
-  const center=wrap(visit.center||'Sin centro',42),observation=wrap(visit.obs||'—',88);
+  const center=wrap(visit.center||'Sin centro',42),observation=wrap(mdPlain(visit.obs)||'—',88);
   const isoDate=String(visit.date||'');const dateText=/^\d{4}-\d{2}-\d{2}/.test(isoDate)?`${isoDate.slice(8,10)}/${isoDate.slice(5,7)}/${isoDate.slice(0,4)}`:isoDate;
   const count=Math.max(center.length,observation.length);let index=0;
   while(index<count){
@@ -75,7 +75,13 @@ function visitsMonthPDF(month,visits){
 }
 function visitForm(x={}){return `<div class="formgrid"><div class="field"><label>Centro</label><select id="vcenter" class="select">${db.centers.map(c=>`<option ${c.name===x.center?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div><div class="field"><label>Fecha</label><input id="vdate" type="date" class="input" value="${esc(iso(x.date))}"></div><div class="field"><label>Mes</label><select id="vmon" class="select">${['SEP','OCT','NOV','DIC','ENE','FEB','MAR','ABR','MAY','JUN'].map(m=>`<option ${m===x.month?'selected':''}>${m}</option>`).join('')}</select></div><div class="field full"><label>Observaciones</label><textarea id="vobs" class="textarea">${esc(x.obs)}</textarea></div></div>`}
 function newVisit(){openModal('Nueva visita',visitForm({date:new Date().toISOString().slice(0,10)}),()=>{db.visits.push({id:uid(),center:document.getElementById('vcenter').value,date:document.getElementById('vdate').value,month:document.getElementById('vmon').value,obs:document.getElementById('vobs').value});save();closeModal();visitas()})}
-function editVisit(id){let x=db.visits.find(a=>a.id===id);openModal('Editar visita',visitForm(x),()=>{Object.assign(x,{center:document.getElementById('vcenter').value,date:document.getElementById('vdate').value,month:document.getElementById('vmon').value,obs:document.getElementById('vobs').value});save();closeModal();visitas()})}
+function editVisit(id){let x=db.visits.find(a=>a.id===id);if(!x)return;openModal('Editar visita',visitForm(x),()=>{Object.assign(x,{center:document.getElementById('vcenter').value,date:document.getElementById('vdate').value,month:document.getElementById('vmon').value,obs:document.getElementById('vobs').value});save();closeModal();visitas()});addModalDelete('Eliminar visita',()=>deleteVisitFromModal(id,()=>visitas()))}
+/* Versión 4.10: eliminar la visita desde su ventana de edición */
+function deleteVisitFromModal(id,after){
+ const visit=db.visits.find(v=>v.id===id);if(!visit)return;
+ if(!confirm(`¿Eliminar la visita a «${visit.center}»${visitHasDate(visit)?' del '+date(iso(visit.date)):' (sin fecha)'}?\n\nEsta acción no se puede deshacer.`))return;
+ db.visits=db.visits.filter(v=>v.id!==id);save();closeModal();after();
+}
 function deleteVisit(id){
  const visit=db.visits.find(v=>v.id===id);if(!visit)return;
  if(!confirm(`¿Eliminar la visita a «${visit.center}» del ${date(visit.date)}? Esta acción no se puede deshacer.`))return;
@@ -97,4 +103,5 @@ function editVisitFromCenter(id,cid){
   Object.assign(visit,{center:document.getElementById('vcenter').value,date:document.getElementById('vdate').value,month:document.getElementById('vmon').value,obs:document.getElementById('vobs').value});
   save();closeModal();centerDetail(cid,'visitas');
  });
+ addModalDelete('Eliminar visita',()=>deleteVisitFromModal(id,()=>centerDetail(cid,'visitas')));
 }

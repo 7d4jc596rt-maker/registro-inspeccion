@@ -194,12 +194,11 @@ function dashboard(){
  const visitsBody=`<h3 class="home-sub">Próximas visitas</h3>${next.map(v=>visitRow(v,`<span class="pill">${esc(v.month||'')}</span>`)).join('')||'<div class="empty">No hay visitas próximas.</div>'}<h3 class="home-sub" style="margin-top:18px">Últimas visitas realizadas</h3>${last.map(v=>visitRow(v,'<span class="pill ok">Realizada</span>')).join('')||'<div class="empty">No hay visitas realizadas.</div>'}`;
  const pendingBody=pending?`<p class="muted pend-note">Ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente.</p>`+prioGroups.map(([label,items])=>`${withHeads?`<h3 class="home-sub pend-head">${label} <span class="pill">${items.length}</span></h3>`:''}<div class="timeline pend-list">${items.map(pendingRow).join('')}</div>`).join(''):'<div class="empty">No hay actuaciones pendientes.</div>';
  document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
- `<div class="cards cards1">${card(pending,'Actuaciones pendientes','registroPendientes')}</div>`+
- homeRequestsPanel()+
- `<div class="grid2 home-grid">`+
- homeBlock('visits','Visitas',`<button class="btn small" onclick="stopEv(event);nav('visitas')">Ver visitas</button>`,visitsBody)+
+ /* Versión 4.10: sin el recuadro «Actuaciones pendientes»; el bloque desplegable ocupa su lugar, arriba del todo */
  homeBlock('pending','Actuaciones pendientes',`<span class="pill ${pending?'warn':''}">${pending}</span><button class="btn small" onclick="stopEv(event);registroPending()">Ver pendientes</button>`,pendingBody)+
- `</div>`+calendarBlock();
+ homeRequestsPanel()+
+ homeBlock('visits','Visitas',`<button class="btn small" onclick="stopEv(event);nav('visitas')">Ver visitas</button>`,visitsBody)+
+ calendarBlock();
 }
 
 /* ---------- Registro de actuaciones ---------- */
@@ -219,12 +218,13 @@ function filterActions(){
  const c=document.getElementById('rcount');if(c){const hid=(s==='0'&&k!=='*')?db.actions.filter(x=>!x.finalizada&&!inCourse(x.date,k)).length:0;c.innerHTML=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+esc(k)}${a.length>1?' · ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente':''}`+(hid?` · <button type="button" class="linklike" onclick="showAllCoursesPending()">Hay ${hid} pendiente${hid===1?'':'s'} de otros cursos: verlas</button>`:'');}
  document.getElementById('actionRows').innerHTML=a.map(x=>{
   const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
-  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${attCountTxt(x)?`<div class="muted img-count">${attCountTxt(x)}</div>`:''}</td><td><div class="clamp">${esc(x.action)}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
+  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${attCountTxt(x)?`<div class="muted img-count">${attCountTxt(x)}</div>`:''}</td><td><div class="clamp">${esc(mdPlain(x.action))}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
 }
 
 /* ---------- Formulario de actuación: fechas e historial ---------- */
 let formUpdates=[];
 function actionForm(x={},warnings=[]){
+ editingUpdateId='';
  formUpdates=(x.updates||[]).map(u=>({...u}));
  formImages=(x.images||[]).map(m=>({...m}));
  pdfFormStart(x.pdfs);
@@ -247,10 +247,24 @@ function actionForm(x={},warnings=[]){
   <div class="field full"><label class="gate-check"><input id="ffinal" type="checkbox" ${x.finalizada?'checked':''} onchange="prioSyncFinal()"> Actuación finalizada</label></div>
  </div>`;
 }
+let editingUpdateId='';
 function renderFormUpdates(){
  const box=document.getElementById('fUpdates');if(!box)return;
- box.innerHTML=[...formUpdates].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(u=>`<div class="update-item"><div><b>${date(u.date)}</b><div class="note-text">${esc(u.text)}</div></div><button type="button" class="btn small danger" aria-label="Eliminar actualización" onclick="removeFormUpdate('${u.id}')">🗑️</button></div>`).join('')||'<p class="muted" style="font-size:12px;margin:0 0 8px">Sin actualizaciones.</p>';
+ box.innerHTML=[...formUpdates].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(u=>u.id===editingUpdateId
+  ?`<div class="update-item editing"><div class="update-edit"><input id="fuEditDate" class="input" type="date" value="${esc(u.date||'')}" aria-label="Fecha de la actualización"><textarea id="fuEditText" class="textarea" aria-label="Texto de la actualización">${esc(u.text)}</textarea><div class="toolbar" style="margin:6px 0 0"><button type="button" class="btn small primary" onclick="saveFormUpdate('${u.id}')">Aceptar</button><button type="button" class="btn small" onclick="cancelFormUpdate()">Cancelar</button></div></div></div>`
+  :`<div class="update-item"><div class="update-main"><b>${date(u.date)}</b><div class="md-view">${mdRender(u.text)}</div></div><div class="update-btns"><button type="button" class="btn small" aria-label="Editar actualización" title="Editar actualización" onclick="editFormUpdate('${u.id}')">✎&#xFE0E; Editar</button><button type="button" class="btn small danger" aria-label="Eliminar actualización" title="Eliminar actualización" onclick="removeFormUpdate('${u.id}')">🗑️</button></div></div>`).join('')||'<p class="muted" style="font-size:12px;margin:0 0 8px">Sin actualizaciones.</p>';
+ if(editingUpdateId){const t=document.getElementById('fuEditText');if(t){mdEnhance(t);t.focus()}}
 }
+/* Versión 4.10: las actualizaciones ya guardadas se pueden editar. Los cambios pasan a la actuación al pulsar «Guardar». */
+function editFormUpdate(id){if(editingUpdateId&&editingUpdateId!==id&&!saveFormUpdate(editingUpdateId,true))return;editingUpdateId=id;renderFormUpdates()}
+function saveFormUpdate(id,quiet){
+ const u=formUpdates.find(x=>x.id===id),t=document.getElementById('fuEditText'),d=document.getElementById('fuEditDate');
+ if(!u||!t){editingUpdateId='';renderFormUpdates();return true}
+ if(!t.value.trim()){if(!quiet){alert('El texto de la actualización no puede quedar vacío. Si sobra, elimínala con la papelera.');t.focus()}return false}
+ if(t.value.trim()!==u.text||(d&&d.value&&d.value!==u.date)){u.text=t.value.trim();if(d&&d.value)u.date=d.value;u.updatedAt=nowIso()}
+ editingUpdateId='';renderFormUpdates();return true;
+}
+function cancelFormUpdate(){editingUpdateId='';renderFormUpdates()}
 function addFormUpdate(){
  const t=document.getElementById('fuText'),d=document.getElementById('fuDate');
  if(!t.value.trim()){t.focus();return}
@@ -266,6 +280,7 @@ function prioSyncFinal(){
  s.dataset.p=s.value;if(h)h.hidden=!f.checked;
 }
 function readActionForm(){
+ if(editingUpdateId)saveFormUpdate(editingUpdateId,true);editingUpdateId='';
  if(document.getElementById('fuText')?.value.trim())addFormUpdate();
  const v=id=>document.getElementById(id).value,fin=document.getElementById('ffinal').checked;
  return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),priority:fin?'':normPriority(v('fprio')),details:v('fdetails'),action:v('faction'),finalizada:fin,updates:formUpdates,images:formImages.map(m=>({...m})),pdfs:formPdfs.map(m=>({...m}))};

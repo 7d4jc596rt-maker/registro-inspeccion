@@ -82,7 +82,7 @@ function ctCardHTML(c){
   ${phone?`<div class="ct-line"><span class="ct-ico" aria-hidden="true">☎&#xFE0E;</span><span>${phone}</span></div>`:''}
   ${mail?`<div class="ct-line"><span class="ct-ico" aria-hidden="true">✉&#xFE0E;</span><span>${mail}</span></div>`:''}
   ${tags.length?`<div class="tagcloud ct-tags">${tags.map(t=>`<button type="button" class="tagchip mini" title="Filtrar por «${esc(ctPath(t.id))}»" onclick="ctFilterOnly('${t.id}')">${esc(ctPath(t.id))}</button>`).join('')}</div>`:''}
-  ${c.notes?`<div class="ct-notes">${esc(c.notes)}</div>`:''}</article>`;
+  ${c.notes?`<div class="ct-notes md-view">${mdRender(c.notes)}</div>`:''}</article>`;
 }
 function ctRenderList(){
  const box=document.getElementById('ctList');if(!box)return;

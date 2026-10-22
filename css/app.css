@@ -413,3 +413,44 @@ span.ct-toggle{cursor:default}
 
 /* Versión 4.9: vacantes negativas (alumnado por encima de la ratio) */
 .dot-table td.vac-neg{color:#c00000;font-weight:700}
+/* 4.10 · Seguimiento: cabecera centrada y fecha límite por documento */
+.table .follow-head th{text-align:center;vertical-align:top}
+.follow-head-name{display:block}
+.follow-deadline{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:6px;font-size:11px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+.follow-deadline .input{min-width:0;width:132px;padding:3px 6px;font-size:12px;height:auto;text-align:center}
+/* 4.10 · Peticiones y requerimientos pendientes */
+.event.req-pending{border-left-color:#e0b400;background:#fffbea}
+.event-actions{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+/* 4.10 · Texto con formato (vista) */
+.md-view{font-size:13.5px;line-height:1.5;margin:6px 0 8px;overflow-wrap:anywhere;white-space:normal;max-height:none}
+.ct-notes.md-view{white-space:normal;font-size:12.5px}
+.md-view p{margin:0 0 6px}
+.md-view p:last-child,.md-view ul:last-child,.md-view ol:last-child{margin-bottom:0}
+.md-view h3{margin:10px 0 4px;font-size:14px;color:#0b4f7a}
+.md-view h4{margin:8px 0 3px;font-size:13.5px}
+.md-view ul,.md-view ol{margin:0 0 6px;padding-left:20px}
+.md-view li{margin:2px 0}
+.md-view hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+.md-view .li-cont{margin:4px 0 2px}
+/* 4.10 · Texto con formato (edición) */
+.md-wrap{display:flex;flex-direction:column;width:100%}
+.md-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px;border:1px solid #d6dce6;border-bottom:0;border-radius:8px 8px 0 0;background:#f4f7fb}
+.md-btn{border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 8px;font:inherit;font-size:12.5px;color:#26354d;cursor:pointer;min-width:30px;line-height:1.4}
+.md-btn:hover,.md-btn:focus-visible{background:#fff;border-color:#d6dce6}
+.md-btn:disabled{opacity:.35;cursor:default;background:transparent;border-color:transparent}
+.md-btn.md-prev-btn{margin-left:auto}
+.md-btn.md-prev-btn.on{background:var(--accent);color:#fff}
+.md-help{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#dfe7f1;color:#3c4b63;font-size:12px;font-weight:700;cursor:help}
+.md-wrap>.textarea{border-radius:0}
+.md-preview{border:1px solid #d6dce6;background:#fff;padding:9px 12px;font-size:14px;overflow:auto}
+.md-grip{height:16px;border:1px solid #d6dce6;border-top:0;border-radius:0 0 8px 8px;background:#f4f7fb;cursor:ns-resize;display:grid;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.md-grip span{display:block;width:36px;height:4px;border-radius:2px;background:#b5c0cf}
+.md-grip.drag span,.md-grip:hover span{background:var(--accent)}
+@media (pointer:coarse){.md-grip{height:26px}.md-grip span{width:48px;height:5px}.md-btn{padding:6px 10px;min-width:36px}}
+/* 4.10 · Actualizaciones editables */
+.update-main{flex:1;min-width:0}
+.update-btns{display:flex;gap:6px;flex-shrink:0}
+.update-item.editing{display:block}
+.update-edit{display:grid;gap:6px}
+.update-edit .input{max-width:180px}
+.update-item .md-view b{color:inherit;font-size:inherit}

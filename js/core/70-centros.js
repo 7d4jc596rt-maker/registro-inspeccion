@@ -89,12 +89,20 @@ function centerVisitsHTML(c){
  const list=all.filter(v=>visitInCourse(v,k)).sort((a,b)=>(iso(b.date)||'9').localeCompare(iso(a.date)||'9'));
  return `<h3>Visitas ${k==='*'?'de todos los cursos':'del curso '+k} (${list.length})</h3>
  <div class="course-bar"><label for="cVisCourse">Curso</label>${courseSelect('cVisCourse',courseList(all.map(v=>anyDateIso(v.date))),k,`setCenterCourse('${c.id}','vis',this.value)`)}<span class="muted">${all.length} en total en este centro</span></div>
- <div class="timeline">${list.map(v=>`<div class="event"><b>${visitHasDate(v)?date(iso(v.date)):'Sin fecha <span class="muted">· edítala para indicar la fecha</span>'}</b><div class="note-text">${esc(v.obs||v.notes||v.observations||'Visita al centro')}</div><button class="btn small" type="button" onclick="editVisitFromCenter('${v.id}','${c.id}')">Editar</button></div>`).join('')||`<div class="empty">No hay visitas en ${k==='*'?'ningún curso':'el curso '+k}.</div>`}</div>`;
+ <div class="timeline">${list.map(v=>`<div class="event"><b>${visitHasDate(v)?date(iso(v.date)):'Sin fecha <span class="muted">· edítala para indicar la fecha</span>'}</b><div class="md-view">${mdRender(v.obs||v.notes||v.observations)||'<p>Visita al centro</p>'}</div><button class="btn small" type="button" onclick="editVisitFromCenter('${v.id}','${c.id}')">Editar</button></div>`).join('')||`<div class="empty">No hay visitas en ${k==='*'?'ningún curso':'el curso '+k}.</div>`}</div>`;
+}
+function centerReqEvent(x,c){return `<div class="event${x.finalizada?'':' req-pending'}"><b>${esc(x.type)} · ${date(x.date)} · ${x.finalizada?'Finalizado':'Pendiente'}</b><div>${esc(x.subject||'(sin asunto)')}</div>${String(x.details||'').trim()?`<div class="md-view">${mdRender(x.details)}</div>`:''}<div class="event-actions"><button class="btn small" type="button" onclick="editCenterRequest('${x.id}','${c.id}')">Editar</button>${x.finalizada?'':` <button class="btn small" type="button" onclick="finishCenterRequest('${x.id}','${c.id}')">Marcar como finalizado</button>`}</div></div>`}
+function centerReqHTML(c){
+ const all=db.petitionsRequirements.filter(x=>x.centerId===c.id),k=getCenterCourse(c.id,'req');
+ const list=all.filter(x=>inCourse(x.date,k)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ return `<div class="section-head after-block"><h3 style="margin:0">Peticiones y requerimientos ${k==='*'?'de todos los cursos':'del curso '+k} (${list.length})</h3></div>
+ <div class="course-bar"><label for="cReqCourse">Curso</label>${courseSelect('cReqCourse',courseList(all.map(x=>x.date)),k,`setCenterCourse('${c.id}','req',this.value)`)}<span class="muted">${all.length} en total en este centro</span></div>
+ <div class="timeline">${list.map(x=>centerReqEvent(x,c)).join('')||`<div class="empty">No hay peticiones ni requerimientos en ${k==='*'?'ningún curso':'el curso '+k}.</div>`}</div>`;
 }
 function setCenterCourse(cid,kind,val){
  centerCourseSel[cid+'.'+kind]=val;const c=db.centers.find(x=>x.id===cid);if(!c)return;
- const box={act:'centerActsCourse',vis:'centerVisitsCourse',char:'centerDot',ficha:'centerFicha'}[kind],fn={act:centerActsHTML,vis:centerVisitsHTML,char:centerDotTabHTML,ficha:centerFichaHTML}[kind];
- const el=document.getElementById(box);if(el){el.innerHTML=fn(c);document.getElementById({act:'cActCourse',vis:'cVisCourse',char:'cCharCourse',ficha:'cFichaCourse'}[kind])?.focus()}
+ const box={req:'centerReqCourse',act:'centerActsCourse',vis:'centerVisitsCourse',char:'centerDot',ficha:'centerFicha'}[kind],fn={req:centerReqHTML,act:centerActsHTML,vis:centerVisitsHTML,char:centerDotTabHTML,ficha:centerFichaHTML}[kind];
+ const el=document.getElementById(box);if(el){el.innerHTML=fn(c);document.getElementById({req:'cReqCourse',act:'cActCourse',vis:'cVisCourse',char:'cCharCourse',ficha:'cFichaCourse'}[kind])?.focus()}
 }
 
 /* Versión 4.8: apartado «Dotación» de la ficha, con su selector de curso (curso actual por defecto).
