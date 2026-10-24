@@ -2,7 +2,7 @@
 function centros(){
  const tipos=[...new Set(db.centers.map(c=>c.tipo).filter(Boolean))].sort();
  document.getElementById('main').innerHTML=layout('Centros','Ficha básica y actividad asociada a cada centro',homeBtn()+`<button class="btn primary" onclick="newCenter()">+ Nuevo centro</button>`)+
- `<div class="toolbar"><input id="csearch" class="input" type="search" placeholder="Buscar centro o concello" oninput="filterCenters()"><select id="ctipo" class="select" onchange="filterCenters()"><option value="">Todos los tipos</option>${tipos.map(t=>`<option>${esc(t)}</option>`).join('')}</select><span id="ccount" class="pill"></span></div><div class="centergrid" id="centerGrid"></div>`;
+ `<div class="toolbar"><input id="csearch" class="input" type="search" placeholder="Buscar centro o concello" oninput="filterCenters()"><select id="ctipo" class="select" onchange="filterCenters()"><option value="">Todos los tipos</option>${tipos.map(t=>`<option>${esc(t)}</option>`).join('')}</select><span id="ccount" class="pill"></span><button type="button" class="link-btn" onclick="tablaCorreos()">Tabla correos</button></div><div class="centergrid" id="centerGrid"></div>`;
  filterCenters();
 }
 function filterCenters(){

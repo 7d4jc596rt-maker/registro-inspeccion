@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.10 (22/10/2026)';
-const APP_FILES_VERSION='4.10';
+const APP_VERSION='4.11 (24/10/2026)';
+const APP_FILES_VERSION='4.11';
 /* Versión 4.9: el resto de archivos no ve las constantes de este bloque; la versión se publica en window */
 window.APP_FILES_VERSION=APP_FILES_VERSION;
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
@@ -240,7 +240,7 @@ function createScreen(error=''){
 }
 
 /* ---------- Arranque de la aplicación ---------- */
-const CORE_FILES=["00-datos.js", "10-base-calendario.js", "20-centros-peticiones.js", "30-visitas.js", "40-seguimiento-otros-datos.js", "50-datos-importar-csv.js", "60-cursos-inicio-actuaciones.js", "65-pegar-actuacion.js", "67-imagenes.js", "70-centros.js", "75-dotacion-ficha.js", "80-centro-detalle-exportar.js", "85-importar-notion.js", "90-consultas.js", "92-copias-carpeta.js", "95-contactos.js", "96-reuniones.js", "97-bibliografia.js", "98-texto-formato.js", "99-arranque.js"];
+const CORE_FILES=["00-datos.js", "10-base-calendario.js", "20-centros-peticiones.js", "30-visitas.js", "40-seguimiento-otros-datos.js", "50-datos-importar-csv.js", "60-cursos-inicio-actuaciones.js", "65-pegar-actuacion.js", "67-imagenes.js", "70-centros.js", "72-tabla-correos.js", "75-dotacion-ficha.js", "80-centro-detalle-exportar.js", "85-importar-notion.js", "90-consultas.js", "92-copias-carpeta.js", "95-contactos.js", "96-reuniones.js", "97-bibliografia.js", "98-texto-formato.js", "99-arranque.js"];
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar '+src));document.body.appendChild(s)})}
 async function boot(data){
  S.dir=(await idb.get('dir'))||null;

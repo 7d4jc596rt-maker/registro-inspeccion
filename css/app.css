@@ -454,3 +454,22 @@ span.ct-toggle{cursor:default}
 .update-edit{display:grid;gap:6px}
 .update-edit .input{max-width:180px}
 .update-item .md-view b{color:inherit;font-size:inherit}
+/* Versión 4.11 · Tabla correos */
+.link-btn{background:none;border:0;padding:3px 4px;font:inherit;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px;align-self:center}
+.link-btn:hover{color:#005a90}
+.mail-filter{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px}
+.mail-filter-label{font-size:12px;font-weight:700;color:#4c5667;margin-right:4px}
+.chip{border:1px solid #cfd8e3;background:#fff;color:var(--text);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.mail-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:13px}
+.mail-bar .btn:disabled{opacity:.5;cursor:default}
+.mail-sep{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4c5667}
+.mail-wrap{max-height:60vh}
+.mail-table{font-size:13px}
+.mail-table .mail-chk{width:38px;text-align:center}
+.mail-table input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--accent)}
+.mail-row{cursor:pointer}.mail-row.no-mail{cursor:default;color:var(--muted)}
+.mail-row.sel td{background:#e8f5fc}
+.mail-addr{overflow-wrap:anywhere}
+.mail-out{min-height:70px;font-size:13px}
+@media(max-width:600px){.mail-bar .btn{flex:1 1 140px}.mail-sep{flex:1 1 100%}.mail-sep .select{flex:1}.chip{font-size:14px;padding:7px 12px}}
