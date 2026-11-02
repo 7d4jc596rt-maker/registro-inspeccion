@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'self'; object-src blob:; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#006aa8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Registro de actuaciones · Inspección educativa</title>
-<link rel="stylesheet" href="css/app.css?v=4.11">
+<link rel="stylesheet" href="css/app.css?v=4.12">
 </head>
 <body>
 <div id="gate" class="gate">
@@ -37,6 +37,7 @@
     <button data-view="consultas">§ &nbsp; Consultas y procedimientos</button>
     <button data-view="especiales">▤ &nbsp; Otros datos</button>
     <button data-view="reuniones">✎&#xFE0E; &nbsp; Notas reuniones</button>
+    <button data-view="supervisiones">⚑&#xFE0E; &nbsp; Supervisiones</button>
     <button data-view="bibliografia">❏&#xFE0E; &nbsp; Bibliografía</button>
     <button data-view="contactos">☎&#xFE0E; &nbsp; Contactos</button>
     <button data-view="datos">⚙ &nbsp; Datos y seguridad</button>
@@ -50,5 +51,5 @@
 </div>
 <div class="modal" id="modal"><div class="modalbox"><div class="modalhead"><b id="modalTitle">Nueva actuación</b><button class="close" onclick="closeModal()" aria-label="Cerrar">×</button></div><div class="modalbody" id="modalBody"></div><div class="modalfoot"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="modalSave">Guardar</button></div></div></div>
 <div class="modal vdlg" id="vdlg" role="dialog" aria-modal="true" aria-labelledby="vdlgTitle"><div class="modalbox"><div class="modalhead"><b id="vdlgTitle"></b></div><div class="modalbody" id="vdlgBody"></div><div class="modalfoot" id="vdlgFoot"></div></div></div>
-<script src="js/vault.js?v=4.11"></script>
+<script src="js/vault.js?v=4.12"></script>
 </body></html>

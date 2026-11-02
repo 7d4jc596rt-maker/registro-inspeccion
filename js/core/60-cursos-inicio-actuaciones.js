@@ -15,7 +15,7 @@ function prioClass(a){return PRIO_LABEL[a&&a.priority]?' prio-b-'+a.priority:''}
 function attCountTxt(a){const n=(a.images||[]).length,p=(a.pdfs||[]).length;return [n?`${n} ${n===1?'imagen':'imágenes'}`:'',p?`${p} PDF`:''].filter(Boolean).join(' · ')}
 function imgCountMeta(a){const t=attCountTxt(a);return t?' · '+t:''}
 /* Versión 4.4: una actuación finalizada no lleva prioridad, para que deje de salir marcada en los listados */
-function markFinished(x){x.finalizada=true;x.priority='';x.updatedAt=nowIso()}
+function markFinished(x){x.finalizada=true;x.priority='';delete x.remindOn;x.updatedAt=nowIso()}
 /* Tras guardar una actuación se vuelve a la pantalla desde la que se abrió */
 let curCenterId='';
 function afterActionSaved(){
@@ -180,12 +180,14 @@ function calendarBlock(){
 }
 function actionMeta(a){const n=(a.updates||[]).length;return (n?` · ${n} ${n===1?'actualización':'actualizaciones'}`:'')+imgCountMeta(a)}
 function dashboard(){
- const pendingActions=db.actions.filter(x=>!x.finalizada).sort(actionOrder);
+ /* Versión 4.12: las actuaciones aplazadas (con aviso en una fecha futura) no se cuentan entre las pendientes de Inicio */
+ const pendingActions=db.actions.filter(x=>!x.finalizada&&!isPostponed(x)).sort(actionOrder);
  const pending=pendingActions.length;
+ const postponed=postponedActions();
  const today=todayIso();
  const next=db.visits.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
  const last=db.visits.filter(x=>x.date&&x.date<today).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
- const pendingRow=a=>`<div class="event pend-row${prioClass(a)}"><div class="pend-main"><b>${date(a.date)} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div><div class="pend-side">${prioPill(a)}<button class="btn small" onclick="finishActionFromHome('${a.id}')">Finalizar</button></div></div>`;
+ const pendingRow=a=>`<div class="event pend-row${prioClass(a)}"><div class="pend-main"><b>${date(a.date)} · ${esc(a.center||'Sin centro')}${actionMeta(a)}</b><button type="button" class="subject-link" onclick="editAction('${a.id}')">${esc(a.subject||'(sin asunto)')}</button></div><div class="pend-side">${remindPill(a)}${prioPill(a)}<button class="btn small" onclick="finishActionFromHome('${a.id}')">Finalizar</button></div></div>`;
  const prioGroups=[['alta','Prioridad alta'],['media','Prioridad media'],['baja','Prioridad baja'],['','Sin prioridad']].map(([p,label])=>[label,pendingActions.filter(a=>(PRIO_LABEL[a.priority]?a.priority:'')===p)]).filter(g=>g[1].length);
  const withHeads=prioGroups.length>1||(prioGroups.length===1&&prioGroups[0][0]!=='Sin prioridad');
  const go=v=>v==='registroPendientes'?'registroPending()':`nav('${v}')`;
@@ -195,15 +197,19 @@ function dashboard(){
  const pendingBody=pending?`<p class="muted pend-note">Ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente.</p>`+prioGroups.map(([label,items])=>`${withHeads?`<h3 class="home-sub pend-head">${label} <span class="pill">${items.length}</span></h3>`:''}<div class="timeline pend-list">${items.map(pendingRow).join('')}</div>`).join(''):'<div class="empty">No hay actuaciones pendientes.</div>';
  document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
  /* Versión 4.10: sin el recuadro «Actuaciones pendientes»; el bloque desplegable ocupa su lugar, arriba del todo */
+ /* Versión 4.12: avisos de actuaciones aplazadas cuya fecha ha llegado, arriba del todo; las aplazadas, en su propio bloque */
+ remindHomeBlock()+
  homeBlock('pending','Actuaciones pendientes',`<span class="pill ${pending?'warn':''}">${pending}</span><button class="btn small" onclick="stopEv(event);registroPending()">Ver pendientes</button>`,pendingBody)+
+ (postponed.length?homeBlock('postponed','Actuaciones aplazadas',`<span class="pill">${postponed.length}</span>`,postponedBody(postponed)):'')+
  homeRequestsPanel()+
  homeBlock('visits','Visitas',`<button class="btn small" onclick="stopEv(event);nav('visitas')">Ver visitas</button>`,visitsBody)+
  calendarBlock();
+ remindOnStart();remindNavBadge();
 }
 
 /* ---------- Registro de actuaciones ---------- */
 function registro(){
- document.getElementById('main').innerHTML=layout('Registro de actuaciones','Consultas, comunicaciones, incidencias y actuaciones, por prioridad y antigüedad',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0" selected>Pendientes</option><option value="1">Finalizadas</option></select><select id="rprio" class="select" aria-label="Prioridad" onchange="filterActions()"><option value="">Todas las prioridades</option>${PRIORITIES.map(([v,l])=>`<option value="${v}">Prioridad ${l.toLowerCase()}</option>`).join('')}<option value="__none">Sin prioridad</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Prioridad</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
+ document.getElementById('main').innerHTML=layout('Registro de actuaciones','Consultas, comunicaciones, incidencias y actuaciones, por prioridad y antigüedad',homeBtn()+`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Nueva actuación</button>`)+`<div class="panel"><div class="panelbody"><div class="toolbar"><input id="rsearch" class="input" type="search" placeholder="Buscar asunto, centro, alumno, texto…" oninput="filterActions()"><select id="rtype" class="select" onchange="filterActions()"><option value="">Todos los medios</option>${ACTION_MODES.map(m=>`<option>${m}</option>`).join('')}<option value="__none">Sin especificar</option></select><select id="rstatus" class="select" onchange="filterActions()"><option value="">Todos los estados</option><option value="0" selected>Pendientes</option><option value="2">Aplazadas (con aviso)</option><option value="1">Finalizadas</option></select><select id="rprio" class="select" aria-label="Prioridad" onchange="filterActions()"><option value="">Todas las prioridades</option>${PRIORITIES.map(([v,l])=>`<option value="${v}">Prioridad ${l.toLowerCase()}</option>`).join('')}<option value="__none">Sin prioridad</option></select>${courseSelect('rcourse',courseList(db.actions.map(a=>a.date)),currentCourse(),'filterActions()')}<button class="btn" onclick="exportCSV('actions')">Exportar todo a CSV</button><button class="btn" onclick="exportFilteredActionsCSV()">Exportar resultados a CSV</button></div><p id="rcount" class="muted" style="font-size:12px;margin:0 0 8px"></p><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Prioridad</th><th>Medio</th><th>Centro</th><th>Persona implicada</th><th>Asunto</th><th>Actuación</th><th>Seguimiento</th><th>Estado</th><th></th></tr></thead><tbody id="actionRows"></tbody></table></div></div></div>`;
  filterActions();
 }
 function registroForCenter(name,course='*'){nav('registro');const i=document.getElementById('rsearch'),k=document.getElementById('rcourse'),st=document.getElementById('rstatus');if(st)st.value='';if(k)k.value=[...k.options].some(o=>o.value===course)?course:'*';if(i){i.value=name;filterActions()}}
@@ -212,13 +218,13 @@ function registroPending(){nav('registro');const s=document.getElementById('rsta
 function filterActions(){
  const q=normTxt(document.getElementById('rsearch')?.value||''),t=document.getElementById('rtype')?.value||'',s=document.getElementById('rstatus')?.value||'',k=document.getElementById('rcourse')?.value||'*',pr=document.getElementById('rprio')?.value||'';
  const a=db.actions.filter(x=>!q||normTxt([x.center,x.student,x.subject,x.details,x.action,...(x.updates||[]).map(u=>u.text)].join(' ')).includes(q))
-  .filter(x=>!t||(t==='__none'?!x.mode:x.mode===t)).filter(x=>s===''||String(x.finalizada?1:0)===s).filter(x=>!pr||(pr==='__none'?!PRIO_LABEL[x.priority]:x.priority===pr)).filter(x=>inCourse(x.date,k))
+  .filter(x=>!t||(t==='__none'?!x.mode:x.mode===t)).filter(x=>s===''||(s==='2'?isPostponed(x):String(x.finalizada?1:0)===s)).filter(x=>!pr||(pr==='__none'?!PRIO_LABEL[x.priority]:x.priority===pr)).filter(x=>inCourse(x.date,k))
   .sort(actionOrder);
  currentFilteredActions=a;
  const c=document.getElementById('rcount');if(c){const hid=(s==='0'&&k!=='*')?db.actions.filter(x=>!x.finalizada&&!inCourse(x.date,k)).length:0;c.innerHTML=`${a.length} ${a.length===1?'actuación':'actuaciones'}${k==='*'?'':' en el curso '+esc(k)}${a.length>1?' · ordenadas por prioridad y, dentro de cada una, de la más antigua a la más reciente':''}`+(hid?` · <button type="button" class="linklike" onclick="showAllCoursesPending()">Hay ${hid} pendiente${hid===1?'':'s'} de otros cursos: verlas</button>`:'');}
  document.getElementById('actionRows').innerHTML=a.map(x=>{
   const ups=x.updates||[],lastUp=ups.length?[...ups].sort((p,q)=>(q.date||'').localeCompare(p.date||''))[0]:null;
-  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${attCountTxt(x)?`<div class="muted img-count">${attCountTxt(x)}</div>`:''}</td><td><div class="clamp">${esc(mdPlain(x.action))}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':'<span class="pill warn">Pendiente</span>'}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
+  return `<tr><td>${date(x.date)}</td><td>${prioPill(x)||'<span class="muted">—</span>'}</td><td>${esc(x.mode||'—')}</td><td><b>${esc(x.center)}</b></td><td>${esc(x.student)}</td><td><button type="button" class="subject-link" onclick="editAction('${x.id}')">${esc(x.subject||'(sin asunto)')}</button>${attCountTxt(x)?`<div class="muted img-count">${attCountTxt(x)}</div>`:''}</td><td><div class="clamp">${esc(mdPlain(x.action))}</div></td><td>${lastUp?`<span class="pill">${ups.length}</span><br><span class="muted">Última: ${date(lastUp.date)}</span>`:'<span class="muted">—</span>'}</td><td>${x.finalizada?'<span class="pill ok">Finalizada</span>':(isPostponed(x)?'<span class="pill">Aplazada</span>':'<span class="pill warn">Pendiente</span>')}${remindPill(x)?'<div style="margin-top:4px">'+remindPill(x)+'</div>':''}</td><td style="white-space:nowrap">${x.finalizada?'':`<button class="btn small" onclick="finishAction('${x.id}')">Finalizar</button> `}<button class="btn small danger" title="Eliminar actuación" aria-label="Eliminar actuación" onclick="deleteAction('${x.id}')">🗑️</button></td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay resultados.</td></tr>';
 }
 
 /* ---------- Formulario de actuación: fechas e historial ---------- */
@@ -239,6 +245,7 @@ function actionForm(x={},warnings=[]){
   <div class="field"><label for="fstudent">Persona implicada</label><input id="fstudent" class="input" style="width:100%" value="${esc(x.student)}"></div>
   <div class="field"><label for="fsubject">Asunto</label><input id="fsubject" class="input" style="width:100%" value="${esc(x.subject)}"></div>
   <div class="field"><label for="fprio">Prioridad</label><select id="fprio" class="select prio-select" onchange="this.dataset.p=this.value" data-p="${PRIO_LABEL[x.priority]?x.priority:''}"><option value="" ${PRIO_LABEL[x.priority]?'':'selected'}>Sin prioridad</option>${PRIORITIES.map(([v,l])=>`<option value="${v}" ${x.priority===v?'selected':''}>${l}</option>`).join('')}</select><p id="fprioHint" class="muted prio-hint" hidden>Las actuaciones finalizadas no llevan prioridad.</p></div>
+  ${remindField(x)}
   <div class="field full"><label for="fdetails">Detalles</label><textarea id="fdetails" class="textarea">${esc(x.details)}</textarea></div>
   <div class="field full"><label for="faction">Actuación realizada / respuesta</label><textarea id="faction" class="textarea">${esc(x.action)}</textarea></div>
   <div class="field full"><label>Imágenes y PDF</label>${imgFormBlock('bin',true)}</div>
@@ -278,12 +285,13 @@ function prioSyncFinal(){
  if(f.checked){if(s.value)s.dataset.prev=s.value;s.value='';s.disabled=true}
  else{s.disabled=false;if(s.dataset.prev){s.value=s.dataset.prev;delete s.dataset.prev}}
  s.dataset.p=s.value;if(h)h.hidden=!f.checked;
+ remindHint();
 }
 function readActionForm(){
  if(editingUpdateId)saveFormUpdate(editingUpdateId,true);editingUpdateId='';
  if(document.getElementById('fuText')?.value.trim())addFormUpdate();
  const v=id=>document.getElementById(id).value,fin=document.getElementById('ffinal').checked;
- return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),priority:fin?'':normPriority(v('fprio')),details:v('fdetails'),action:v('faction'),finalizada:fin,updates:formUpdates,images:formImages.map(m=>({...m})),pdfs:formPdfs.map(m=>({...m}))};
+ return {date:v('fdate'),time:v('ftime'),mode:v('fmode'),center:v('fcenter'),student:v('fstudent'),subject:v('fsubject'),priority:fin?'':normPriority(v('fprio')),remindOn:fin?'':iso(document.getElementById('fremind')?.value||''),details:v('fdetails'),action:v('faction'),finalizada:fin,updates:formUpdates,images:formImages.map(m=>({...m})),pdfs:formPdfs.map(m=>({...m}))};
 }
 function newAction(prefill={},warnings=[]){
  openModal('Nueva actuación',actionForm(prefill,warnings),()=>{
