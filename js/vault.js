@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.12 (02/11/2026)';
-const APP_FILES_VERSION='4.12';
+const APP_VERSION='4.13 (10/11/2026)';
+const APP_FILES_VERSION='4.13';
 /* Versión 4.9: el resto de archivos no ve las constantes de este bloque; la versión se publica en window */
 window.APP_FILES_VERSION=APP_FILES_VERSION;
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;

@@ -115,7 +115,10 @@ function filterConsultas(){
  const selTags=consultasUi.tags.map(t=>({tag:t,n:(counts.find(c=>cNorm(c.tag)===cNorm(t))||{n:0}).n}));
  const rest=counts.filter(c=>!sel.has(cNorm(c.tag)));
  const limit=consultasUi.allTags?rest.length:Math.max(0,22-selTags.length);
- const chips=[...selTags.map(c=>[c,true]),...rest.slice(0,limit).map(c=>[c,false])];
+ /* V 4.13: la nube se muestra en orden alfabético (las seleccionadas, primero). Con la nube recogida se
+    siguen eligiendo las etiquetas más usadas, pero se presentan también por orden alfabético. */
+ const alpha=(a,b)=>a.tag.localeCompare(b.tag,'es',{sensitivity:'base',numeric:true});
+ const chips=[...selTags.map(c=>[c,true]),...rest.slice(0,limit).sort(alpha).map(c=>[c,false])];
  const bar=document.getElementById('ctagbar');
  if(bar)bar.innerHTML=chips.map(([c,on])=>`<button type="button" class="tagchip ${on?'on':''}" data-t="${esc(c.tag)}" onclick="toggleCTag(this.dataset.t)" aria-pressed="${on}">${esc(c.tag)}<small>${c.n}</small></button>`).join('')
   +(rest.length>limit?`<button type="button" class="tagchip more" onclick="consultasUi.allTags=true;filterConsultas()">Ver todas (${rest.length-limit} más)</button>`:(consultasUi.allTags&&rest.length>22?`<button type="button" class="tagchip more" onclick="consultasUi.allTags=false;filterConsultas()">Mostrar menos</button>`:''));
@@ -237,7 +240,7 @@ async function addConsultaDocFile(){
 function readConsultaForm(){
  const v=id=>document.getElementById(id).value;
  return {titulo:v('cftitulo').trim(),tipo:v('cftipo'),resumen:v('cfresumen').trim(),contenido:v('cfcontenido').replace(/\s+$/,''),
-  normativa:v('cfnormativa').split('\n').map(s=>s.trim()).filter(Boolean),etiquetas:cParseTags(v('cftags')),documentos:readCDocs(),
+  normativa:v('cfnormativa').split('\n').map(s=>s.trim()).filter(Boolean),etiquetas:cParseTagsCanon(v('cftags')),documentos:readCDocs(),
   fuente:v('cffuente').trim(),informacionDe:v('cfinfo').trim(),revisado:v('cfrev'),abierta:document.getElementById('cfabierta').checked};
 }
 function newConsulta(prefill={},warnings=[]){
@@ -275,7 +278,7 @@ function importConsultasFile(e){
   if(!confirm(`Se añadirán ${nuevas.length} fichas${omitidas?` (se omiten ${omitidas} ya importadas)`:''}. No se modifica ninguna ficha existente. ¿Continuar?`))return;
   const now=nowIso();
   nuevas.forEach(c=>db.consultas.push({id:uid(),seedId:c.seedId||'',tipo:CONSULTA_TIPOS.includes(c.tipo)?c.tipo:'Referencia',titulo:String(c.titulo),resumen:String(c.resumen||''),contenido:String(c.contenido||''),
-   normativa:Array.isArray(c.normativa)?c.normativa.map(String):[],etiquetas:cParseTags((c.etiquetas||[]).join(',')),documentos:Array.isArray(c.documentos)?c.documentos.filter(d=>d&&d.nombre).map(d=>({nombre:String(d.nombre),descripcion:String(d.descripcion||'')})):[],
+   normativa:Array.isArray(c.normativa)?c.normativa.map(String):[],etiquetas:cParseTagsCanon((c.etiquetas||[]).join(',')),documentos:Array.isArray(c.documentos)?c.documentos.filter(d=>d&&d.nombre).map(d=>({nombre:String(d.nombre),descripcion:String(d.descripcion||'')})):[],
    fuente:String(c.fuente||''),informacionDe:String(c.informacionDe||''),revisado:'',abierta:!!c.abierta,origen:'importada',creado:now,modificado:''}));
   save();consultasUi={q:'',tipo:'',rev:'',tags:[],sort:'titulo',allTags:false};nav('consultas');
   alert(`Importadas ${nuevas.length} fichas.`);
@@ -356,7 +359,7 @@ function pasteConsultaStart(){
   let tipo=CONSULTA_TIPOS.find(t=>cNorm(t)===cNorm(p.tipo));
   if(!tipo){tipo='Consulta';if(p.tipo)warnings.push(`No conozco el tipo «${p.tipo}»: se ha puesto «Consulta». Revísalo.`)}
   const known=cAllTags();
-  const etiquetas=cParseTags(p.etiquetas).map(t=>(known.find(c=>cNorm(c.tag)===cNorm(t))||{tag:t}).tag);
+  const etiquetas=cParseTagsCanon(p.etiquetas).map(t=>(known.find(c=>cNorm(c.tag)===cNorm(t))||{tag:t}).tag);
   const nuevas=etiquetas.filter(t=>!known.some(c=>cNorm(c.tag)===cNorm(t)));
   if(nuevas.length&&known.length)warnings.push(`${nuevas.length===1?'Etiqueta nueva':'Etiquetas nuevas'}: ${nuevas.join(', ')}.`);
   const normativa=String(p.normativa||'').split(/\n|;/).map(s=>s.replace(/^\s*[-•]\s*/,'').trim()).filter(s=>s&&!/^(vac[ií]o|ninguna|no hay|—|-)$/i.test(s));
@@ -368,3 +371,19 @@ function pasteConsultaStart(){
  });
  document.getElementById('modalSave').textContent='Continuar';
 }
+
+/* ---------- V 4.13: unificación de etiquetas casi repetidas ----------
+   Se aplica cada vez que se abre el archivo (también a fichas importadas o pegadas más tarde) y quita
+   duplicados dentro de la misma ficha. Para unificar otras, basta con añadir una línea a C_TAG_ALIAS
+   (a la izquierda, la etiqueta que desaparece; a la derecha, la que se conserva). */
+const C_TAG_ALIAS={'atencion diversidad':'Atención a la diversidad','itinerantes':'Itinerancias','aneae':'NEAE'};
+function cCanonTag(t){return C_TAG_ALIAS[cNorm(t)]||t}
+function migrateV413(){
+ (db.consultas||[]).forEach(x=>{
+  if(!Array.isArray(x.etiquetas)||!x.etiquetas.length)return;
+  const seen=new Set(),out=[];
+  x.etiquetas.forEach(t=>{const c=cCanonTag(t),k=cNorm(c);if(c&&!seen.has(k)){seen.add(k);out.push(c)}});
+  if(out.length!==x.etiquetas.length||out.some((t,i)=>t!==x.etiquetas[i]))x.etiquetas=out;
+ });
+}
+function cParseTagsCanon(str){return cParseTags(cParseTags(str).map(cCanonTag).join(','))}

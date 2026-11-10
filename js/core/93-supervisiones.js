@@ -72,9 +72,18 @@ function supReadDoc(d){
  return {centro,code,curso,counts,nSel:isNaN(nSel)?null:nSel,report:report.trim(),toolVersion:ver,detail:sub};
 }
 let supPending=null;
-function supPassStart(){
+function supPassStart(msg){
  const t=supTool(supOpenTool),f=document.getElementById('supFrame');if(!t||!f)return;
  let r=null;try{r=t.read(f.contentDocument)}catch(e){console.warn(e)}
+ /* V 4.13: si la petición llega del botón propio del analizador, se completan los datos con lo que envía */
+ if(msg&&typeof msg==='object'){
+  r=r||{counts:null,nSel:null,detail:''};
+  if(!r.centro&&msg.center)r.centro=String(msg.center);
+  if(!r.code&&msg.code)r.code=(String(msg.code).match(/\d{8}/)||[''])[0];
+  if(!r.curso&&msg.course)r.curso=String(msg.course).replace(/\s+/g,'');
+  if(typeof msg.report==='string'&&msg.report.trim())r.report=msg.report.trim();
+  if(Array.isArray(msg.findings))r.findings=msg.findings.slice(0,600).map(x=>({section:String(x.section||''),title:String(x.title||''),text:String(x.text||'').slice(0,4000),severity:String(x.severity||''),selected:!!x.selected}));
+ }
  if(!r||(!r.centro&&!r.code)){alert('Carga primero un DOC en el analizador y revisa las incidencias. Después pulsa «Pasar resultado a Seguimiento».');return}
  const c=(typeof matchCenter==='function')?matchCenter(r.centro,r.code):null;
  supPending={tool:t.id,...r};
@@ -89,7 +98,7 @@ function supPassStart(){
   <div class="field full"><label>Resultado</label><div>${supCountsHTML(r.counts)} <span class="muted" style="font-size:12px">· ${r.nSel??0} incidencias seleccionadas para el escrito</span></div></div>
   <div class="field full"><label for="supNotes">Observaciones (opcional)</label><textarea id="supNotes" class="textarea" placeholder="Por ejemplo: requerida corrección del horario de gardas; pendiente de nueva versión del DOC…"></textarea></div>
   <div class="field full"><details><summary>Texto del escrito al centro que se guardará</summary><pre class="sup-report">${esc(r.report||'(sin texto)')}</pre></details></div>
- </div><p class="muted" style="font-size:12px">Se guarda dentro de tu archivo cifrado. El PDF del DOC y el informe .odt no se guardan: el .odt descárgalo desde el analizador si lo necesitas.</p>`,supPassSave);
+ </div><p class="muted" style="font-size:12px">Se guarda dentro de tu archivo cifrado. El PDF del DOC no se guarda.</p>`,supPassSave);
  document.getElementById('modalSave').textContent='Pasar a Seguimiento';
 }
 function supFieldNote(cur,field){return cur?`La columna «${esc(field)}» de este centro ya tiene la fecha ${date(cur)}. Si marcas la casilla, se sustituirá.`:`La columna «${esc(field)}» de este centro está vacía.`}
@@ -104,13 +113,14 @@ function supPassSave(){
  const cid=document.getElementById('supCenter').value,d=document.getElementById('supDate').value||todayIso();
  if(!cid){alert('Elige el centro.');document.getElementById('supCenter').focus();return}
  if(!Array.isArray(db.supervisions))db.supervisions=[];
- db.supervisions.push({id:uid(),type:t.id,centerId:cid,date:d,curso:p.curso||courseOf(d),docCenter:p.centro,docCode:p.code,counts:p.counts,nSel:p.nSel,report:p.report,notes:document.getElementById('supNotes').value.trim(),tool:t.name+(p.toolVersion?' v'+p.toolVersion:''),createdAt:nowIso()});
+ db.supervisions.push({id:uid(),type:t.id,centerId:cid,date:d,curso:p.curso||courseOf(d),docCenter:p.centro,docCode:p.code,counts:p.counts,nSel:p.nSel,report:p.report,...(p.findings?{findings:p.findings}:{}),notes:document.getElementById('supNotes').value.trim(),tool:t.name+(p.toolVersion?' v'+p.toolVersion:''),createdAt:nowIso()});
  if(document.getElementById('supSetField').checked){
   if(!db.followup[cid])db.followup[cid]={};db.followup[cid][t.field]=d;
   if(db.followupNA?.[cid])db.followupNA[cid][t.field]=false;
  }
  save();closeModal();supFrameState.passed=true;supPending=null;
  const name=db.centers.find(c=>c.id===cid)?.name||'';
+ supNotifyFrame('Gardado en Seguimento de '+name);
  const btn=document.getElementById('supPass');if(btn){btn.textContent='✓ Pasado a Seguimiento';setTimeout(()=>{if(btn.isConnected)btn.textContent='Pasar resultado a Seguimiento'},4000)}
  alert(`Resultado guardado en Seguimiento de ${name}.\n\nPuedes cargar otro DOC en el analizador o volver a «Supervisiones».`);
 }
@@ -155,3 +165,17 @@ function supCenterList(c){
  if(!list.length)return '';
  return `<h3 style="margin-top:22px">Supervisiones</h3><div class="timeline">${list.map(s=>`<div class="event"><b>${date(s.date)} · ${esc(supTool(s.type)?.name||s.type)}</b><div>${supCountsHTML(s.counts)}</div>${s.notes?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(mdPlain(s.notes)).slice(0,240)}</div>`:''}<button class="btn small" type="button" onclick="supView('${s.id}')">Ver</button></div>`).join('')}</div>`;
 }
+
+/* ---------- V 4.13: botón propio del analizador «Pegar análisis del DOC en la ficha del centro» ----------
+   Desde la v243, el analizador muestra ese botón cuando se abre dentro de la aplicación y envía el análisis
+   con postMessage. Solo se atiende si viene del marco de la herramienta abierta; abre el mismo diálogo que
+   «Pasar resultado a Seguimiento», de modo que nada se guarda sin confirmarlo. */
+function supNotifyFrame(message){
+ try{const f=document.getElementById('supFrame');f?.contentWindow?.postMessage({type:'doc-analysis-save-status',message},'*')}catch(e){}
+}
+window.addEventListener('message',ev=>{
+ const f=document.getElementById('supFrame');
+ if(!f||ev.source!==f.contentWindow||ev.data?.type!=='save-doc-analysis'||supOpenTool!=='doc')return;
+ if(document.getElementById('supCenter'))return; /* ya hay un diálogo abierto */
+ supPassStart(ev.data);
+});
