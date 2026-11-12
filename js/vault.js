@@ -7,8 +7,8 @@
    - Chrome/Edge de escritorio: escritura directa en el archivo (File System Access)
    - iPhone / otros: copia cifrada en el dispositivo + «Guardar en BoxAbalar»
    ================================================================ */
-const APP_VERSION='4.13 (10/11/2026)';
-const APP_FILES_VERSION='4.13';
+const APP_VERSION='4.14 (12/11/2026)';
+const APP_FILES_VERSION='4.14';
 /* Versión 4.9: el resto de archivos no ve las constantes de este bloque; la versión se publica en window */
 window.APP_FILES_VERSION=APP_FILES_VERSION;
 const FORMAT='registro-inspeccion-cifrado', FILE_VERSION=1, ITER=600000;
@@ -84,6 +84,27 @@ function dialog(title,body,buttons){
 function gate(html){$('gateBody').innerHTML=html}
 function gateWorking(text){gate(`<div class="gate-working" role="status"><span class="spinner" aria-hidden="true"></span>${esc(text)}</div>`)}
 
+/* V 4.14: la unidad de red de BoxAbalar (WebDAV) a veces falla en el primer acceso tras un rato sin usarla
+   («Uno de los dispositivos conectados al sistema no funciona» / NotReadableError) y funciona al reintentar.
+   Se reintenta la lectura y la escritura automáticamente antes de dar el error. */
+const isTransientIO=e=>!!e&&(e.name==='NotReadableError'||e.name==='InvalidStateError'||e.name==='NoModificationAllowedError'||
+ /could not be read|cannot be read|no funciona|dispositivo|device/i.test(e.message||''));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function retryIO(fn,onRetry){
+ const waits=[1500,3000,5000,8000];
+ for(let i=0;;i++){
+  try{return await fn()}
+  catch(e){if(!isTransientIO(e)||i>=waits.length)throw e;console.warn('Reintento '+(i+1),e);onRetry&&onRetry(i+2,waits.length+1);await sleep(waits[i])}
+ }
+}
+const readHandleText=(h,onRetry)=>retryIO(async()=>(await h.getFile()).text(),onRetry);
+const retryMsg=(n,t)=>gateWorking(`BoxAbalar tarda en responder. Reintentando (${n} de ${t})…`);
+function ioErrorMsg(e,fallback){
+ if(e&&e.name==='NotFoundError')return 'No encuentro el archivo vinculado; quizá se ha movido o renombrado, o la unidad de red ha cambiado de letra. Ábrelo de nuevo con «Abrir otro archivo…».';
+ if(isTransientIO(e))return 'Windows no consigue leer el archivo en BoxAbalar, aunque lo he intentado varias veces. Suele ser la conexión de la unidad de red, que se ha quedado colgada; tus datos no están afectados. Abre la carpeta «Registros» en el Explorador de archivos, espera unos segundos y pulsa otra vez «Abrir mi registro». Si sigue igual, desconecta y vuelve a conectar la unidad de red y abre el archivo con «Abrir otro archivo…».';
+ return (e&&e.message)||fallback||'No se pudo abrir el archivo.';
+}
+
 async function startScreen(message='',isError=false){
  const handle=await idb.get('handle'), cache=await idb.get('cache');
  const remembered=await idb.get('key');
@@ -92,6 +113,8 @@ async function startScreen(message='',isError=false){
  if(handle&&CAN_FS){
   parts.push(`<button class="btn primary gate-main" id="gOpenHandle">Abrir mi registro</button>
    <p class="gate-note">Archivo vinculado: <b>${esc(handle.name)}</b>${remembered?'. La contraseña está recordada en este equipo.':''}</p>`);
+  if(isError&&cache)parts.push(`<button class="btn gate-secondary" id="gOpenCache">Usar mientras la copia de este dispositivo</button>
+   <p class="gate-note">Guardada el ${esc(fmt(cache.savedAt))}. Los cambios que hagas se escribirán en BoxAbalar cuando el archivo vuelva a estar accesible.</p>`);
  }else{
   parts.push(`<button class="btn primary gate-main" id="gPick">${cache?'Abrir el archivo de BoxAbalar':'Abrir mi archivo de datos'}</button>
    <p class="gate-note">${IS_IOS?'Se abrirá la app Archivos, normalmente en la última carpeta que usaste. Si no, entra en BoxAbalar › Registro (o en Favoritos) y elige el archivo del registro.':'Elige el archivo cifrado del registro en tu carpeta de BoxAbalar.'}</p>`);
@@ -113,11 +136,11 @@ async function openStoredHandle(handle){
   if(p!=='granted')p=await handle.requestPermission({mode:'readwrite'});
   if(p!=='granted'){startScreen('Sin permiso no puedo leer ni guardar el archivo. Vuelve a pulsar «Abrir mi registro» y acepta el aviso del navegador.',true);return}
   gateWorking('Leyendo el archivo…');
-  const file=await handle.getFile();
-  await processText(await file.text(),{handle,name:handle.name});
+  const text=await readHandleText(handle,retryMsg);
+  await processText(text,{handle,name:handle.name});
  }catch(e){
   console.error(e);
-  startScreen(e.name==='NotFoundError'?'No encuentro el archivo vinculado; quizá se ha movido o renombrado. Ábrelo de nuevo con «Abrir otro archivo…».':(e.message||'No se pudo abrir el archivo.'),true);
+  startScreen(ioErrorMsg(e),true);
  }
 }
 
@@ -127,9 +150,9 @@ async function pickFile(){
   try{[handle]=await window.showOpenFilePicker({types:FILE_TYPES,excludeAcceptAllOption:false,id:'registro-inspeccion'})}catch(e){if(e.name!=='AbortError')startScreen(e.message,true);return}
   try{
    gateWorking('Leyendo el archivo…');
-   const file=await handle.getFile();
-   await processText(await file.text(),{handle,name:handle.name});
-  }catch(e){console.error(e);startScreen(e.message||'No se pudo abrir el archivo.',true)}
+   const text=await readHandleText(handle,retryMsg);
+   await processText(text,{handle,name:handle.name});
+  }catch(e){console.error(e);startScreen(ioErrorMsg(e),true)}
   return;
  }
  const input=$('gFile');input.value='';
@@ -263,8 +286,8 @@ async function perm(ask){
  S.needPerm=true;return false;
 }
 async function checkPermission(){if(!(await perm(false)))setStatus()}
-async function readHandleHeader(){try{const f=await S.handle.getFile();const t=await f.text();return t.trim()?parseFile(t):null}catch(e){if(e.name==='NotFoundError')return null;throw e}}
-async function writeHandle(text){const w=await S.handle.createWritable();await w.write(text);await w.close()}
+async function readHandleHeader(){try{const t=await readHandleText(S.handle);return t.trim()?parseFile(t):null}catch(e){if(e.name==='NotFoundError')return null;throw e}}
+async function writeHandle(text){await retryIO(async()=>{const w=await S.handle.createWritable();try{await w.write(text);await w.close()}catch(e){try{await w.abort()}catch{}throw e}})}
 
 async function flushNow(opts={}){
  clearTimeout(S.timer);
@@ -292,7 +315,7 @@ async function flushNow(opts={}){
    S.rev=rev;S.pending=!wrote;S.lastSaved=h.savedAt;S.lastDevice=h.device;
    await saveCache(text,h,S.pending);
    if(S.dir&&!S.conflict)folderBackup(text).catch(()=>{});
-  }catch(e){console.error(e);S.dirty=true;S.error=e.message||String(e)}
+  }catch(e){console.error(e);S.dirty=true;S.error=isTransientIO(e)?'BoxAbalar no responde ahora mismo (tus cambios están a salvo en este equipo)':(e.message||String(e))}
  })();
  try{await S.saving}finally{S.saving=null;setStatus()}
 }
@@ -312,7 +335,7 @@ async function showConflict(){
 
 async function reloadFromFile(){
  try{
-  const f=await S.handle.getFile();const h=parseFile(await f.text());
+  const h=parseFile(await readHandleText(S.handle));
   if(h.kdf.salt!==S.salt||h.id!==S.id){await idb.del('cache');location.reload();return}
   const data=await unseal(h,S.key);
   Object.assign(S,{rev:h.rev,baseRev:h.rev,pending:false,dirty:false,conflict:null,lastSaved:h.savedAt,lastDevice:h.device});
