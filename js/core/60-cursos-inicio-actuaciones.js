@@ -198,6 +198,8 @@ function dashboard(){
  document.getElementById('main').innerHTML=layout('Inicio','Visión rápida de la actividad inspectora del curso 2026/27',`<button class="btn" onclick="pasteActionStart()">Pegar actuación de Claude</button><button class="btn primary" onclick="newAction()">+ Introducir actuación</button>`)+
  /* Versión 4.10: sin el recuadro «Actuaciones pendientes»; el bloque desplegable ocupa su lugar, arriba del todo */
  /* Versión 4.12: avisos de actuaciones aplazadas cuya fecha ha llegado, arriba del todo; las aplazadas, en su propio bloque */
+ /* Versión 4.15: centros cerrados hoy (días no lectivos de libre disposición y festivos locales) */
+ (typeof closedHomeBlock==='function'?closedHomeBlock():'')+
  remindHomeBlock()+
  homeBlock('pending','Actuaciones pendientes',`<span class="pill ${pending?'warn':''}">${pending}</span><button class="btn small" onclick="stopEv(event);registroPending()">Ver pendientes</button>`,pendingBody)+
  (postponed.length?homeBlock('postponed','Actuaciones aplazadas',`<span class="pill">${postponed.length}</span>`,postponedBody(postponed)):'')+

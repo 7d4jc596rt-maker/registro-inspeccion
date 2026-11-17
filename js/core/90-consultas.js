@@ -201,7 +201,7 @@ function consultaForm(x={}){
   <div class="field full"><label for="cfresumen">Resumen (una o dos frases)</label><textarea id="cfresumen" class="textarea" style="min-height:70px">${esc(x.resumen)}</textarea></div>
   <div class="field full"><label for="cfcontenido">Contenido</label><textarea id="cfcontenido" class="textarea" style="min-height:300px">${esc(x.contenido)}</textarea>
    <p class="muted" style="font-size:12px;margin:4px 0 0">Formato: «## Título» para apartados, «- » para listas, «**negrita**», enlaces https://… y tablas con «|».</p></div>
-  <div class="field full"><label for="cftags">Etiquetas (separadas por comas)</label><input id="cftags" class="input" style="width:100%" value="${esc((x.etiquetas||[]).join(', '))}" placeholder="Admisión, Plazos, Primaria">
+  <div class="field full"><label for="cftags">Etiquetas (separadas por comas)</label><div class="tag-ac-wrap"><input id="cftags" class="input" style="width:100%" value="${esc((x.etiquetas||[]).join(', '))}" placeholder="Admisión, Plazos, Primaria" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="cftagsAc" aria-expanded="false" oninput="cTagAc()" onclick="cTagAc()" onkeydown="cTagAcKey(event)" onblur="setTimeout(cTagAcHide,150)"><div id="cftagsAc" class="tag-ac" role="listbox" hidden></div></div>
    <div class="tagcloud pick" aria-label="Etiquetas existentes: pulsa para añadir">${known||'<span class="muted" style="font-size:12px">Todavía no hay etiquetas.</span>'}</div></div>
   <div class="field full"><label for="cfnormativa">Normativa citada (una por línea)</label><textarea id="cfnormativa" class="textarea" style="min-height:80px">${esc((x.normativa||[]).join('\n'))}</textarea></div>
   <div class="field full"><label>Documentos</label><div id="cfdocs"></div>
@@ -387,3 +387,44 @@ function migrateV413(){
  });
 }
 function cParseTagsCanon(str){return cParseTags(cParseTags(str).map(cCanonTag).join(','))}
+
+/* ---------- V 4.15: sugerencias de etiquetas al escribir ----------
+   En el campo «Etiquetas» de la ficha, a partir de la segunda letra de la etiqueta que se está escribiendo
+   aparece una lista con todas las etiquetas existentes que empiezan por esas letras (sin distinguir
+   mayúsculas ni tildes). Se elige con el ratón o con ↑ ↓ e Intro (o Tab); Esc cierra la lista. */
+let cTagAcSel=0,cTagAcItems=[];
+function cTagAcSeg(i){
+ const v=i.value,pos=i.selectionStart??v.length;
+ const a=v.lastIndexOf(',',pos-1)+1;let b=v.indexOf(',',pos);if(b<0)b=v.length;
+ return {a,b,text:v.slice(a,b).trim()};
+}
+function cTagAc(){
+ const i=document.getElementById('cftags'),box=document.getElementById('cftagsAc');if(!i||!box)return;
+ const seg=cTagAcSeg(i),q=cNorm(seg.text);
+ if(q.length<2){cTagAcHide();return}
+ const already=new Set(cParseTags(i.value).map(cNorm));already.delete(q);
+ cTagAcItems=cAllTags().filter(c=>cNorm(c.tag).startsWith(q)&&!already.has(cNorm(c.tag))).sort((x,y)=>x.tag.localeCompare(y.tag,'es'));
+ cTagAcSel=0;
+ box.innerHTML=cTagAcItems.length?cTagAcItems.map((c,k)=>`<button type="button" role="option" tabindex="-1" class="${k===0?'on':''}" onmousedown="event.preventDefault();cTagAcPick(${k})"><span><b>${esc(c.tag.slice(0,seg.text.length))}</b>${esc(c.tag.slice(seg.text.length))}</span><small>${c.n} ${c.n===1?'ficha':'fichas'}</small></button>`).join(''):`<div class="tag-ac-empty">No hay ninguna etiqueta que empiece por «${esc(seg.text)}». Se creará como etiqueta nueva.</div>`;
+ box.hidden=false;i.setAttribute('aria-expanded','true');
+}
+function cTagAcHide(){const box=document.getElementById('cftagsAc');if(box)box.hidden=true;document.getElementById('cftags')?.setAttribute('aria-expanded','false');cTagAcItems=[]}
+function cTagAcMark(){document.querySelectorAll('#cftagsAc button').forEach((b,k)=>{b.classList.toggle('on',k===cTagAcSel);if(k===cTagAcSel)b.scrollIntoView({block:'nearest'})})}
+function cTagAcKey(e){
+ const box=document.getElementById('cftagsAc');
+ if(!box||box.hidden)return;
+ if(e.key==='Escape'){e.preventDefault();e.stopPropagation();cTagAcHide();return}
+ if(!cTagAcItems.length)return;
+ if(e.key==='ArrowDown'){e.preventDefault();cTagAcSel=(cTagAcSel+1)%cTagAcItems.length;cTagAcMark()}
+ else if(e.key==='ArrowUp'){e.preventDefault();cTagAcSel=(cTagAcSel-1+cTagAcItems.length)%cTagAcItems.length;cTagAcMark()}
+ else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();cTagAcPick(cTagAcSel)}
+}
+function cTagAcPick(k){
+ const i=document.getElementById('cftags'),c=cTagAcItems[k];if(!i||!c)return;
+ const seg=cTagAcSeg(i),v=i.value;
+ const before=v.slice(0,seg.a).replace(/\s*$/,''),after=v.slice(seg.b).replace(/^\s*,?\s*/,'');
+ const head=(before?before+' ':'')+c.tag+', ';
+ i.value=head+after;
+ const p=head.length;i.focus();i.setSelectionRange(p,p);
+ cTagAcHide();
+}

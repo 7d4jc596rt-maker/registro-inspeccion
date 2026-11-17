@@ -75,7 +75,12 @@ function remindOpenDialog(refresh){
  openModal(`Tienes ${due.length} ${due.length===1?'aviso':'avisos'} de actuaciones`,`<div id="remindDlg"><p style="margin-top:0">Ha llegado la fecha de aviso de ${due.length===1?'esta actuación aplazada':'estas actuaciones aplazadas'}:</p><div class="timeline pend-list">${due.map(remindRow).join('')}</div><p class="muted" style="font-size:12px">Si cierras esta ventana, los avisos siguen arriba del todo en Inicio hasta que los quites, los aplaces o finalices la actuación.</p></div>`,closeModal);
  document.getElementById('modalSave').textContent='Entendido';
 }
-function remindOnStart(){if(remindShownSession)return;remindShownSession=true;remindNavBadge();if(dueReminders().length)setTimeout(()=>remindOpenDialog(),300)}
+function remindOnStart(){
+ if(remindShownSession)return;remindShownSession=true;remindNavBadge();
+ /* V 4.15: primero el aviso de centros cerrados hoy; al cerrarlo, los avisos de actuaciones */
+ const rem=()=>{if(dueReminders().length)remindOpenDialog()};
+ setTimeout(()=>{if(!(typeof closedOnStart==='function'&&closedOnStart(rem)))rem()},300);
+}
 function remindNavBadge(){
  const b=document.querySelector('.nav button[data-view="dashboard"]');if(!b)return;
  let s=b.querySelector('.nav-badge');const n=dueReminders().length;
@@ -85,4 +90,4 @@ function remindNavBadge(){
 }
 /* Si la aplicación se queda abierta de un día para otro, comprueba los avisos al volver a ella */
 let remindDay=todayIso();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;remindNavBadge();if(remindDay!==todayIso()){remindDay=todayIso();remindShownSession=false;remindOnStart();if(document.querySelector('.nav button[data-view="dashboard"].active')&&!document.getElementById('modal')?.classList.contains('show'))dashboard()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;remindNavBadge();if(remindDay!==todayIso()){remindDay=todayIso();remindShownSession=false;if(typeof closedShownSession!=='undefined')closedShownSession=false;remindOnStart();if(document.querySelector('.nav button[data-view="dashboard"].active')&&!document.getElementById('modal')?.classList.contains('show'))dashboard()}});

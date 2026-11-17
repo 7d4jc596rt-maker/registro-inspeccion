@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Analizador independente do DOC · 2026/27 · v243</title>
+<title>Analizador independente do DOC · 2026/27 · v283</title>
 
 
 <script>/**
@@ -365,7 +365,10 @@ for(const p of pages){const yA=(findItem(p,/^ADSCRICIÓN FUNCIONAL/i)||findItem(
  for(const it of p.items.filter(i=>/^(Completa|Parcial)$/.test(i.s.trim()))){xornada.push({nome:near(p,it.y,8,15,240),xornada:it.s.trim()});}
 }
 for(const x of xornada){const t=persoal.find(q=>sameName(q.nome,x.nome));if(t)t.xornada=x.xornada;}
-const diagnosticRows=assignmentTableRows(pages);const numbered=diagnosticRows.filter(row=>row.order!=null);return {persoal,diagnosticRows,rawCargoRows:rawCargoTableRows(pages,diagnosticRows),coordinationOffices:rawCargoTableRows(pages,diagnosticRows).flatMap(record=>{const teachers=diagnosticRows.length?diagnosticRows.map(row=>row.name):persoal.map(row=>row.nome);const key=text=>String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const read=key(record.docente);const matches=teachers.filter(name=>{const full=key(name);return read===full||read.startsWith(full+' ')||full.startsWith(read+' ')&&read.split(' ').length>=2;});return matches.length===1?[{page:record.page,nome:matches[0],cargo:record.cargo,docente:record.docente}]:[];}),lastOrder:numbered.length?Math.max(...numbered.map(row=>row.order)):null,lastOrderPages:[...lastOrderPages]};}
+const diagnosticRows=assignmentTableRows(pages);const numbered=diagnosticRows.filter(row=>row.order!=null);
+const rawCargoRows=rawCargoTableRows(pages,diagnosticRows);
+const cargoTablePages=[...new Set([...rawCargoRows.flatMap(record=>[record.page,...(record.parts||[]).map(part=>part.page)]),...pages.filter(page=>lines(page,3).some(row=>/^(?:LISTA\s+DE\s+)?CARGOS\s*$/i.test(row.text.trim()))).map(page=>page.n)].filter(page=>Number.isFinite(page)))].sort((a,b)=>a-b);
+return {persoal,diagnosticRows,rawCargoRows,cargoTablePages,coordinationOffices:rawCargoRows.flatMap(record=>{const teachers=diagnosticRows.length?diagnosticRows.map(row=>row.name):persoal.map(row=>row.nome);const key=text=>String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const read=key(record.docente);const matches=teachers.filter(name=>{const full=key(name);return read===full||read.startsWith(full+' ')||full.startsWith(read+' ')&&read.split(' ').length>=2;});return matches.length===1?[{page:record.page,nome:matches[0],cargo:record.cargo,docente:record.docente}]:[];}),lastOrder:numbered.length?Math.max(...numbered.map(row=>row.order)):null,lastOrderPages:[...lastOrderPages]};}
 
 function classifyTeacherBody(row,a6){const name=row.name||row.nome||'';const teacher=(a6?.prof||[]).find(item=>sameName(item.nome,name));let codes=row.specialtyCodes||[];if(!codes.length)codes=specialtyCodes(row.specialty||row.specialtyText||row.esp||'');const bodyText=row.bodyText||row.corpo||row.body||'',specialtyText=row.specialty||row.specialtyText||row.esp||'',classificationText=bodyText+' '+specialtyText+' '+(teacher?.corpo||'');if(codes.some(code=>/(?:^|-)597060$/.test(String(code).replace(/\s/g,'')))||/(?:^|[^0-9])597060(?:$|[^0-9])/.test(classificationText))return 'Outro corpo';return codes.some(code=>/-597\d{3}$/.test(code)||code==='PRI-701401')||/(?:mestr|maestr|\b0?597\b|\bREL\s*-\s*X\s*-\s*PRI\b)/i.test(classificationText)?'Mestre':'Outro corpo';}
 function teacherCountsByBody(a2,a6){
@@ -709,38 +712,533 @@ for(const t of T){const all=t.grid.flatMap(g=>g.cells.flat());t.cont=k=>all.filt
 return {prof:T,summaries,summaryCount:summaries.length};}
 
 /* ---------- Apartado 7: xornada semanal ---------- */
-function ap7(pages){const staff=[];let current=null;
- const minutes=text=>{const t=String(text).trim();const hm=t.match(/^(\d{1,2}):([0-5]\d)$/);if(hm)return +hm[1]*60+ +hm[2];if(/^\d{1,2}(?:[.,]\d{1,2})?$/.test(t))return Math.round(Number(t.replace(',','.'))*60);return null;};
- for(const p of pages){const rows=lines(p);const weeklyHeader=p.items.find(i=>/horas?\s*(?:semanais|semanales)|xornada semanal|total semanal/i.test(i.s));
-  for(const row of rows){
-   const named=row.text.match(/(?:apelidos e nome|nome e apelidos|nome)\s*:\s*(.+?)(?:\s+(?:DNI|corpo|categor[ií]a)\s*:|$)/i);
-   if(named){current={nome:named[1].trim(),minutes:null};staff.push(current);}
-   if(weeklyHeader&&row.y>weeklyHeader.y+4){const timeItem=row.items.find(i=>Math.abs((i.x+i.w/2)-(weeklyHeader.x+weeklyHeader.w/2))<45&&minutes(i.s)!==null);
-    if(timeItem){const name=row.items.filter(i=>i.x<weeklyHeader.x-20&&!/^\d/.test(i.s.trim())).map(i=>i.s).join(' ').trim();if(name&&!/total|horario|luns|martes|xoves|venres/i.test(name)){staff.push({nome:name,minutes:minutes(timeItem.s)});continue;}}
+function nonTeachingPageHeader(rows){
+ const title=/^(?:apartado 7 )?persoal non docente(?: apartado 7)?$/;
+ return rows.find(row=>title.test(norm(row.text))||row.items.some(item=>title.test(norm(item.s))));
+}
+function nonTeachingIdentityPages(pages){
+ const fieldNames={apelidos:'Apelidos',nome:'Nome',posto:'Posto'};
+ const fieldPattern=/\b(apelidos|nome|posto)\s*[:=]\s*/gi;
+ const otherField=/\s+(?:DNI|NIF|NIE|categor[ií]a|corpo|destino|enderezo|tel[eé]fono|xornada|horario)\s*[:=].*$/i;
+ const clean=value=>String(value||'').replace(otherField,'').replace(/\b(?:\d{8}\s*[A-Z]|[XYZ]\s*\d{7}\s*[A-Z])\b/gi,'').trim();
+ const out=[];
+ for(const page of pages){
+  const rows=lines(page,3),header=nonTeachingPageHeader(rows);
+  if(!header)continue;
+  const fields={apelidos:'',nome:'',posto:''};
+  const body=rows.filter(row=>row.y>=header.y).map(row=>({...row,text:row.y===header.y&&header.items.some(item=>/^persoal non docente$/.test(norm(item.s)))?row.items.filter(item=>norm(item.s)!=='persoal non docente').map(item=>item.s).join(' '):row.text}));
+  for(let i=0;i<body.length;i++){
+   const row=body[i];
+   if(/^horario (?:que cumpre|previsto|teorico|que debe)\b/.test(norm(row.text)))break;
+   const labels=[...row.text.matchAll(fieldPattern)];
+   labels.forEach((match,j)=>{
+    const key=norm(match[1]);
+    const value=clean(row.text.slice(match.index+match[0].length,labels[j+1]?.index));
+    if(value&&!fields[key])fields[key]=value;
+   });
+   const cols=row.items.filter(item=>Object.hasOwn(fieldNames,norm(item.s))).map(item=>({key:norm(item.s),item}));
+   for(const col of cols){
+    const end=row.items.find(item=>item.x>col.item.x&&/^(?:apelidos|nome|posto|dni|nif|nie|categoria|corpo|xornada|destino|enderezo|telefono|horario)$/.test(norm(item.s)));
+    const value=clean(row.items.filter(item=>item.x>col.item.x&&(!end||item.x<end.x)).map(item=>item.s).join(' ').replace(/^\s*[:=]\s*/,''));
+    if(value&&!fields[col.key])fields[col.key]=value;
    }
-   if(current&&/horas?\s*(?:semanais|semanales)|xornada semanal|total(?:\s+de)?\s+horas?|total semanal/i.test(row.text)){
-    const value=row.items.slice().reverse().find(i=>minutes(i.s)!==null);if(value)current.minutes=minutes(value.s);
-    else{const match=row.text.match(/(?:horas?|semanal|semanais|semanales)\s*:?\s*(\d{1,2}:\d{2}|\d{1,2}[.,]\d{1,2})/i);if(match)current.minutes=minutes(match[1]);}
+   const next=body[i+1];
+   if(!next||next.y-row.y>28||/^horario\b|^apartado\b|^paxina\b/i.test(norm(next.text)))continue;
+   if(cols.length===3&&new Set(cols.map(c=>c.key)).size===3&&cols.every(col=>!fields[col.key])&&!/\b(?:apelidos|nome|posto)\s*[:=]/i.test(next.text)){
+    const values={apelidos:[],nome:[],posto:[]};
+    for(const item of next.items){
+     const center=x=>x.x+(x.w||0)/2;
+     const closest=cols.reduce((best,col)=>Math.abs(center(item)-center(col.item))<Math.abs(center(item)-center(best.item))?col:best);
+     values[closest.key].push(item.s);
+    }
+    for(const key of Object.keys(fields))if(!fields[key])fields[key]=clean(values[key].join(' '));
+   }else if(cols.length===1&&norm(row.text)===cols[0].key&&!fields[cols[0].key]&&!Object.hasOwn(fieldNames,norm(next.text))&&!/[:=]/.test(next.text)){
+    fields[cols[0].key]=clean(next.text);
+   }
+  }
+  out.push({page:page.n,...fields});
+ }
+ return out;
+}
+
+const NON_TEACHING_SCHEDULE_DAYS=['Luns','Martes','Mércores','Xoves','Venres','Sábado'];
+function nonTeachingShiftGrid(rows){
+ const title=/^horario que cumpre(?:\s|$)/;
+ const start=rows.findIndex(row=>title.test(norm(row.text))||row.items.some(item=>norm(item.s)==='horario que cumpre'));
+ if(start<0)return null;
+ const end=rows.findIndex((row,i)=>i>start&&/^(?:total\b|horas semanais\b|sinatura\b|horario\s+(?:que cumpre|teorico|que debe|previsto|asignado|oficial|do centro)\b)/.test(norm(row.text)));
+ const body=rows.slice(start+1,end<0?undefined:end);
+ const dayPatterns=[/^(?:luns|lunes|lun|lu)$/, /^(?:martes|mar|ma)$/, /^(?:mercores|miercoles|mer|mie|me|mi)$/, /^(?:xoves|jueves|xov|jue|xo|ju)$/, /^(?:venres|viernes|ven|vie|ve|vi)$/, /^(?:sabado|sab|sa)$/];
+ const center=item=>item.x+(item.w||0)/2;
+ const dayIndex=text=>dayPatterns.findIndex(re=>re.test(norm(text)));
+ const shiftIndex=text=>{
+  const label=norm(text);
+  if(/^(?:(?:turno|quenda|horario)(?: de)? )?(?:mana|manas|manana|mananas|matutino)(?:\s|$)/.test(label))return 0;
+  if(/^(?:(?:turno|quenda|horario)(?: de)? )?(?:tarde|tardes|vespertino)(?:\s|$)/.test(label))return 1;
+  return -1;
+ };
+ const missing=()=>Array.from({length:6},()=>[null,null]);
+ const grid=missing();
+ const firstShift=body.findIndex(row=>shiftIndex(row.text)>=0||row.items.some(item=>shiftIndex(item.s)>=0));
+ const headerRows=firstShift<0?body:body.slice(0,firstShift+1);
+ let columns=null,headerY=null;
+ for(let i=0;i<headerRows.length;i++){
+  const initial=headerRows[i];
+  const headerItems=headerRows.slice(i).filter(row=>row.y-initial.y<=12).flatMap(row=>row.items);
+  const days=NON_TEACHING_SCHEDULE_DAYS.map((_,day)=>headerItems.find(item=>dayIndex(item.s)===day));
+  if(days.every(Boolean)&&days.every((item,d)=>d===0||center(item)>center(days[d-1]))){columns=days.map(center);headerY=initial.y;break;}
+ }
+ if(!columns)return grid;
+ const shifts=body.flatMap((row,index)=>{
+  if(row.y<headerY)return [];
+  const label=row.items.find(item=>shiftIndex(item.s)>=0);
+  const shift=label?shiftIndex(label.s):shiftIndex(row.text);
+  return shift<0?[]:[{index,row,label,shift}];
+ });
+ const left=columns[0]-(columns[1]-columns[0])/2;
+ const right=columns[5]+(columns[5]-columns[4])/2;
+ const clockPattern='(?:2[0-3]|[01]?\\d)\\s*:\\s*[0-5]\\d|24\\s*:\\s*00';
+ const dash='[-‐‑‒–—−]';
+ const interval=new RegExp('(?<![\\d:])('+clockPattern+')\\s*'+dash+'\\s*('+clockPattern+')(?![\\d:])','g');
+ const clock=text=>text.replace(/\s/g,'').padStart(5,'0');
+ const intervals=text=>[...text.matchAll(interval)];
+ const seen=new Set();
+ for(const [i,{index,row,label,shift}] of shifts.entries()){
+  // A táboa ten unha fila por quenda. Non se le unha segunda fila coa mesma etiqueta.
+  if(seen.has(shift))continue;
+  seen.add(shift);
+  const cells=Array.from({length:6},()=>[]);
+  const next=shifts[i+1];
+  for(const line of body.slice(index,next?.index)){
+   if(line.y-row.y>30)break;
+   const fragments=Array.from({length:6},()=>[]);
+   const anchored=line.y-row.y<=6;
+   for(const item of line.items){
+    const x=center(item),text=item.s.trim();
+    if(item===label||!text||x<left||x>right||dayIndex(text)>=0)continue;
+    if(/^horario que cumpre\b/.test(norm(text)))continue;
+    // Se o PDF une ao intervalo unha duración ou outro texto, asignar cada
+    // intervalo pola súa posición, non polo centro de todo o fragmento.
+    const matches=intervals(item.s);
+    if(matches.length){
+     for(const match of matches){
+      const pos=matches.length===1&&item.s.trim()===match[0]?x:item.x+(item.w||0)*(match.index+match[0].length/2)/item.s.length;
+      if(pos<left||pos>right)continue;
+      const day=columns.reduce((best,position,d)=>Math.abs(pos-position)<Math.abs(pos-columns[best])?d:best,0);
+      fragments[day].push(match[0]);
+     }
+    }else{
+     const day=columns.reduce((best,position,d)=>Math.abs(x-position)<Math.abs(x-columns[best])?d:best,0);
+     fragments[day].push(text);
+    }
+   }
+   fragments.forEach((parts,day)=>{
+    if(!parts.length)return;
+    const text=parts.join(' ');
+    if(anchored)cells[day].push(text);
+    else{
+     // Unha liña inferior só pode completar un intervalo xa iniciado
+     // na mesma cela, nunca crear unha quenda nun día baleiro.
+     const previous=cells[day].join(' ');
+     if(previous&&!intervals(previous).length&&!intervals(text).length){
+      const combined=previous+' '+text;
+      if(intervals(combined).length||new RegExp(dash).test(combined))cells[day].push(text);
+     }
+    }
+   });
+  }
+  cells.forEach((parts,day)=>{
+   const found=intervals(parts.join(' '));
+   grid[day][shift]=found.length?found.map(match=>clock(match[1])+' - '+clock(match[2])).join(' / '):'';
+  });
+ }
+ return grid;
+}
+
+function ap7(pages){
+ const staff=[],identityPages=nonTeachingIdentityPages(pages);
+ const identityByPage=new Map(identityPages.map(identity=>[identity.page,identity]));
+ let current=null,table=null;
+ const title=/^horario que cumpre(?:\s|$)/;
+ const totalLabel=/^\s*(?:total(?:\s+(?:(?:de\s+)?horas(?:\s+semanais)?|semanal|xeral|horario|da\s+xornada))?|horas\s+semanais(?:\s+totais)?)\s*[:=]?\s*(?=$|\d)/i;
+ const timeValues=text=>[...text.matchAll(/(?<![\d:])(\d{1,3})\s*:\s*([0-5]\d)(?![\d:])/g)].map(m=>Number(m[1])*60+Number(m[2]));
+ const finish=()=>{
+  if(!table)return;
+  const totals=table.hasDailyTotals?(table.weeklyTotal==null?[]:[table.weeklyTotal]):[...table.totals];
+  if(current&&totals.length===1){
+   const value=totals[0];
+   if(current.minutes==null&&!current.conflict)current.minutes=value;
+   else if(current.minutes!==value){current.minutes=null;current.conflict=true;}
+  }else if(current&&totals.length>1){current.minutes=null;current.conflict=true;}
+  table=null;
+ };
+ for(const page of pages){
+  const rows=lines(page,3),identity=identityByPage.get(page.n);
+  if(identity){
+   finish();
+   identity.minutes=null;
+   identity.nomeCompleto=[identity.apelidos,identity.nome].filter(Boolean).join(', ')||'Persoa sen identificar · Páxina '+page.n;
+   current=identity;staff.push(current);
+   identity.shiftGrid=nonTeachingShiftGrid(rows);
+  }
+  for(let i=0;i<rows.length;i++){
+   const row=rows[i],person=row.text.match(/(?:^|\s)(?:apelidos\s+e\s+nome|nome\s+e\s+apelidos|nome)\s*:\s*(.+?)(?=\s+(?:DNI|NIF|NIE|corpo|categor[ií]a|posto|destino|enderezo|tel[eé]fono|horario)\s*:|$)/i);
+   const name=person?.[1]?.replace(/\s+\b(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])\b.*$/i,'').trim();
+   if(name&&!identity){
+    if(!current||norm(current.nomeCompleto)!==norm(name)){finish();current={nome:name,nomeCompleto:name,minutes:null};staff.push(current);}
+    continue;
+   }
+   const label=norm(row.text);
+   if(title.test(label)){
+    finish();
+    if(!current){current={nomeCompleto:'Persoa sen identificar · Páxina '+page.n,minutes:null};staff.push(current);}
+    table={totals:new Set(),totalColumn:null,hasDailyTotals:false,weeklyTotal:null};continue;
+   }
+   if(/^horario\s+(?:teorico|que debe|previsto|asignado|oficial|do centro)\b/.test(label)){finish();continue;}
+   if(!table)continue;
+   const days=row.items.filter(item=>/^(?:luns|martes|mercores|xoves|venres|sabado|domingo)$/.test(norm(item.s)));
+   const totalCell=row.items.find(item=>/^(?:total(?: semanal| xeral)?)$/.test(norm(item.s)));
+   if(days.length>=2&&totalCell&&totalCell.x>Math.max(...days.map(day=>day.x))){
+    table.totalColumn=totalCell.x+(totalCell.w||0)/2;continue;
+   }
+   const total=row.text.match(totalLabel);
+   if(!total)continue;
+   const remainder=row.text.slice(total[0].length);
+   const values=timeValues(remainder);
+   // Seis valores na primeira liña son os totais diarios de luns a sábado.
+   // O total semanal impreso figura só, na liña inmediatamente inferior.
+   if(values.length===6){
+    table.hasDailyTotals=true;
+    const next=rows[i+1];
+    if(next&&next.y>row.y&&next.y-row.y<=38&&/^\s*\d{1,3}\s*:\s*[0-5]\d\s*(?:h(?:oras?)?\.?)?\s*$/i.test(next.text)){
+     table.weeklyTotal=timeValues(next.text)[0]??null;
+    }
+    continue;
+   }
+   if(table.totalColumn!=null){
+    const aggregate=timeValues(row.items.filter(item=>Math.abs(item.x+(item.w||0)/2-table.totalColumn)<=25).map(item=>item.s).join(' '));
+    if(aggregate.length===1){table.totals.add(aggregate[0]);continue;}
+    if(!/^total\s+(?:semanal|xeral|da xornada)\b/.test(label))continue;
+   }
+   if(values.length===1)table.totals.add(values[0]);
+   else if(values.length>=7)table.totals.add(values.at(-1));
+   else if(!remainder.trim()){
+    const next=rows[i+1], nextValues=next&&next.y-row.y<=16&&/^\s*\d{1,3}\s*:\s*[0-5]\d\s*$/.test(next.text)?timeValues(next.text):[];
+    if(nextValues.length===1)table.totals.add(nextValues[0]);
    }
   }
  }
- return {staff};}
+ finish();return {staff,identityPages};
+}
 
 /* ---------- 11A / 11B ---------- */
+
+function departmentHeadsOnPage(page){
+ const heads=[];
+ const label=/^(?:xefe(?:\s*\/\s*a|a)?|jefe(?:\s*\/\s*a|a)?|xefatura|jefatura)(?:\s+(?:(?:do|de|da)\s+)?departamento)?\s*:?\s*$/i;
+ const full=/^(?:xefe(?:\s*\/\s*a|a)?|jefe(?:\s*\/\s*a|a)?|xefatura|jefatura)(?:\s+(?:(?:do|de|da)\s+)?departamento)?\s*:\s*(.+)$/i;
+ const valid=value=>{const text=String(value||'').trim();return /\p{L}/u.test(text)&&text.split(/\s+/).length>=2&&!/^(?:sen|sin|non|no|vacante|pendente|ningun|ningún|nome|apelidos)\b/i.test(text);};
+ for(const item of page.items||[]){
+  const text=String(item.s||'').trim(),inline=text.match(full);
+  const name=inline?inline[1].trim():label.test(text)?near(page,item.y,4,item.x+(item.w||text.length*4)+2,600).trim():'';
+  if(valid(name))heads.push(name);
+ }
+ return [...new Set(heads)];
+}
+
 function ap11(pages,tag){const D=[];
 for(const p of pages){const d=findItem(p,/^DEPARTAMENTO DE$/);if(!d)continue;const nome=near(p,d.y,3,d.x+60,600);
  const t=p.items.find(i=>/^TOTAL HORAS SEMANAIS DE DOCENCIA DIRECTA/.test(i.s.trim()));const v=t?p.items.filter(i=>isNum(i.s)&&Math.abs(i.y-t.y)<4&&i.x>t.x).sort((a,b)=>b.x-a.x)[0]:null;
  let mem=null;if(tag==='A'){const nl=findItem(p,/^Número de profesores\/as adscritos/);if(nl){const vs=p.items.filter(i=>isNum(i.s)&&i.y>nl.y&&i.y<nl.y+16).sort((a,b)=>b.x-a.x);if(vs[0])mem=num(vs[0].s);}}
- let e=D.find(x=>x.nome===nome);if(!e){e={nome,total:null,membros:null};D.push(e);}if(v)e.total=num(v.s);if(mem!=null)e.membros=mem;}
+ let e=D.find(x=>x.nome===nome);if(!e){e={nome,total:null,membros:null};D.push(e);}if(v)e.total=num(v.s);if(mem!=null)e.membros=mem;e.xefaturas=[...new Set([...(e.xefaturas||[]),...departmentHeadsOnPage(p)])];e.pages=[...new Set([...(e.pages||[]),p.n])];}
 return D;}
 
 /* ---------- 8/9/10 materias ---------- */
-function ap8(pages){const M=[];
-for(const p of pages){const L=lines(p);const h=L.find(l=>l.items.filter(i=>i.s.trim()==='Al').length>=2);if(!h)continue;const ax=h.items.filter(i=>i.s.trim()==='Al').map(i=>i.x+i.w/2);
+function ap8(pages,trace){const M=[];
+for(const p of pages){const L=lines(p);const h=L.find(l=>l.items.filter(i=>i.s.trim()==='Al').length>=2),doc=pageApartado(p);
+ const stats={doc,page:p.n,count:0,reason:h?'values':'header'};trace?.pages.push(stats);if(!h)continue;const ax=h.items.filter(i=>i.s.trim()==='Al').map(i=>i.x+i.w/2);
  const cur=L.find(l=>/PRIMEIRO|SEGUNDO/.test(l.text)&&l.y<h.y);const labs=cur?cur.items.filter(i=>/PRIMEIRO|SEGUNDO|TERCEIRO|CUARTO/.test(i.s)).map(i=>i.s.trim()):[];
  for(const l of L.filter(l=>l.y>h.y)){const lab=l.items.filter(i=>i.x<180).map(i=>i.s).join(' ').trim();if(!lab||/^(\(|TOTAL|Páxina)/.test(lab))continue;
-  ax.forEach((x,k)=>{const it=l.items.find(i=>Math.abs(i.x+i.w/2-x)<16&&/^\d+/.test(i.s.trim()));if(it){const al=parseInt(it.s);if(al>0)M.push({materia:lab,curso:labs[k]||('col '+(k+1)),al,ap:pageApartado(p)});}});}}
+  ax.forEach((x,k)=>{const it=l.items.find(i=>Math.abs(i.x+i.w/2-x)<16&&/^\d+/.test(i.s.trim()));if(it){const al=parseInt(it.s);const entry={materia:lab,curso:labs[k]||('col '+(k+1)),courseColumn:ax.length===4?k+1:null,al,ap:doc,page:p.n};if(al>0)M.push(entry);if(trace){trace.rows.push(entry);stats.count++;}}});}}
 return M;}
+
+function section8EsoHours(pages){
+ const result={found:false,rows:[],unreadPages:[]};
+ const title=/\bdistribucion do alumnado d[ae] (?:eso|educacion secundaria obrigatoria) por materias\b/;
+ const cx=item=>item.x+(item.w||0)/2;
+ const columnsOf=(p,start)=>{
+  const tokens=p.items.filter(item=>item.y>start&&item.y<=start+105);
+  const key=item=>norm(item.s);
+  for(const first of tokens.filter(item=>/^(?:gr|grupos)$/.test(key(item)))){
+   const gr=tokens.filter(item=>/^(?:gr|grupos)$/.test(key(item))&&Math.abs(item.y-first.y)<=7).sort((a,b)=>cx(a)-cx(b));
+   if(gr.length!==4)continue;
+   const xade=tokens.filter(item=>/^(?:horas? )?xade$/.test(key(item))&&Math.abs(item.y-first.y)<=19).sort((a,b)=>cx(a)-cx(b));
+   if(xade.length!==4)continue;
+   const al=tokens.filter(item=>/^(?:al|alumnado|alumnos)$/.test(key(item))&&Math.abs(item.y-first.y)<=19);
+   const headers=[...gr,...xade,...al].sort((a,b)=>cx(a)-cx(b));
+   const lefts=gr.map((g,i)=>Math.min(cx(g),cx(xade[i])));
+   const rights=gr.map((g,i)=>Math.max(cx(g),cx(xade[i])));
+   if(rights.some((x,i)=>i<3&&x>=lefts[i+1]))continue;
+   const step=Math.min(...gr.slice(1).map((g,i)=>cx(g)-cx(gr[i])));
+   const left=headers[0];
+   const startX=cx(left)-Math.min(step/5,(cx(headers[1])-cx(left))/2);
+   const pick=(row,header)=>{
+    const idx=headers.indexOf(header),x=cx(header);
+    const range=[idx?(cx(headers[idx-1])+x)/2:startX,idx<headers.length-1?(x+cx(headers[idx+1]))/2:x+Math.min(step/4,(x-cx(headers[idx-1]))/2)];
+    const matches=row.items.filter(item=>cx(item)>=range[0]&&cx(item)<range[1]&&item.s.trim()&&!/^[—–-]+$/.test(item.s.trim()));
+    return {present:matches.length>0,value:matches.length===1&&isNum(matches[0].s)?num(matches[0].s):null};
+   };
+   return {startX,headerY:Math.max(...headers.map(h=>h.y)),read:(row,i)=>[pick(row,gr[i]),pick(row,xade[i])]};
+  }
+  return null;
+ };
+ let layout=null,active=false;
+ for(const p of pages){
+  const ls=lines(p),section=pageApartado(p),titleIndex=ls.findIndex((row,i)=>title.test(norm(row.text))||title.test(norm(row.text+' '+(ls[i+1]?.text||''))));
+  if(section&&section!=='8'){active=false;layout=null;continue;}
+  if(titleIndex>=0){
+   result.found=true;active=true;layout=null;
+  }
+  if(!active)continue;
+  const titleY=titleIndex>=0?ls[titleIndex].y:Math.max(0,ls.find(row=>/^apartado 8$/.test(norm(row.text)))?.y||0);
+  const current=columnsOf(p,titleY);
+  if(current)layout=current;
+  if(!layout){result.unreadPages.push(p.n);continue;}
+  let read=0;
+  for(const row of ls){
+   if(row.y<=(current?.headerY??titleY))continue;
+   if(/^distribucion do alumnado\b/.test(norm(row.text))&&!title.test(norm(row.text))){active=false;layout=null;break;}
+   if(/\b\d{2}\/\d{2}\/\d{4}\b/.test(row.text))continue;
+   const materia=row.items.filter(item=>item.x<layout.startX&&(!isNum(item.s)||cx(item)<layout.startX)).map(item=>item.s.trim()).join(' ').trim();
+   if(!/[\p{L}]/u.test(materia)||/^(?:\*|nota\b|total(?:s|es)?\b|paxina\b|materias?$)/i.test(norm(materia))||/^\*/.test(materia))continue;
+   for(let i=0;i<4;i++){
+    const [gr,horas]=layout.read(row,i);
+    if(!gr.present&&!horas.present)continue;
+    result.rows.push({materia,course:i+1,groups:gr.value,hours:horas.value,page:p.n});read++;
+   }
+  }
+  if(titleIndex>=0&&!read)result.unreadPages.push(p.n);
+ }
+ return result;
+}
+
+function bachTotalsDiagnostic(pages){
+ const docs={'9':{pages:[],rows:[]},'10':{pages:[],rows:[]}};
+ const isTotal=/^total alumnado grupos (?:e|y) horas?$/;
+ const isGr=/^(?:gr|grupos)$/;
+ const leaf=/^(?:al|alum|alumnado|alumnos|matriculados|gr|grupos|h|hs|horas?(?: (?:de )?xade)?|xade)$/;
+ const kind=s=>/^(?:ord|ordinari[oa]s?)$/.test(s)?'ord':/^(?:ad|adu|adult|adult[oa]s?)$/.test(s)?'adult':null;
+ const modality=s=>/\bhumanidades\b/.test(s)?'Humanidades':/\bciencias\b/.test(s)?'Ciencias':/\bartes\b/.test(s)?'Artes':/^(?:bacharelato )?xeral$/.test(s)?'Xeral':null;
+ const cx=i=>i.x+(i.w||0)/2;
+ const span=items=>({x:(Math.min(...items.map(i=>i.x))+Math.max(...items.map(i=>i.x+(i.w||0))))/2,y:Math.max(...items.map(i=>i.y))});
+ const phrases=(rows,matcher)=>{
+  const out=[];
+  for(const row of rows){
+   const a=row.items.filter(i=>norm(i.s));
+   for(let start=0;start<a.length;start++)for(let end=start;end<a.length&&end<start+6;end++){
+    const run=a.slice(start,end+1);
+    if(matcher(norm(run.map(i=>i.s).join(' '))))out.push(span(run));
+   }
+  }
+  return out;
+ };
+ let active=null;
+ for(const page of pages){
+  const rows=lines(page),head=rows.filter(r=>r.y<130);
+  const explicit=pageApartado(page)||head.map(r=>norm(r.text).match(/^(?:documento|apartado) (\d+[ab]?)\b/)?.[1]).find(Boolean);
+  const title=head.map(r=>norm(r.text).match(/\b([12])\s*(?:o |de )*(?:bacharelato|bachillerato)\b/)?.[1]).find(Boolean);
+  if(explicit)active=docs[explicit]?explicit:null;
+  else if(title)active=String(8+Number(title));
+  if(!active)continue;
+  const doc=docs[active],status={page:page.n,count:0,foundTotal:false,foundColumns:false};
+  if(explicit||title)doc.pages.push(status);
+  const marks=phrases(rows,s=>isTotal.test(s));
+  const starts=phrases(rows,s=>/^total alumnado$/.test(s)),ends=phrases(rows,s=>/^grupos (?:e|y) horas?$/.test(s));
+  for(const a of starts)for(const b of ends)if(b.y>a.y&&b.y-a.y<=23&&Math.abs(a.x-b.x)<=34)marks.push({x:(a.x+b.x)/2,y:b.y});
+  if(!marks.length)continue;
+  if(!doc.pages.includes(status))doc.pages.push(status);
+  status.foundTotal=true;
+  status.subheaders=marks.map(mark=>{
+   // Examina só a primeira banda de cabeceiras debaixo deste bloque de total.
+   const neighbours=rows.filter(r=>r.y>=mark.y-25&&r.y<=mark.y+3).flatMap(r=>r.items)
+    .filter(i=>modality(norm(i.s))).map(cx).filter(x=>Math.abs(x-mark.x)>10);
+   const left=Math.max(mark.x-90,...neighbours.filter(x=>x<mark.x).map(x=>(x+mark.x)/2));
+   const right=Math.min(mark.x+90,...neighbours.filter(x=>x>mark.x).map(x=>(x+mark.x)/2));
+   const labels=s=>{
+    const tokens=norm(s).split(' ');
+    return tokens.length&&tokens.every(t=>kind(t)||t==='horas')?tokens.map(t=>kind(t)||'hours'):[];
+   };
+   const candidates=rows.filter(row=>row.y>mark.y&&row.y<=mark.y+42).flatMap(row=>row.items
+    .filter(i=>cx(i)>=left&&cx(i)<=right)
+    .flatMap(i=>labels(i.s).map(label=>({label,y:i.y,x:cx(i)}))));
+   const y=candidates[0]?.y??Infinity;
+   const parents=candidates.filter(item=>Math.abs(item.y-y)<=6);
+   const get=label=>parents.find(item=>item.label===label);
+   const ord=get('ord'),adult=get('adult'),hours=get('hours');
+   const leaves={ordAl:ord?false:null,ordGr:ord?false:null,adultAl:adult?false:null,adultGr:adult?false:null,xade:hours?false:null};
+   const positions={};let bottom=y,compact=false;
+   if(parents.length){
+    const top=Math.max(...parents.map(i=>i.y));
+    const leafName=s=>{
+     const t=norm(s);
+     return /^(?:al|alumnado)$/.test(t)?'Al':isGr.test(t)?'Gr':/^(?:1 )?xade(?: 1)?$/.test(t)?'Xade':null;
+    };
+    const next=rows.filter(r=>r.y>top+0.5&&r.y<=top+36).flatMap(r=>r.items).filter(i=>cx(i)>=left&&cx(i)<=right);
+    const joined=next.find(i=>/^al gr al gr (?:1 )?xade(?: 1)?$/.test(norm(i.s)));
+    if(joined&&ord&&adult&&hours&&ord.x<=adult.x&&adult.x<=hours.x){
+     bottom=joined.y;compact=true;
+     Object.keys(leaves).forEach(k=>{leaves[k]=true;});
+    }else{
+     const scoped=next.map(i=>({kind:leafName(i.s),y:i.y,x:cx(i)})).filter(i=>i.kind);
+     const yy=scoped[0]?.y??Infinity;
+     for(const i of scoped.filter(item=>Math.abs(item.y-yy)<=8)){
+      if(i.kind==='Xade'){
+       if(hours&&Math.abs(i.x-hours.x)<=28&&(!adult||i.x>(adult.x+hours.x)/2)){leaves.xade=true;positions.xade=i.x;bottom=Math.max(bottom,i.y);}
+       continue;
+      }
+      // Al./Gr. pertencen só aos réximes; Horas é unha columna distinta.
+      if(hours&&i.x>=hours.x-4)continue;
+      const nearest=ord&&adult&&ord.x!==adult.x?(Math.abs(i.x-ord.x)<Math.abs(i.x-adult.x)?ord:adult):ord||adult;
+      if(nearest&&Math.abs(i.x-nearest.x)<=26){
+       const key=nearest.label+i.kind;
+       if(!leaves[key]||Math.abs(i.x-nearest.x)<Math.abs(positions[key]-nearest.x))positions[key]=i.x;
+       leaves[key]=true;bottom=Math.max(bottom,i.y);
+      }
+     }
+    }
+   }
+   return {ord:!!ord,adult:!!adult,hours:!!hours,leaves,positions,bottom,compact,left,right,parents:[ord,adult,hours]};
+  });
+  // Ord. e Adult. guían a posición de Gr.; os demais números pertencen a outras columnas.
+  const headers=[];
+  for(const row of rows){
+   const groups=row.items.filter(i=>isGr.test(norm(i.s))).sort((a,b)=>cx(a)-cx(b));
+   if(groups.length<2)continue;
+   const tiers=rows.filter(r=>r.y<=row.y+2.5&&r.y>=row.y-52)
+    .map(r=>r.items.filter(i=>kind(norm(i.s))).sort((a,b)=>cx(a)-cx(b)))
+    .filter(r=>r.length>=2).sort((a,b)=>b.length-a.length);
+   const regimes=tiers[0]||[];
+   const closest=x=>regimes.reduce((best,i)=>!best||Math.abs(cx(i)-x)<Math.abs(cx(best)-x)?i:best,null);
+   const assigned=new Map(regimes.map(i=>[i,[]]));
+   for(const g of groups){const r=closest(cx(g));if(r)assigned.get(r).push(g);}
+   const pairs=[];
+   for(let i=0;i+1<regimes.length;i++){
+    const a=regimes[i],b=regimes[i+1],first=kind(norm(a.s)),second=kind(norm(b.s));
+    if(first===second||assigned.get(a).length!==1||assigned.get(b).length!==1)continue;
+    const [ga]=assigned.get(a),[gb]=assigned.get(b);
+    pairs.push({x:(cx(a)+cx(b))/2,left:Math.min(cx(ga),cx(gb)),right:Math.max(cx(ga),cx(gb)),ord:first==='ord'?ga:gb,adult:first==='adult'?ga:gb});i++;
+   }
+   if(!pairs.length)continue;
+   const leaves=rows.filter(r=>Math.abs(r.y-row.y)<=7).flatMap(r=>r.items).filter(i=>leaf.test(norm(i.s))).map(cx).sort((a,b)=>a-b);
+   const modes=rows.filter(r=>r.y<=row.y&&r.y>=row.y-85).flatMap(r=>r.items)
+    .map(i=>({x:cx(i),name:modality(norm(i.s))})).filter(i=>i.name);
+   headers.push({y:row.y,pairs,leaves,modes});
+  }
+  const cellNumber=(s,key)=>{
+   const match=/^(\d+(?:[.,]\d+)?)(?:\s*\(\s*\*\s*\d+\s*\))?$/.exec(s.trim());
+   if(!match||(key!=='xade'&&/[.,]/.test(match[1])))return null;
+   return Number(match[1].replace(',','.'));
+  };
+  const add=(label,row,header,pair)=>{
+   const read=g=>{
+    const x=cx(g),left=header.leaves.filter(c=>c<x-2).at(-1),right=header.leaves.find(c=>c>x+2);
+    const lo=x-Math.min(13,left==null?13:(x-left)/2),hi=x+Math.min(13,right==null?13:(right-x)/2);
+    const ns=new Set(row.items.filter(i=>cx(i)>=lo&&cx(i)<hi).map(i=>cellNumber(i.s,'gr')).filter(n=>n!=null));
+    return ns.size===1?[...ns][0]:null;
+   };
+   doc.rows.push({label,ord:read(pair.ord),adult:read(pair.adult),page:page.n});status.count++;
+  };
+  const order=['ordAl','ordGr','adultAl','adultGr','xade'];
+  const readValues=(row,layout)=>{
+   const {positions,left,right,compact,parents}=layout;
+   const values=Object.fromEntries(order.map(key=>[key,null]));
+   const centres=Object.entries(positions).sort((a,b)=>a[1]-b[1]);
+   values.blank={};
+   const dash=Symbol();
+   const emptyCell=s=>!s.trim()||/^[-–—−]$/.test(s.trim());
+   const readCell=(s,key)=>key.endsWith('Gr')&&/^[-–—−]$/.test(s.trim())?dash:cellNumber(s,key);
+   const finish=()=>{
+    for(const regime of ['ord','adult']){
+     const key=regime+'Gr';
+     if(values[key]===dash)values[key]=values[regime+'Al']!=null?0:null;
+    }
+    return values;
+   };
+   if(compact){
+    const [ord,adult,hours]=parents;
+    if(ord.x>=adult.x||adult.x>=hours.x)return values;
+    const bounds=[left,(ord.x+adult.x)/2,(adult.x+hours.x)/2,right];
+    const cells=(k,keys)=>{
+     const area=row.items.filter(i=>cx(i)>=bounds[k]&&cx(i)<bounds[k+1]);
+     if(area.every(i=>emptyCell(i.s))){for(const key of keys)values.blank[key]=true;return;}
+     const candidates=row.items.filter(i=>cx(i)>=bounds[k]&&cx(i)<bounds[k+1]&&(cellNumber(i.s,'xade')!=null||/^[-–—−]$/.test(i.s.trim()))).sort((a,b)=>cx(a)-cx(b));
+     if(candidates.length===keys.length)keys.forEach((key,j)=>{values[key]=readCell(candidates[j].s,key);values.blank[key]=emptyCell(candidates[j].s);});
+    };
+    cells(0,order.slice(0,2));cells(1,order.slice(2,4));cells(2,['xade']);
+    return finish();
+   }
+   for(const [i,[key,x]] of centres.entries()){
+    const prev=centres[i-1]?.[1],next=centres[i+1]?.[1];
+    // Unha cabeceira ausente non pode ampliar outra columna e captar a súa cifra.
+    const lo=Math.max(left,x-Math.min(13,prev==null?13:(x-prev)/2));
+    const hi=Math.min(right,x+Math.min(13,next==null?13:(next-x)/2));
+    const area=row.items.filter(item=>cx(item)>=lo&&cx(item)<hi);
+    values.blank[key]=area.every(item=>emptyCell(item.s));
+    const matches=area.filter(item=>readCell(item.s,key)!=null);
+    if(matches.length===1)values[key]=readCell(matches[0].s,key);
+   }
+   return finish();
+  };
+  for(const [index,mark] of marks.entries()){
+   const layout=status.subheaders[index];
+   if(layout.compact||Object.keys(layout.positions).length){
+    status.foundColumns=!!(layout.leaves.ordGr&&layout.leaves.adultGr)||status.foundColumns;
+    const below=marks.filter(m=>m.y>layout.bottom).sort((a,b)=>a.y-b.y)[0]?.y??Infinity;
+    const leftHeaders=rows.filter(r=>Math.abs(r.y-layout.bottom)<=9).flatMap(r=>r.items)
+      .filter(i=>leaf.test(norm(i.s))||/^(?:ord|adult)\b/.test(norm(i.s))).map(cx);
+    const nameLimit=Math.min(layout.left,...leftHeaders)-6;
+    for(const row of rows){
+     if(row.y<=layout.bottom+0.5||row.y>=below)continue;
+     const label=row.items.filter(i=>i.x<nameLimit&&/\p{L}/u.test(i.s)).map(i=>i.s.trim()).join(' ').trim(),key=norm(label);
+     if(!key||/^materias?$|^(?:total(?:es|s)?|paxina|documento|apartado|nota|distribucion|curso)\b/.test(key)||/^\s*\*/.test(label)||/\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(row.text))continue;
+     // Descarta pés, títulos de bloques e filas sen ningunha cela numérica da táboa.
+     if(!row.items.some(i=>cx(i)>=nameLimit&&cellNumber(i.s,'xade')!=null))continue;
+     const values=readValues(row,layout);
+     doc.rows.push({label,ord:values.ordGr,adult:values.adultGr,ordAl:values.ordAl,adultAl:values.adultAl,xade:values.xade,blank:values.blank,page:page.n,perSubject:true});status.count++;
+    }
+    continue;
+   }
+   const above=mark=>headers.filter(h=>h.y>=mark.y-2.5&&h.y<=mark.y+72).sort((a,b)=>a.y-b.y)[0];
+   const columnHeader=above(mark);
+   if(columnHeader){
+    const ranked=columnHeader.pairs.slice().sort((a,b)=>Math.abs(a.x-mark.x)-Math.abs(b.x-mark.x));
+    const pair=ranked[0],margin=Math.max(24,(pair.right-pair.left)*.8);
+    if(mark.x<pair.left-margin||mark.x>pair.right+margin||ranked[1]&&Math.abs(Math.abs(pair.x-mark.x)-Math.abs(ranked[1].x-mark.x))<3)continue;
+    status.foundColumns=true;
+    const left=columnHeader.leaves[0]-7;
+    const later=headers.find(h=>h.y>columnHeader.y);
+    for(const row of rows.filter(r=>r.y>columnHeader.y+2.5&&r.y<(later?.y??Infinity))){
+     const name=row.items.filter(i=>i.x<left&&/[^\W\d_]|[áéíóúñ]/i.test(i.s)).map(i=>i.s.trim()).join(' ').trim(),key=norm(name);
+     if(!key||/^materia(?:s)?$|^(?:paxina|documento|apartado|nota|distribucion|curso)\b/.test(key)||/^\*/.test(name)||/\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(row.text))continue;
+     if(!row.items.some(i=>cx(i)>=left&&cellNumber(i.s,'gr')!=null))continue;
+     add(name,row,columnHeader,pair);
+    }
+   }else{
+    const header=headers.filter(h=>h.y<mark.y).at(-1);
+    if(!header)continue;
+    const row=rows.find(r=>Math.abs(r.y-mark.y)<=2.5);
+    if(!row)continue;
+    status.foundColumns=true;
+    for(const [i,pair] of header.pairs.entries()){
+     const near=header.modes.slice().sort((a,b)=>Math.abs(a.x-pair.x)-Math.abs(b.x-pair.x))[0];
+     if(header.pairs.length>1&&!near)continue;
+     add(near?.name||'Total xeral',row,header,pair);
+    }
+   }
+  }
+ }
+ return docs;
+}
 
 function anexo(pages){const r={presente:false,concertos:null};for(const p of pages){const L=lines(p);if(L.some(l=>/ANEXO AO DOC|CENTROS PRIVADOS/.test(l.text)))r.presente=true;const h=L.findIndex(l=>/UNIDADES CONCERTADAS EN EDUCACIÓN OBRIGATORIA/.test(l.text));if(h<0)continue;r.presente=true;const c={};
  for(const l of L.slice(h+1,h+8)){const m=l.text.match(/^Educación (infantil|primaria|secundaria obrigatoria)\b(.*)$/i);if(!m)continue;const ns=(m[2].match(/\d+/g)||[]).map(Number);if(ns.length)c[{infantil:'EI',primaria:'EP','secundaria obrigatoria':'ESO'}[m[1].toLowerCase()]]=ns[ns.length-1];}
@@ -757,7 +1255,7 @@ function summaryGuardSessions(portion){
  return weeklySummaryGuardValue(row,manualX,calculatedX);
 }
 function weeklySummaryTables(pages,teachers,diagnosticRows=[]){const tables=[],processedTeachers=new Set();
- const patterns={directiveHours:/^Cargo\s+directivo(?:\s|$)/i,total:/^TOTAL\s*A\b/i,totalB:/^TOTAL\s*B\b/i,classHours:/^Horas\s+de\s+clase(?:\s|$)/i,classSessions:/^Sesi[oó]ns?\s+de\s+clase(?:\s|$)/i,nonLective:/^(?:B\s*[.)]?\s*)?Horario\s+non\s+lectivo\b/i,presential:/^TOTAL\s+XERAL\s+PRESENCIAL\b/i,guards:/^Gardas(?!\s+de\s+aula)(?:\s|$)/i,guardsOfClass:/^Gardas\s+de\s+aula(?:\s|$)/i,familyTutoring:/^Titor[ií]a\s+alumnado\/responsables(?:\s|$)/i,diversity:/^Atenci[oó]n\s+(?:á|a)\s+diversidade(?:\s|$)/i,coordinationMasters:/^Coordinaci[oó]ns(?!\s+en\s+horario\s+non)(?:\s+en\s+horario\s+lectivo)?(?:\s|$)/i,coordinationOther:/^Coordinaci[oó]n(?!s)(?:\s|$)/i,otherLective:/^Outras\s+actividades\s+en\s+horario\s+lectivo(?:\s|$)/i,fixedCenter:/^Total\s+horario\s+fixo\s+no\s+centro\s*\(A\+B\)(?:\s|$)/i,presenceCenter:/^Total\s+permanencia\s+no\s+centro\s*\(A\+B\+C\)(?:\s|$)/i};
+ const patterns={directiveHours:/^Cargo\s+directivo(?:\s|$)/i,total:/^TOTAL\s*A\b/i,totalB:/^TOTAL\s*B\b/i,classHours:/^Horas\s+de\s+clase(?:\s|$)/i,classSessions:/^Sesi[oó]ns?\s+de\s+clase(?:\s|$)/i,nonLective:/^(?:B\s*[.)]?\s*)?Horario\s+non\s+lectivo\b/i,presential:/^TOTAL\s+XERAL\s+PRESENCIAL\b/i,guards:/^Gardas(?!\s+de\s+aula)(?:\s|$)/i,guardsOfClass:/^Gardas\s+de\s+aula(?:\s|$)/i,tutoringWithoutStudents:/^Titor[ií]a\s*\(\s*sen\s+alumnado\s*\)(?=\s|$)/i,familyTutoring:/^Titor[ií]a\s+alumnado\/responsables(?:\s|$)/i,diversity:/^Atenci[oó]n\s+(?:á|a)\s+diversidade(?:\s|$)/i,coordinationMasters:/^Coordinaci[oó]ns(?!\s+en\s+horario\s+non)(?:\s+en\s+horario\s+lectivo)?(?:\s|$)/i,coordinationOther:/^Coordinaci[oó]n(?!s)(?:\s|$)/i,otherLective:/^Outras\s+actividades\s+en\s+horario\s+lectivo(?:\s|$)/i,fixedCenter:/^Total\s+horario\s+fixo\s+no\s+centro\s*\(A\+B\)(?:\s|$)/i,presenceCenter:/^Total\s+permanencia\s+no\s+centro\s*\(A\+B\+C\)(?:\s|$)/i};
  for(const page of pages){
   const headers=lines(page,4).filter(row=>/Resumo\s+horario\s+semanal/i.test(row.text));
   headers.forEach(header=>{
@@ -766,7 +1264,7 @@ function weeklySummaryTables(pages,teachers,diagnosticRows=[]){const tables=[],p
    const teacherDiagnosticRows=teacher?diagnosticRows.filter(row=>sameName(row.name||row.nome,teacher.nome)):[];const teacherBody=teacher?classifyTeacherBody(teacherDiagnosticRows.length===1?teacherDiagnosticRows[0]:{name:teacher.nome,specialty:teacher.esp,specialtyText:teacher.esp,bodyText:teacher.corpo,corpo:teacher.corpo},{prof:teachers}):'Outro corpo';
    const ownerPages=teacher?pages.filter(p=>teacher.pages?.includes(p.n)):[page];
    const startIndex=Math.max(0,ownerPages.findIndex(p=>p.n===page.n));
-   const rowValues={directiveHours:null,total:null,totalB:null,classHours:null,classSessions:null,nonLective:null,presential:null,guards:null,guardsOfClass:null,familyTutoring:null,diversity:null,coordinationLective:null,otherLective:null,fixedCenter:null,presenceCenter:null};let manualX=null,calculatedX=null,raw=[],coordinationOtherSeen=false;
+   const rowValues={directiveHours:null,total:null,totalB:null,classHours:null,classSessions:null,nonLective:null,presential:null,guards:null,guardsOfClass:null,tutoringWithoutStudents:null,tutoringWithoutStudentsFound:false,familyTutoring:null,diversity:null,coordinationLective:null,otherLective:null,fixedCenter:null,presenceCenter:null};let manualX=null,calculatedX=null,raw=[],coordinationOtherSeen=false;
    for(let pageIndex=startIndex;pageIndex<ownerPages.length;pageIndex++){
     const current=ownerPages[pageIndex],currentHeader=current.n===page.n?header:weeklySummaryHeader(current);
     if(pageIndex>startIndex&&currentHeader){
@@ -783,8 +1281,9 @@ function weeklySummaryTables(pages,teachers,diagnosticRows=[]){const tables=[],p
       if(!pattern.test(row.text.trim()))continue;
       if(key==='coordinationMasters'&&teacherBody!=='Mestre'||key==='coordinationOther'&&teacherBody==='Mestre')continue;
       if(key==='coordinationOther'&&teacherBody!=='Mestre'){if(coordinationOtherSeen)continue;coordinationOtherSeen=true;}
+      if(key==='tutoringWithoutStudents')rowValues.tutoringWithoutStudentsFound=true;
       const column=key==='guards'||key==='diversity'?calculatedX:manualX;
-      const value=key==='guards'||key==='diversity'?weeklySummaryGuardValue(row,manualX,calculatedX):key==='guardsOfClass'?weeklySummaryRowValue(row,manualX):key==='nonLective'||key==='directiveHours'?weeklySummaryManualValue(row,manualX,calculatedX,true):key==='coordinationMasters'||key==='coordinationOther'?weeklySummaryCoordinationValue(row,manualX,calculatedX):weeklySummaryRowValue(row,column);
+      const value=key==='tutoringWithoutStudents'?weeklySummaryManualValue(row,manualX,calculatedX,true):key==='guards'||key==='diversity'?weeklySummaryGuardValue(row,manualX,calculatedX):key==='guardsOfClass'?weeklySummaryRowValue(row,manualX):key==='nonLective'||key==='directiveHours'?weeklySummaryManualValue(row,manualX,calculatedX,true):key==='coordinationMasters'||key==='coordinationOther'?weeklySummaryCoordinationValue(row,manualX,calculatedX):weeklySummaryRowValue(row,column);
       const valueKey=key==='coordinationMasters'||key==='coordinationOther'?'coordinationLective':key;
       if(value!=null)rowValues[valueKey]=value;
       raw.push(row.text);
@@ -794,7 +1293,7 @@ function weeklySummaryTables(pages,teachers,diagnosticRows=[]){const tables=[],p
    const otherLective=rowValues.otherLective;
    const classHours=rowValues.classHours,coordinationLective=rowValues.coordinationLective;
    const directiveHours=rowValues.directiveHours??0;
-   tables.push({page:page.n,nome:teacher?.nome||'Docente non identificado',classHours,directiveHours,coordinationLective,classSessions:rowValues.classSessions,guards:rowValues.guards,guardsOfClass:rowValues.guardsOfClass,familyTutoring:rowValues.familyTutoring,diversity:rowValues.diversity,total:rowValues.total,totalB:rowValues.totalB,nonLective:rowValues.nonLective,presential:rowValues.presential,otherLective,fixedCenter:rowValues.fixedCenter,presenceCenter:rowValues.presenceCenter,raw:[...new Set(raw)]});
+   tables.push({page:page.n,nome:teacher?.nome||'Docente non identificado',classHours,directiveHours,coordinationLective,classSessions:rowValues.classSessions,guards:rowValues.guards,guardsOfClass:rowValues.guardsOfClass,tutoringWithoutStudents:rowValues.tutoringWithoutStudents,tutoringWithoutStudentsFound:rowValues.tutoringWithoutStudentsFound,familyTutoring:rowValues.familyTutoring,diversity:rowValues.diversity,total:rowValues.total,totalB:rowValues.totalB,nonLective:rowValues.nonLective,presential:rowValues.presential,otherLective,fixedCenter:rowValues.fixedCenter,presenceCenter:rowValues.presenceCenter,raw:[...new Set(raw)]});
   });
  }
  return tables;
@@ -802,8 +1301,20 @@ function weeklySummaryTables(pages,teachers,diagnosticRows=[]){const tables=[],p
 function parse(pages){const by={};for(const p of pages){const a=pageApartado(p);if(a)(by[a]=by[a]||[]).push(p);}
 const r={meta:meta(pages),apartados:Object.keys(by),paxinas:pages.length};
 r.a1=ap1(by['1']||[]);r.a2=ap2(by['2']||[]);r.a3=ap3(by['3']||[]);r.a4=ap4(by['4']||[]);r.a5=ap5(by['5']||[],pages);let currentSection=null;const hasScheduleSection=pages.some(page=>pageApartado(page)==='6');let inferredSchedule=false;const schedulePages=pages.filter(page=>{const section=pageApartado(page);if(section){currentSection=section;if(section!=='6')inferredSchedule=false;}if(hasScheduleSection)return currentSection==='6';if(section&&section!=='6')return false;if(teacherNameAnchor(page)&&(weeklySummaryHeader(page)||hdrRow(page)))inferredSchedule=true;return inferredSchedule;});r.a6=ap6(schedulePages,r.a2.diagnosticRows||[]);r.a6.summaries=weeklySummaryTables(schedulePages,r.a6.prof,r.a2.diagnosticRows||[]);r.a6.summaryCount=r.a6.summaries.length;r.a2.teacherCounts=teacherCountsByBody(r.a2,r.a6);r.a2.teacherCountOverride=Number.isFinite(r.a2.teacherCounts.masters)&&Number.isFinite(r.a2.teacherCounts.rest)?r.a2.teacherCounts.masters+r.a2.teacherCounts.rest:null;r.a6.expected=r.a2.teacherCountOverride??r.a2.lastOrder;r.a6.missing=(r.a2.persoal||[]).filter(person=>!r.a6.prof.some(teacher=>sameName(person.nome,teacher.nome))).map(person=>person.nome);
-r.a7=ap7(by['7']||[]);
-r.a11A=ap11(by['11A']||[],'A');r.a11B=ap11(by['11B']||[],'B');r.anexo=anexo(pages);r.a8=ap8([...(by['8']||[]),...(by['9']||[]),...(by['10']||[])]);return r;}
+let staffSection=null;r.a7=ap7(pages.filter(page=>{
+ const section=pageApartado(page);
+ if(section)staffSection=section;
+ else if(nonTeachingPageHeader(lines(page,3)))staffSection='7';
+ return staffSection==='7';
+}));
+if(r.a7.identityPages.length&&!r.apartados.includes('7'))r.apartados.push('7');
+r.a11A=ap11(by['11A']||[],'A');r.a11B=ap11(by['11B']||[],'B');r.anexo=anexo(pages);r.enrollmentDiagnostic={rows:[],pages:[]};
+r.a8=ap8(by['8']||[],r.enrollmentDiagnostic);
+for(const p of pages){
+ if(pageApartado(p))continue;
+ const doc=lines({items:p.items.filter(i=>i.y<130)}).map(row=>norm(row.text).match(/^documento (8|9|10)\b/)?.[1]).find(Boolean);
+ if(doc)r.enrollmentDiagnostic.pages.push({doc,page:p.n,count:0,reason:'notUsed'});
+}r.esoSubjectHours=section8EsoHours(pages);r.bachEnrollmentTotals=bachTotalsDiagnostic(pages);return r;}
 G.DOCENGINE={specialtyCodes,parse,norm,nameKey,sameName,teacherBodyLabel:classifyTeacherBody,weeklySummaryTotals,summaryGuardSessions,weeklySummaryGuardValue,weeklySummaryTables,DAYS};
 })(typeof window!=='undefined'?window:globalThis);
 
@@ -1089,6 +1600,156 @@ function classroomGuardSessionCounts(grid){let all=0,checked=0;for(const slot of
 function otherFunctionsSessionCount(grid){let count=0;for(const slot of grid||[])for(const cell of slot.cells||[])if(cell.some(text=>/Outras funci/i.test(String(text).replace(/[\s\u00a0]+/g,' ').trim())))count++;return count;}function otherFunctionsLectiveOccurrenceCount(grid){let count=0;const term=/Outras\s+funci[oó]n(?:s|es)/gi;for(const slot of grid||[]){const times=String(slot.h||'').match(/(\d\d:\d\d)-(\d\d:\d\d)/);if(!times)continue;const toMin=value=>{const [h,m]=value.split(':').map(Number);return h*60+m;},duration=toMin(times[2])-toMin(times[1]);if(duration<45||duration>80)continue;for(const cell of slot.cells||[]){const text=(cell||[]).map(value=>String(value)).join(' ').replace(/[\s\u00a0]+/g,' ');count+=(text.match(term)||[]).length;}}return count;}
 
 function otherFunctionsLectiveCount(grid){let count=0;for(const slot of grid||[]){const times=String(slot.h||'').match(/(\d\d:\d\d)-(\d\d:\d\d)/);if(!times)continue;const toMin=value=>{const [h,m]=value.split(':').map(Number);return h*60+m;},duration=toMin(times[2])-toMin(times[1]);if(duration<45||duration>80)continue;count+=(slot.cells||[]).filter(cell=>cell.some(text=>/Outras funci/i.test(String(text)))).length;}return count;}
+
+// Programas que poden xustificar cargos de coordinación. Os cargos ordinarios
+// de organización do centro non requiren unha marca de programa na portada.
+const DOC_CENTER_PROGRAMS=[
+ {name:'E-Dixgal',aliases:['e dixgal','edixgal','dixgal']},
+ {name:'Polos Creativos',aliases:['polos creativos','polo creativo']},
+ {name:'STEMbach',aliases:['stembach','stem bach']},
+ {name:'PLAMBE',aliases:['plambe','plan de mellora de bibliotecas escolares']},
+ {name:'Plurilingüismo',aliases:['plurilingue','plurilingues','plurilinguismo']},
+ {name:'Seccións bilingües',aliases:['seccions bilingues','seccion bilingue']},
+ {name:'Programas internacionais',cargoAliases:['programas internacionais','programa internacional','proxectos internacionais','proxecto internacional'],aliases:['programas internacionais','programa internacional','proxectos internacionais','proxecto internacional','erasmus','etwinning','e twinning']},
+ {name:'Erasmus+',aliases:['erasmus']},
+ {name:'eTwinning',aliases:['etwinning','e twinning']},
+ {name:'PROA+',aliases:['proa','proa plus']},
+ {name:'Plan Proxecta',aliases:['plan proxecta','proxecta']},
+ {name:'Clubes de ciencia',aliases:['clubes de ciencia','club de ciencia','clube de ciencia']}
+];
+function programCoordinationsFinding(r){
+ const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+ const has=(text,alias)=>(' '+text+' ').includes(' '+normalize(alias)+' ');
+ const cover=(r.meta?.programas||[]).map(normalize).filter(Boolean);
+ const records=r.a2?.rawCargoRows||[];
+ const pagesFor=rows=>[...new Set(rows.flatMap(row=>[row.page,...(row.parts||[]).map(part=>part.page)]).filter(page=>Number.isFinite(page)))].sort((a,b)=>a-b);
+ const tablePages=[...new Set([...(r.a2?.cargoTablePages||[]),...pagesFor(records)])].sort((a,b)=>a-b);
+
+ const cargoLine=cargo=>'• '+cargo;
+ const cargos=[...new Map(records.map(row=>String(row.cargo||'').trim()).filter(Boolean).map(cargo=>[normalize(cargo),cargo])).values()];
+ const checked=[],missing=[];
+ for(const cargo of cargos){
+  const text=normalize(cargo);
+  if(!/\b(?:coordinador|coordinadora|coordinacion|responsable|dinamizador|dinamizadora)\b/.test(text))continue;
+  if(/\b(?:non|sen) plambe\b/.test(text))continue;
+  const programs=DOC_CENTER_PROGRAMS.filter(program=>(program.cargoAliases||program.aliases).some(alias=>has(text,alias)));
+  if(programs.length){
+   checked.push(cargo);
+   const absent=programs.filter(program=>!cover.some(line=>program.aliases.some(alias=>has(line,alias))));
+   if(absent.length)missing.push(cargo);
+   continue;
+  }
+  // Permite contrastar tamén programas novos coa súa denominación literal.
+  // Non esixe programas de portada para ciclos, TIC, FCT e cargos ordinarios.
+  if(/\bciclo\b|benestar|convivencia|dinamizacion da lingua|lingua galega|actividades complementarias|extraescolares|\btic\b|tecnoloxias da informacion|biblioteca|departamento|formacion en centros de traballo|\bfct\b|orientacion/.test(text))continue;
+  const generic=text.match(/\b(?:programas?|proxectos?|plan)\s+(?:(?:de|do|da|dos|das|o|a)\s+)*(.+)$/);
+  if(!generic)continue;
+  checked.push(cargo);
+  const name=generic[1].trim();
+  if(!cover.some(line=>has(line,name)))missing.push(cargo);
+ }
+ const count='Coordinacións de programas revisadas: '+checked.length+'. Contraste: programas sinalados na portada.';
+ const details=count+'\nCoordinacións comprobadas:\n'+(checked.length?checked.map(cargoLine).join('\n'):'Ningunha.');
+ if(missing.length)return {sev:'inc',txt:'As seguintes coordinacións corresponden a programas que non figuran na portada do centro:\n'+missing.map(cargoLine).join('\n'),det:details};
+ const read=tablePages.length>0||records.length>0;
+ if(!read)return {sev:'info',txt:'',det:'Non se puideron ler as coordinacións de programas do centro para contrastalas cos programas da portada.\n'+details};
+ return {sev:'ok',txt:'',det:(checked.length?'Todas as coordinacións de programas identificadas corresponden a programas que figuran na portada.':'Non se identifican cargos de coordinación de programas que deban contrastarse coa portada.')+'\n'+details};
+}
+
+
+// As dúas comprobacións de PT/AL usan os mesmos docentes e estados individuais.
+function supportTeacherActivityResults(r){
+ const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+ const isCycle=value=>/\b(?:coordinador(?:a)?(?: a)?|coordinacion(?:s)?|coord)\s+(?:(?:de|do|da)\s+)?(?:equipo de\s+)?(?:[123]\s*)?ciclo\b/.test(normalize(value));
+ const cycle=[],guards=[];
+ for(const teacher of r.a6?.prof||[]){
+  const matches=(r.a2?.diagnosticRows||[]).filter(row=>row.name&&E.sameName(row.name,teacher.nome));
+  const specialty=[teacher.esp,matches.length===1?matches[0].specialty||matches[0].esp:''].filter(Boolean).join(' ');
+  const type=supportTeachingType(specialty);
+  const result=(status,observation)=>({teacher,name:teacher.nome,status,observation});
+  if(!type){const observation='Non aplicable: este docente non pertence ás especialidades PT ou AL.';cycle.push(result('na',observation));guards.push(result('na',observation));continue;}
+  const cargos=[...new Set([...(teacher.cargos||[]),...teacherCargoLookup(r,teacher.nome).cargos])].filter(isCycle);
+  const grid=teacher.grid||[];
+  const cycleCount=grid.reduce((count,slot)=>count+(slot.cells||[]).filter(cell=>isCycle(cell.join(' '))).length,0);
+  const guardCount=classroomGuardDistributionCount(grid);
+  const assess=(present,absent,presentObservation)=>result(present?'inc':grid.length?'ok':'info',present?presentObservation:grid.length?absent:'Non se puido ler o horario individual deste docente.');
+  cycle.push(assess(cargos.length>0||cycleCount>0,'Non figuran coordinacións de ciclo para este docente.',
+   'O profesorado de PT ou AL non debe ter asignada coordinación de ciclo.'+(cargos.length?'\nCargo: '+cargos.join(' · '):'')+(cycleCount?'\nCoordinación de ciclo no horario: '+cycleCount+' sesións.':'')));
+  guards.push(assess(guardCount>0,'Non figuran sesións de «Garda de aula» no horario individual deste docente.',
+   'O profesorado de PT ou AL debe dedicar o seu horario ás funcións propias da súa especialidade (Resolución do 16 de xuño de 2026).\nSesións de «Garda de aula» no horario: '+guardCount+'.'));
+ }
+ return {cycle,guards};
+}
+
+
+function departmentHeadsFinding(r,tipo=r.meta?.tipo){
+ const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+ const departmentKey=value=>normalize(value).replace(/^departamento\s+(?:(?:de|do|da)\s+)?/,'').split(' ').filter(word=>!['de','do','da','dos','das','e','y'].includes(word)).sort().join(' ');
+ const departments=new Map();
+ for(const entry of [...(r.a11A||[]),...(r.a11B||[])]){
+  const key=departmentKey(entry.nome);if(!key)continue;
+  if(!departments.has(key))departments.set(key,{name:entry.nome,heads:[]});
+  departments.get(key).heads.push(...(entry.xefaturas||[]));
+ }
+ const sections=(r.apartados||[]).some(ap=>/^11(?:A|B)?$/i.test(ap));
+ if(!departments.size){
+  const applicable=sections||['IES','CPI','EPAPU','CIFP'].includes(String(tipo||'').toUpperCase());
+  return applicable?{sev:'info',txt:'',det:'Non se puido ler a relación de departamentos dos apartados 11A e 11B para comprobar as súas xefaturas.'}:{sev:'info',notApplicable:true,txt:'',det:'Non aplicable: este centro non dispón do apartado de departamentos 11A e 11B.'};
+ }
+ const records=[...(r.a2?.rawCargoRows||[]).map(row=>({cargo:row.cargo,name:row.docente})),...(r.a2?.coordinationOffices||[]).map(row=>({cargo:row.cargo,name:row.nome})),...(r.a2?.persoal||[]).flatMap(person=>(person.cargos||[]).map(cargo=>({cargo,name:person.nome}))),...(r.a6?.prof||[]).flatMap(person=>(person.cargos||[]).map(cargo=>({cargo,name:person.nome})))];
+ for(const record of records){
+  const person=normalize(record.name);if(!person||/^(?:sen|sin|vacante|pendente|non|no)\b/.test(person))continue;
+  const cargo=normalize(record.cargo),match=cargo.match(/\b(?:xefe(?: a)?|xefa|jefe(?: a)?|jefa|xefatura|jefatura)\s+(?:(?:do|de|da)\s+)?departamento\s+(?:(?:de|do|da)\s+)?(.+)$/);
+  if(!match)continue;
+  const department=departments.get(departmentKey(match[1]));if(department)department.heads.push(record.name);
+ }
+ const missing=[...departments.values()].filter(department=>!department.heads.length);
+ const detail='Departamentos comprobados: '+departments.size+'. Fontes: departamentos dos apartados 11A e 11B e nomeamentos da lista de cargos.';
+ if(missing.length)return {sev:'inc',txt:'Non consta xefatura de departamento nos seguintes departamentos:\n'+missing.map(department=>'• '+department.name).join('\n'),det:detail};
+ return {sev:'ok',txt:'',det:'Todos os departamentos teñen xefatura identificada.\n'+detail};
+}
+
+function section8EnrollmentFindings(r){
+ const eso=(r.enrollmentDiagnostic?.rows||[]).filter(row=>row.ap==='8');
+ const rows=eso.map(row=>{
+  const detail=row.curso.toLowerCase();
+  const named=detail.match(/\b(primeiro|segundo|terceiro|cuarto)\b/i)?.[0];
+  const explicit=detail.match(/^\s*([1-4])(?:\s*(?:º|°|o)\s*(?:eso\b)?|\s+eso\b|\s*$)/i)?.[1];
+  const course=explicit||(named?['primeiro','segundo','terceiro','cuarto'].indexOf(named)+1:row.courseColumn);
+  return {...row,detail,shortCourse:course?course+'º ESO':detail};
+ });
+ const pending=[];
+ for(const page of r.enrollmentDiagnostic?.pages||[])if(page.doc==='8'&&!page.count)pending.push('ESO · páx. '+page.page);
+ if(r.apartados?.includes('8')&&!eso.length&&!pending.length)pending.push('ESO');
+ for(const [doc,course] of Object.entries({'9':'1º de Bacharelato','10':'2º de Bacharelato'})){
+  const data=r.bachEnrollmentTotals?.[doc],subjects=(data?.rows||[]).filter(row=>row.perSubject);
+  if(!subjects.length&&(data?.pages?.length||r.apartados?.includes(doc)))pending.push(course);
+  for(const page of data?.pages||[])if(page.foundTotal&&!subjects.some(row=>row.page===page.page))pending.push(course+' · páx. '+page.page);
+  for(const row of subjects){
+   for(const [regime,al,groups] of [['Ord.',row.ordAl,row.ord],['Adult.',row.adultAl,row.adult]]){
+    const detail=course+' · '+regime;
+    if(Number.isInteger(al)&&al>=0)rows.push({materia:row.label,detail:course,shortCourse:(Number(doc)-8)+'º BAC',al});
+    else if(groups>0)pending.push(row.label+' · '+detail+' · páx. '+row.page);
+   }
+   if(row.ordAl==null&&row.adultAl==null&&!(row.ord>0||row.adult>0))pending.push(row.label+' · '+course+' · páx. '+row.page);
+  }
+ }
+ const eligible=rows.filter(m=>m.al>0&&!/Relixi|Atención educativa|Valores|Titor|Ámbito|Reforzo|Horas a disposición|Proxecto|Exent/i.test(m.materia));
+ const list=(items,short)=>{
+  const entries=[...new Set(items.map(m=>m.materia+': '+(short?m.shortCourse:m.detail)+', '+m.al))];
+  return '\n'+entries.map(item=>'      • '+item).join('\n');
+ };
+ const make=(title,level,listRows,intro,outro,short=false)=>({
+  ap:'8',tit:title,sev:listRows.length?level:pending.length||!rows.length?'info':'ok',
+  txt:listRows.length?intro+list(listRows,short)+outro:'',
+  det:pending.length?'Matrícula sen comprobar: '+[...new Set(pending)].join('; ')+'.':!rows.length?'Non hai datos de matrícula dos documentos 8, 9 e 10.':!listRows.length?'Non se detectan incidencias na matrícula lida.':''
+ });
+ return [
+  make('Materias con menos de dez alumnos','av',eligible.filter(m=>m.al>=5&&m.al<10),'Impártense con menos de dez alumnos, polo que precisan autorización expresa da xefatura territorial:','\n   Deberá acreditarse a autorización.',true),
+  make('Materias con menos de cinco alumnos','inc',eligible.filter(m=>m.al<5),'Impártense con menos de cinco alumnos:','\n   As optativas non poden impartirse con menos de cinco; nas materias de modalidade de bacharelato precísase autorización expresa da xefatura territorial ou cursalas a distancia no IES San Clemente.')
+ ];
+}
+
 function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,tit,txt,det:det||'',id:F.length});const B={};const agg=(ap,sev,tit,intro,item,outro)=>{(B[tit]=B[tit]||{ap,sev,tit,intro,outro,items:[]}).items.push(item);};
  const tipo=opt.tipo||r.meta.tipo;const u=opt.unidades!=null?opt.unidades:r.a4.unidades;const hoxe=opt.hoxe||new Date();
  const sec=['IES','EPAPU','CIFP'].includes(tipo);
@@ -1163,6 +1824,7 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
   else if(repeated.length)add('2','av','Adscrición funcional para o curso','Deberá revisarse a adscrición funcional dos seguintes docentes por aparecer máis dunha vez coa mesma especialidade:\n'+repeatLines.join('\n'));
   else add('2','ok','Adscrición funcional para o curso','','Todos os docentes aparecen unha soa vez e teñen asignada unha especialidade.');
  }
+ const programCoordinations=programCoordinationsFinding(r);add('2',programCoordinations.sev,'Coordinacións de programas do centro',programCoordinations.txt,programCoordinations.det);
  // ---------- Apartado 3
  const S=r.a3.slots;
  const guardCoverage=classGuardCoverage(S,r.a5.grupos,opt.minGardas,80,45);const balanceCoverage=classGuardCoverage(S,r.a5.grupos,opt.minGardas,80,45);if(!S.length)add('3','info','Gardas de clase desequilibradas','','Non se identificaron datos de gardas no apartado 3 para comparar as sesións lectivas de 45 a 80 minutos.');const guardReference='Referencia: '+guardCoverage.checked+' sesións de 45 a 80 minutos do horario dos grupos do apartado 5. Mínimo de referencia: '+opt.minGardas+' docentes de garda de clase (C), segundo o apartado 3.';
@@ -1260,7 +1922,7 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
  // ---------- Apartado 6
  const part=n=>{const a=(r.a2.persoal||[]).find(p=>E.sameName(p.nome,n));return a&&(a.destino==='I'||a.xornada==='Parcial');};
   const recessTeachers=new Map();
- const libs=[];const AG={oal:[],ptal:[]};const PROA={garda:[],tit:[],horas:[]};
+ const libs=[];const AG={oal:[]};const PROA={garda:[],tit:[],horas:[]};
  for(const t of r.a6.prof){const R=t.res||{};const nm=t.nome;const esp=t.esp||'';const corpo=t.corpo||'';const rel=/relix/i.test(corpo+esp);const ptal=!!supportTeachingType(esp);const cs=t.cargos||[];const tit=cs.some(c=>/^titor/i.test(c));
   if(isDiagnosedMaster(t)){
    const recorded=(t.materias||[]).filter(text=>/^Recreos?\b/i.test(String(text).trim()));
@@ -1277,8 +1939,7 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
    const secP=t.formato==='S'||['IES','EPAPU','CIFP'].includes(tipo);if(secP){if(t.ses.proa!==10)PROA.horas.push(`${nm} (${t.ses.proa} sesións; corresponden 10)`);}else if(Math.abs(t.ses.proaH-11.5)>0.5)PROA.horas.push(`${nm} (${String(t.ses.proaH).replace('.',',')} h; corresponden 11,5)`);}
   if(rel&&tit)add('6','inc','Titoría asignada a profesorado de Relixión',`${nm}, profesor/a de Relixión, ten asignada unha titoría. Deberá asignarse a outro docente.`);
   if(rel){const x=t.cont(/^(Apoio|Lectura|Reforzo|Glob|Lingua|MAT|LGL|LCL)/i);if(x)add('6','inc','Profesorado de Relixión con outras materias',`No horario de ${nm} figuran ${x} ${x===1?'sesión distinta':'sesións distintas'} de Relixión (apoio, lectura ou outras áreas). O profesorado de Relixión só pode impartir Relixión.`);}
-  if(ptal){const g=classroomGuardDistributionCount(t.grid||[]);if(g)AG.ptal.push(`${nm} (${g} sesións de «Garda de aula»)`);
-   if(cs.some(c=>/coordinador\/a de ciclo/i.test(c)))add('6','av','PT ou AL sen coordinación de ciclo',`${nm} (${esp}) figura como coordinador/a de ciclo. Deberá valorarse se procede.`);}
+
   
   if(t.privado&&!t.formato){if(t.ses&&t.ses.horas>(opt.maxPriv||25))agg('6','av','Horario lectivo por riba da referencia (privados)',`Superan as ${opt.maxPriv||25} horas lectivas no horario individual: `,`${nm} (${String(t.ses.horas).replace('.',',')} h)`,'. Deberá comprobarse a súa xornada co convenio colectivo de aplicación e coa información do menú 3.10 de CentrosPrivados.');}
   if(t.formato==='P'){const tot=R['TOTAL'],nl=R['Horario non lectivo'],tx=R['TOTAL XERAL PRESENCIAL'];
@@ -1298,7 +1959,7 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
  const otherFunctionsResult=otherFunctionsCountFinding(r);add('6',otherFunctionsResult.sev,'Cómputo outras funcións en horario lectivo',otherFunctionsResult.txt,otherFunctionsResult.det);const otherFunctionsPresenceResult=otherFunctionsPresenceFinding(r);add('6',otherFunctionsPresenceResult.sev,'«Outras funcións» en horario lectivo sen concretar',otherFunctionsPresenceResult.txt,otherFunctionsPresenceResult.det);
  const classroomGuardResult=classroomGuardCountFinding(r);add('6',classroomGuardResult.sev,'Cómputo gardas de aula',classroomGuardResult.txt,classroomGuardResult.det);const classroomGuardFinding=F.find(f=>f.ap==='6'&&f.tit==='Cómputo gardas de aula');if(classroomGuardFinding)classroomGuardFinding.teacherResults=classroomGuardResult.teacherResults||[];const supportSessionResult=supportSessionCountFinding(r);add('6',supportSessionResult.sev,'Cómputo sesións de apoio',supportSessionResult.txt,supportSessionResult.det);const supportSessionFinding=F.find(f=>f.ap==='6'&&f.tit==='Cómputo sesións de apoio');if(supportSessionFinding)supportSessionFinding.teacherResults=supportSessionResult.teacherResults||[];
 
- if(AG.ptal.length)add('6','inc','PT ou AL sen gardas de clase',`O seguinte profesorado de PT ou AL ten sesións de «Garda de aula» no seu horario individual: ${lst(AG.ptal)}. Esta asignación constitúe un incumprimento; o seu horario debe dedicarse ás funcións propias da súa especialidade (Resolución do 16 de xuño de 2026).`);
+
  for(const k in B){const b=B[k],itemsText=b.tit==='Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)'?b.items.join('\n'):lst(b.items);add(b.ap,b.sev,b.tit,b.intro+itemsText+b.outro);}
  const PR='Resolución do 16 de xuño de 2026 e comunicación do Servizo Territorial de Inspección Educativa do 2 de outubro de 2026';
  if(PROA.garda.length)add('6','inc','Profesorado PROA+ con gardas',`O profesorado asignado ao programa PROA+ non realiza gardas, para garantir a súa dedicación ao reforzo (${PR}). Teñen gardas no horario: ${lst(PROA.garda)}.`);
@@ -1432,13 +2093,23 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
   const rows=diagnosticRowsForOver20.filter(row=>row.name&&E.sameName(row.name,teacher.nome));
   if(rows.length!==1)return {name:teacher.nome,status:'info',observation:'Non se puido identificar este docente no diagnóstico local de especialidade e horario.'};
   if(E.teacherBodyLabel(rows[0],prof)!=='Outro corpo')return {name:teacher.nome,status:'na',observation:'Non aplicable: o diagnóstico local identifica este docente como Mestre.'};
-  if(!(teacher.summaryPages||[]).length)return {name:teacher.nome,status:'info',observation:'Non se puido ler o resumo horario deste docente.'};
-  const raw=teacher.res?.['Titoría (sen alumnado)'],sessions=Number.isFinite(raw)?raw:0;
-  const hasTutorCharge=(teacher.cargos||[]).some(cargo=>/^(?:titor|tutor)(?:\s*\/\s*[ao])?\b/i.test(String(cargo||'').replace(/^[-•]\s*/,'')));
+  const linkedSummaries=summaryBodyEntries.filter(entry=>entry.teacher===teacher);
+  const matchingSummaries=linkedSummaries.length?linkedSummaries:summaryBodyEntries.filter(entry=>!entry.teacher&&entry.summary?.nome&&E.sameName(entry.summary.nome,teacher.nome));
+  const summary=matchingSummaries.length===1?matchingSummaries[0].summary:null;
+  if(!summary)return {name:teacher.nome,status:'info',observation:'Non se puido ler o resumo horario deste docente.'};
+  const raw=summary.tutoringWithoutStudents;
+  if(summary.tutoringWithoutStudentsFound&&!Number.isFinite(raw))return {name:teacher.nome,status:'info',observation:'Non se puido ler a cela «Sesións (manuais)» da fila «Titoría (sen alumnado)».'};
+  const sessions=raw??0;
+  const tutorCargos=[...new Set([...(teacher.cargos||[]),...(r.a2?.coordinationOffices||[]).filter(office=>office.nome&&E.sameName(office.nome,teacher.nome)).map(office=>office.cargo)].map(cargo=>String(cargo||'').trim()).filter(Boolean))].filter(cargo=>/^(?:titor|titora|tutor|tutora|titoria|tutoria)\b/.test(cargo.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()));
+  const assignedGroupTutor=(r.a5?.grupos||[]).some(group=>group.titor&&E.sameName(group.titor,teacher.nome));
+  const hasTutorCharge=tutorCargos.length>0||assignedGroupTutor;
+  const tutorLabel=tutorCargos.join('; ')||(assignedGroupTutor?'Titor/a do grupo':'Titor/a');
   const value=String(sessions).replace('.',',');
-  if(sessions===0)return {name:teacher.nome,status:'ok',observation:'0 sesións de titoría sen alumnado no resumo horario'};
+  if(sessions===0)return hasTutorCharge
+   ?{name:teacher.nome,status:'inc',observation:'0 sesións de titoría sen alumnado no resumo horario · Cargo: '+tutorLabel+'. Falta a sesión de titoría sen alumnado.'}
+   :{name:teacher.nome,status:'ok',observation:'0 sesións de titoría sen alumnado no resumo horario'};
   if(sessions===1)return hasTutorCharge
-   ?{name:teacher.nome,status:'ok',observation:value+' sesión de titoría no resumo horario · Cargo: Titor/a'}
+   ?{name:teacher.nome,status:'ok',observation:value+' sesión de titoría no resumo horario · Cargo: '+tutorLabel}
    :{name:teacher.nome,status:'inc',observation:value+' sesión de titoría no resumo horario · Sen cargo de Titor/a'};
   if(sessions>1)return {name:teacher.nome,status:'inc',observation:value+' sesións de titoría no resumo horario'};
   return {name:teacher.nome,status:'info',observation:value+' sesións de titoría no resumo horario · Criterio non definido para valores inferiores a 1,0'};
@@ -1486,8 +2157,10 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
   if(!masterEIEPTeacher(teacher))return {name:teacher.nome,status:'na',observation:'Non aplicable: o diagnóstico local identifica este docente como Mestre en ESO.'};
   const matches=summaryBodyEntries.filter(entry=>entry.teacher===teacher||entry.summary?.nome&&E.sameName(entry.summary.nome,teacher.nome));
   const summary=matches.length===1?matches[0].summary:null;
-  if(!Number.isFinite(summary?.classHours))return {name:teacher.nome,status:'info',observation:'Non se puido ler «Horas de clase» no resumo horario semanal deste docente.'};
-  const classHoursInteger=Math.floor(summary.classHours),status=classHoursInteger>=16?'ok':'inc';
+  if(!summary)return {name:teacher.nome,status:'info',observation:'Non se puido ler o resumo horario semanal deste docente.'};
+  const classHours=summary.classHours==null||summary.classHours===''?0:summary.classHours;
+  if(!Number.isFinite(classHours))return {name:teacher.nome,status:'info',observation:'Non se puido ler «Horas de clase» no resumo horario semanal deste docente.'};
+  const classHoursInteger=Math.floor(classHours),status=classHoursInteger>=16?'ok':'inc';
   return {name:teacher.nome,status,observation:classHoursInteger+' horas de clase no resumo horario'};
  });
  const familyTutoringResults=prof.map(teacher=>{
@@ -1543,6 +2216,15 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
  }
  for(const item of section6)if(!catalog.some(([title])=>title===item.tit))F.push(item); const applyBodySpecificResults=(title,results,affectedStatus)=>{const finding=F.find(f=>f.ap==='6'&&f.tit===title);if(!finding)return;finding.teacherResults=results;const applicable=results.filter(item=>item.status!=='na'),priority={inc:4,av:3,info:2,ok:1};finding.sev=applicable.reduce((best,item)=>priority[item.status]>priority[best]?item.status:best,'info');finding.txt=results.filter(item=>item.status===affectedStatus).map(item=>item.name+' ('+item.observation+')').join('\n');finding.det='';};applyBodySpecificResults('Resumo: Horario lectivo máximo de 20 sesións',over20TeacherResults,'inc');applyBodySpecificResults('Resumo: Horario complementario fixo máximo de 5 sesións',fixedComplementaryResults,'inc');applyBodySpecificResults('Resumo: Horario total fixo no centro de 23 sesións',otherFixedCenterResults,'inc');applyBodySpecificResults('Resumo: Horario total permanecia no centro de 30 sesións',otherPresenceCenterResults,'inc');applyBodySpecificResults('Resumo: Cargo directivo',directiveChargeResults,'inc');const directiveChargeFinding=F.find(f=>f.ap==='6'&&f.tit==='Resumo: Cargo directivo');if(directiveChargeFinding)directiveChargeFinding.txt=directiveChargeResults.filter(item=>item.status==='inc'||item.status==='av').map(item=>item.name+' ('+item.observation+')').join('\n');applyBodySpecificResults('Resumo: Xefatura de departamento',departmentHeadResults,'inc');applyBodySpecificResults('Resumo: Outras actividades/funcións en horario lectivo',otherActivitiesSummaryResults,'av');applyBodySpecificResults('Resumo: 18 sesións de clase',eighteenClassTeacherResults,'inc');applyBodySpecificResults('Resumo: Titoría sen alumnado',tutoringWithoutStudentsResults,'inc');applyBodySpecificResults('Resumo: mínimo de 16 horas de clase',minimumMasterClassResults,'inc');applyBodySpecificResults('Compensación por aumento lectivo',compensationLectiveResults,'av');applyBodySpecificResults('Cómputo titoría familias',familyTutoringResults,'inc');const finalClassroomGuardFinding=F.find(f=>f.ap==='6'&&f.tit==='Cómputo gardas de aula');if(finalClassroomGuardFinding)finalClassroomGuardFinding.teacherResults=classroomGuardResult.teacherResults||[];const finalOtherFunctionsFinding=F.find(f=>f.ap==='6'&&f.tit==='Cómputo outras funcións en horario lectivo');if(finalOtherFunctionsFinding)finalOtherFunctionsFinding.teacherResults=otherFunctionsResult.teacherResults||[];const finalOtherFunctionsPresenceFinding=F.find(f=>f.ap==='6'&&f.tit==='«Outras funcións» en horario lectivo sen concretar');if(finalOtherFunctionsPresenceFinding)finalOtherFunctionsPresenceFinding.teacherResults=otherFunctionsPresenceResult.teacherResults||[];const finalSupportSessionFinding=F.find(f=>f.ap==='6'&&f.tit==='Cómputo sesións de apoio');if(finalSupportSessionFinding)finalSupportSessionFinding.teacherResults=supportSessionResult.teacherResults||[];
 
+ const supportActivityResults=supportTeacherActivityResults(r);
+ for(const [title,results] of [['PT ou AL sen coordinación de ciclo',supportActivityResults.cycle],['PT ou AL sen gardas de clase',supportActivityResults.guards]]){
+  const finding=F.find(item=>item.ap==='6'&&item.tit===title);if(!finding)continue;
+  finding.teacherResults=results;
+  const applicable=results.filter(item=>item.status!=='na');
+  finding.sev=applicable.some(item=>item.status==='inc')?'inc':applicable.some(item=>item.status==='info')||!applicable.length?'info':'ok';
+  finding.txt=applicable.filter(item=>item.status==='inc').map(item=>'• '+item.name+'\n'+item.observation).join('\n');
+  finding.det=applicable.length?'Comprobación individual das especialidades PT e AL.':'Non aplicable: non se identificou profesorado de PT ou AL.';
+ }
  const masterFinding=F.find(f=>f.ap==='6'&&f.tit==='Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)');
  if(masterFinding){const missingTotals=masterTables.filter(table=>table.total==null).length;if(masterFinding.sev==='ok'&&missingTotals)masterFinding.sev='info';}
  const supportCounts={PT:0,AL:0};
@@ -1558,11 +2240,50 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
  for(const finding of F.filter(f=>f.ap==='6'&&masterScopeTitles.includes(f.tit))){const detail=String(finding.det||'').trim();finding.det=masterSummaryCountComment+(detail?'\n'+detail:'');}
  // ---------- Persoal non docente
  if((r.apartados||[]).includes('7')){
-  const staff=r.a7?.staff||[],unknown=staff.filter(p=>p.minutes==null),wrong=staff.filter(p=>p.minutes!=null&&p.minutes!==2250);
+  const staff=r.a7?.staff||[];
   const format=value=>Math.floor(value/60)+':'+String(value%60).padStart(2,'0');
-  if(wrong.length)add('7','inc','Horario do persoal non docente','O horario semanal de todo o persoal non docente deberá ser de 37:30. Deberán revisarse os seguintes horarios:\n'+wrong.map(p=>'• '+p.nome+': '+format(p.minutes)+' (referencia: 37:30).').join('\n'),unknown.length?'Hai '+unknown.length+' horarios que non se puideron ler para esta comprobación.':'');
-  else if(!staff.length||unknown.length)add('7','info','Horario do persoal non docente','','Referencia: 37:30 semanais. '+(!staff.length?'Non se identificaron totais semanais do persoal non docente no DOC.':'Non se puido identificar o horario semanal de: '+unknown.map(p=>p.nome).join(', '))+'. Revisar os horarios antes de concluír a comprobación.');
-  else add('7','ok','Horario do persoal non docente','','Todo o persoal non docente identificado ('+staff.length+') ten un horario semanal de 37:30.');
+  const shiftDays=['Luns','Martes','Mércores','Xoves','Venres','Sábado'];
+  const computedDays=page=>shiftDays.map((_,i)=>{
+    let minutes=0,read=0,incomplete=false;
+    const intervals=[];
+    for(let turn=0;turn<2;turn++){
+     const cell=page.shiftGrid?.[i]?.[turn];
+     if(cell==null){incomplete=true;continue;}
+     if(!cell){read++;continue;}
+     let valid=true;
+     for(const range of cell.split(' / ')){
+      const match=range.match(/^(\d{2}):([0-5]\d) - (\d{2}):([0-5]\d)$/);
+      if(!match){valid=false;continue;}
+      const start=60*Number(match[1])+Number(match[2]),end=60*Number(match[3])+Number(match[4]);
+      if(end<start){valid=false;continue;}
+      intervals.push([start,end]);
+     }
+     if(valid)read++;
+     else incomplete=true;
+    }
+    // Conta unha soa vez os tramos coincidentes no mesmo día.
+    let coveredUntil=0;
+    for(const [start,end] of intervals.sort((a,b)=>a[0]-b[0])){
+     minutes+=Math.max(0,end-Math.max(start,coveredUntil));
+     coveredUntil=Math.max(coveredUntil,end);
+    }
+    return {minutes,read:!!(read||minutes),incomplete};
+  });
+  const calculations=new Map();
+  const calculate=person=>{
+   if(!calculations.has(person)){
+    const days=computedDays(person);
+    calculations.set(person,{minutes:days.reduce((sum,day)=>sum+day.minutes,0),complete:days.every(day=>day.read&&!day.incomplete)});
+   }
+   return calculations.get(person);
+  };
+  const checked=staff.filter(person=>calculate(person).complete);
+  const unknown=staff.filter(person=>!calculate(person).complete);
+  const wrong=checked.filter(person=>calculate(person).minutes!==2250);
+  const observations='Horarios comprobados: '+checked.length;
+  if(wrong.length)add('7','inc','Horario do persoal non docente','O total semanal non é de 37:30 para as seguintes persoas:\n'+wrong.map(person=>'• '+[person.nomeCompleto||person.nome,person.posto?'Posto: '+person.posto:null,'Total semanal calculado: '+format(calculate(person).minutes)].filter(Boolean).join(' · ')+'.').join('\n'),observations);
+  else if(!staff.length||unknown.length)add('7','info','Horario do persoal non docente','',observations);
+  else add('7','ok','Horario do persoal non docente','',observations);
  }
  // ---------- concertos
  const cc=r.anexo&&r.anexo.concertos;if(cc){const g=r.a4.grupos;const fun={EI:g.filter(x=>/anos/.test(x.nivel)).length,EP:g.filter(x=>/º/.test(x.nivel)).length,ESO:(r.a4.sec.find(x=>/^TOTAL ESO/.test(x.lab))||{gr:0}).gr};const d=[];
@@ -1570,14 +2291,12 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
   if(d.length)add('A','av','Unidades concertadas e unidades en funcionamento',`As unidades concertadas que figuran no anexo non coinciden coas unidades en funcionamento do apartado 4 (${d.join('; ')}). Deberá revisarse.`);
   else add('A','ok','Unidades concertadas','','Coinciden coas unidades en funcionamento do apartado 4.');}
  // ---------- 8/9/10
- const pocos=r.a8.filter(m=>m.al<10&&!/Relixi|Atención educativa|Valores|Titor|Ámbito|Reforzo|Horas a disposición|Proxecto|Exent/i.test(m.materia));
- const crit=pocos.filter(m=>m.al<5),aut=pocos.filter(m=>m.al>=5);
- if(crit.length)add('8','inc','Materias con menos de cinco alumnos',`Impártense con menos de cinco alumnos: ${lst(crit.map(m=>m.materia+' ('+m.curso.toLowerCase()+', '+m.al+')'))}. As optativas non poden impartirse con menos de cinco; nas materias de modalidade de bacharelato precísase autorización expresa da xefatura territorial ou cursalas a distancia no IES San Clemente.`);
- if(aut.length)add('8','av','Materias con menos de dez alumnos',`Impártense con menos de dez alumnos, polo que precisan autorización expresa da xefatura territorial: ${lst(aut.map(m=>m.materia+' ('+m.curso.toLowerCase()+', '+m.al+')'))}. Deberá acreditarse a autorización.`);
+ for(const {ap,sev,tit,txt,det} of section8EnrollmentFindings(r))add(ap,sev,tit,txt,det);
  // ---------- 11
  if(r.a11A.length&&r.a11B.length){const d=[];for(const a of r.a11A){const b=r.a11B.find(x=>x.nome===a.nome);if(b&&a.total!=null&&b.total!=null&&a.total!==b.total)d.push(`${a.nome} (${a.total} no 11A e ${b.total} no 11B)`);}
   if(d.length)add('11','inc','Os totais do 11A e do 11B non coinciden',`Non coinciden as horas de docencia directa dos apartados 11A e 11B nos departamentos de ${lst(d)}. Deberán revisarse as asignacións de materias, reforzos e agrupamentos; se a diferenza procede dun erro de cálculo de XADE, comunicarase á UAC.`);
   else add('11','ok','Totais do 11A e do 11B','','Coinciden en todos os departamentos.');}
+ const departmentHeads=departmentHeadsFinding(r,tipo);add('11',departmentHeads.sev,'Xefaturas de departamento',departmentHeads.txt,departmentHeads.det);if(departmentHeads.notApplicable)F[F.length-1].notApplicable=true;
  const aliases={'Gardas de recreo insuficientes':'Gardas de recreo','Grupos que superan a ratio':'Media de alumnado por grupo dentro da ratio','Comprobación da ratio por grupo':'Media de alumnado por grupo dentro da ratio','Unidades concertadas e unidades en funcionamento':'Unidades concertadas','Os totais do 11A e do 11B non coinciden':'Totais do 11A e do 11B'};
  for(const finding of F)if(aliases[finding.tit])finding.tit=aliases[finding.tit];
  const completionCatalog=[
@@ -1589,8 +2308,6 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
   ['4','Unidades',false],
   ['4','Media de alumnado por grupo dentro da ratio',false],
   ['7','Horario do persoal non docente',false],
-  ['8','Materias con menos de cinco alumnos',r.a8.length>0],
-  ['8','Materias con menos de dez alumnos',r.a8.length>0],
   ['11','Totais do 11A e do 11B',false]
  ];
  for(const [ap,title,completed] of completionCatalog)if(!F.some(f=>f.ap===ap&&f.tit===title)){
@@ -1598,7 +2315,7 @@ function run(r,opt){const F=[];const add=(ap,sev,tit,txt,det)=>F.push({ap,sev,ti
   add(ap,completed?'ok':'info',title,'',completed?'Non se detectan avisos nin incumprimentos nesta comprobación.':applicable?'Non hai datos suficientes para completar esta comprobación.':'Non aplicable aos datos ou etapas identificados neste DOC.');
  }
  return F;}
-G.DOCCHECKS={run,expectedCE,directiveSchedule,teacherCargoLookup,coordinationHoursFinding,coordinationRuleSessions,coordinationCargoEntitlement,directiveCoverage,classGuardCoverage,summaryCountsByBody,summaryBodyPartition,classroomGuardDistributionCount,classroomGuardSessionCounts,supportTeachingType};
+G.DOCCHECKS={programCoordinationsFinding,run,expectedCE,directiveSchedule,teacherCargoLookup,coordinationHoursFinding,coordinationRuleSessions,coordinationCargoEntitlement,directiveCoverage,classGuardCoverage,summaryCountsByBody,summaryBodyPartition,classroomGuardDistributionCount,classroomGuardSessionCounts,supportTeachingType};
 })(typeof window!=='undefined'?window:globalThis);
 
 (function(){
@@ -1618,8 +2335,6 @@ const MANUAL=[
  ['6','Privados: bolsa do concerto','As horas de docencia rexistradas en XADE non coinciden coa bolsa horaria do concerto nas etapas concertadas. Deberán revisarse.','CPR'],
  ['6','Programa PROA+','O horario de reforzo do profesorado PROA+ non figura rexistrado en XADE como «Programa PROA+» ou non están todas as horas asignadas ao programa. Deberá corrixirse.'],
  ['6','Redución por desprazamento','Ao profesorado itinerante non se lle aplica a redución horaria por desprazamento que corresponde segundo os quilómetros percorridos. Deberá rexistrarse.'],
- ['7','Persoal non docente','Deberá garantirse a presenza de persoal subalterno e de limpeza durante toda a xornada .'],
- ['11','Xefaturas de departamento','A xefatura dalgún departamento non está asignada conforme ao regulamento orgánico.'],
  ['11','Profesorado en varios departamentos','Hai profesorado asignado a máis dun departamento. En XADE cada docente só pode estar asignado a un departamento.'],
  ['A','Anexo: horario de talleres e laboratorios','No anexo non se cubriu o horario de talleres e laboratorios (apartado 11). Deberá completarse.','CPR'],
  ['A','Anexo: edificios e instalacións','No anexo non figuran ou non están completos os datos de aulas, talleres e instalacións (apartado 12). Deberá completarse.','CPR'],
@@ -1929,12 +2644,95 @@ function docPresentStages(){
  const groups=R?.a5?.grupos||[],primary=R?.a4?.grupos||[],units=R?.a4?.unidadesEtapa||{};
  return {EP:units.EP>0||groups.some(g=>/primaria|\bEP\b/i.test(g.curso+' '+g.etapa))||primary.some(g=>g.al>0&&/º|primaria/i.test(g.nivel)),EI:units.EI>0||groups.some(g=>/infantil|\bEI\b/i.test(g.curso+' '+g.etapa))||primary.some(g=>g.al>0&&/anos|infantil/i.test(g.nivel))};
 }
-const DOC_CHECKS_OVERVIEW={"P":[],"1":["Composición do equipo directivo","Sesións de dedicación por cargo directivo","Períodos lectivos sen cargo directivo","Membros do Consello Escolar sen data de fin do nomeamento","Composición do Consello Escolar"],"2":["Adscrición funcional para o curso"],"3":["Profesorado en gardas de clase","Gardas de clase desequilibradas","Gardas de recreo","Posibles gardas de transporte/recreo/biblioteca rexistradas como gardas de clase"],"4":["Unidades","Media de alumnado por grupo dentro da ratio"],"5":["Grupos sen titoría","Horas por área ou materia a partir do horario do grupo","Horas por área ou materia a partir da táboa do profesorado","Tempo diario de lectura en EP","Áreas de EI impartidas por profesorado doutras especialidades"],"6":["Resumo: Horario lectivo máximo de 20 sesións","Resumo: Horario complementario fixo máximo de 5 sesións","Resumo: Horario total fixo no centro de 23 sesións","Resumo: Horario total permanecia no centro de 30 sesións","Resumo: 18 sesións de clase","Resumo: Titoría sen alumnado","Resumo: mínimo de 16 horas de clase","Compensación por aumento lectivo","Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)","Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)","Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)","Resumo: Cargo directivo","Resumo: Coordinacións","Resumo: Outras actividades/funcións en horario lectivo","Cómputo titoría familias","Cómputo gardas de aula","Cómputo sesións de apoio","Cómputo outras funcións en horario lectivo","«Outras funcións» en horario lectivo sen concretar","Recreos rexistrados como área","PT ou AL sen coordinación de ciclo","PT ou AL sen gardas de clase","Titoría asignada a profesorado de Relixión","Profesorado de Relixión con outras materias","Resumo: Xefatura de departamento","Profesorado PROA+ con gardas","Profesorado PROA+ con titoría","Horario de reforzo PROA+","Liberacións do equipo directivo","Reducións por cargo directivo · IES/CPI","Xefatura de estudos con máis liberación ca dirección","Horario lectivo por riba da referencia (privados)"],"7":["Horario do persoal non docente"],"8":["Materias con menos de cinco alumnos","Materias con menos de dez alumnos"],"11":["Totais do 11A e do 11B"],"A":["Unidades concertadas"]};
-const DOC_CHECK_CRITERIA={"Composición do equipo directivo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todos os cargos identificados do equipo directivo teñen nome e apelidos, período de nomeamento completo e teléfono móbil."},"Sesións de dedicación por cargo directivo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES e EPAPU","condition":"A suma das sesións de dedicación coincide co máximo calculado para o tipo de centro, a suma das unidades autorizadas e habilitadas e os cargos identificados, segundo a normativa de referencia. Cada franxa de 45 a 80 minutos conta unha sesión por cargo."},"Períodos lectivos sen cargo directivo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todas as sesións lectivas de entre 45 e 80 minutos, ambos incluídos, dos horarios dos grupos do apartado 5 teñen cobertura completa de polo menos un membro do equipo directivo segundo o horario de dedicación do apartado 1."},"Membros do Consello Escolar sen data de fin do nomeamento":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todos os membros revisados, agás os sectores excluídos pola comprobación (cargos directivos en centros públicos e representantes da titularidade en centros privados), teñen unha data de fin do nomeamento válida e non vencida."},"Composición do Consello Escolar":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CEE e CPR","condition":"O número de representantes de cada sector coincide coa composición de referencia segundo a normativa. Nos IES compárase co número de grupos do apartado 4; nos demais tipos de centro compárase coa suma das unidades autorizadas e habilitadas, segundo corresponda."},"Adscrición funcional para o curso":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Cada docente aparece unha soa vez na adscrición funcional e ten unha única especialidade identificada. As repeticións coa mesma especialidade son aviso; a ausencia de especialidade ou as especialidades distintas son incumprimento."},"Profesorado en gardas de clase":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Só se consideran sesións lectivas de entre 45 e 80 minutos, ambos incluídos. O resultado é Correcto se o número de docentes de garda coincide co mínimo configurable, Aviso se o supera e Incumprimento se queda por debaixo, segundo os datos do apartado 3."},"Gardas de clase desequilibradas":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Só se consideran as sesións lectivas de entre 45 e 80 minutos do horario dos grupos do apartado 5. A distribución está equilibrada se a diferenza entre o máximo e o mínimo de docentes de garda é inferior a 3."},"Gardas de recreo":{"scope":"CEIP, EEI, CRA, CEP, CPI e CPR con EI ou EP","condition":"En cada franxa de recreo de 15 a 30 minutos seleccionada manualmente no horario do apartado 5, as gardas R do apartado 3 cobren o mínimo durante toda a franxa. O mínimo calcúlase por separado: un docente por cada 25 alumnos ou fracción en EI e por cada 50 alumnos ou fracción en EP; os resultados súmanse."},"Posibles gardas de transporte/recreo/biblioteca rexistradas como gardas de clase":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Non se identifican franxas con 8 ou máis docentes rexistrados como garda de clase."},"Unidades":{"scope":"Centros públicos da provincia da Coruña incluídos nas referencias achegadas","condition":"As unidades autorizadas e habilitadas do apartado 4 coinciden, por código de centro, co Catálogo de unidades autorizadas 2026/27 e coa Resolución de habilitación de unidades 2026/27 da provincia da Coruña."},"Media de alumnado por grupo dentro da ratio":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CEE e CPR","condition":"En todos os cursos revisados, alumnado dividido entre grupos non supera 20 en EI, 25 en EP, 30 en ESO ou 33 en BAC. A media non comproba a ratio individual de cada grupo."},"Grupos sen titoría":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todos os grupos identificados teñen persoa titora."},"Horas por área ou materia a partir do horario do grupo":{"scope":"Grupos de educación infantil, primaria, ESO, PDC e bacharelato; non aplicable a FP" ,"condition":"Conta no horario do grupo as aparicións de cada abreviatura lida na táboa do profesorado, en sesións lectivas de 45 a 80 minutos, e compara o resultado co currículo oficial do curso. En educación infantil compárase a xornada semanal mínima de 25 horas, pois o Decreto 150/2022 non fixa unha distribución horaria semanal por áreas."},"Horas por área ou materia a partir da táboa do profesorado":{"scope":"CEIP, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR con EP, ESO, BAC ou ciclos GM/GS da oferta ordinaria","condition":"Agrúpanse as filas da táboa «Profesorado que imparte clase no grupo» pola columna «Abrev.» e súmanse as entradas da columna «Horas» de cada abreviatura para comparalas co currículo oficial do curso. Non se comproba «Lectura». En ciclos GM/GS da oferta ordinaria utilízase a proposta de distribución LOOIFP; módulos sen cifra semanal ou sen identificación segura requiren revisión manual."},"Tempo diario de lectura en EP":{"scope":"CEIP, CRA, CEP, CPI, CEE e CPR con EP","condition":"Cada grupo de educación primaria ten cada día unha franxa de «Lectura» de 20 a 30 minutos. Se falta nun día ou dura menos de 20 minutos, o resultado é Incumprimento; se supera os 30 minutos, é Aviso e indícanse o grupo, o día e a franxa longa. Se no mesmo día coinciden unha franxa longa e a ausencia dunha válida, prevalece Aviso."},"Áreas de EI impartidas por profesorado doutras especialidades":{"scope":"CEIP, EEI, CRA, CPI, CEE e CPR con EI","condition":"Non se detectan áreas propias de EI impartidas por profesorado doutras especialidades nas materias e docentes que se poden identificar, coas excepcións previstas para Relixión e lingua estranxeira."},"Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)":{"scope":"CEIP, CPI, CRA e EEI · corpo de mestres","condition":"Todos os totais lectivos lidos nos resumos horarios revisados son de 23 horas."},"Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)":{"scope":"CEIP, CPI, CRA e EEI · corpo de mestres","condition":"Todos os horarios non lectivos lidos nos resumos horarios revisados son de 5 horas."},"Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)":{"scope":"CEIP, CPI, CRA e EEI · corpo de mestres","condition":"Todos os totais presenciais lidos nos resumos horarios revisados son de 28 horas."},"PT ou AL sen coordinación de ciclo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado de PT ou AL","condition":"Ningún docente identificado de PT ou AL figura como coordinador/a de ciclo. Na aclaración identifícanse os horarios revisados como PT1, PT2… e AL1, AL2…, co nome e a páxina."},"PT ou AL sen gardas de clase":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado de PT ou AL","condition":"Non aparecen gardas de clase nos horarios do profesorado identificado de PT ou AL. Na aclaración indícanse os códigos PT1, PT2… e AL1, AL2…, o nome e a páxina de cada horario revisado."},"Titoría asignada a profesorado de Relixión":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado de Relixión","condition":"Ningún docente de Relixión identificado ten unha titoría asignada. Na aclaración inclúese a relación REL1, REL2… co nome e a páxina de cada horario revisado."},"Profesorado de Relixión con outras materias":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado de Relixión","condition":"Non se identifican no horario do profesorado de Relixión outras áreas ou actividades das categorías contrastadas, como apoio, lectura ou reforzo."},"Recreos rexistrados como área":{"scope":"CEIP, EEI, CRA, CEP, CPI, CEE e CPR · corpo de mestres","condition":"Non se detecta ningún recreo rexistrado como área nos horarios do corpo de mestres."},"Resumo: Horario lectivo máximo de 20 sesións":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"En cada docente, o TOTAL A do resumo horario semanal non supera 20 sesións lectivas; se supera, márcase como incumprimento."},"Resumo: Horario complementario fixo máximo de 5 sesións":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"En cada docente, o valor de «TOTAL B» no resumo horario semanal non supera 5 sesións complementarias fixas."},"Compensación por aumento lectivo":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"É Correcto se non aparecen sesións «Comp aumento lectivo» no horario semanal. Se aparecen e a parte enteira de «Sesións de clase» no resumo horario non é 19 nin 20, márcase como Aviso."},"Resumo: 18 sesións de clase":{"scope":"O mesmo profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"Para cada docente que o diagnóstico local identifica como «Outro corpo», úsase a parte enteira de «Sesións de clase»: 16, 17 ou 18 son Correcto; 19 ou 20 son Aviso; menos de 16 é Incumprimento. Os valores superiores a 20 revísanse na comprobación «Resumo: Horario lectivo máximo de 20 sesións»."},"Cómputo titoría familias":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"É Correcto se no horario individual figura unha sesión «Titoría familia» e no resumo horario semanal figura exactamente unha hora en «Titoría alumnado/responsables»."},"Profesorado PROA+ con gardas":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado PROA+ identificado","condition":"O profesorado identificado como PROA+ non ten gardas rexistradas."},"Profesorado PROA+ con titoría":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado PROA+ identificado","condition":"O profesorado identificado como PROA+ non ten titorías rexistradas."},"Horario de reforzo PROA+":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado PROA+ identificado","condition":"O reforzo identificado é de 10 sesións no formato de secundaria ou 11,5 horas no formato de primaria, coa marxe de lectura de 0,5 horas que utiliza o analizador."},"Liberacións do equipo directivo":{"scope":"CEIP, EEI, CRA e CEP","condition":"A implementación actual non emite Correcto nesta comprobación: sinala aviso se a suma supera o máximo global e mantén Pendiente nos demais casos. O contraste é coa táboa de dedicacións por unidades."},"Reducións por cargo directivo · IES/CPI":{"scope":"IES, CPI e EPAPU","condition":"As sesións de Cargo directivo de cada docente, lidas no resumo horario, non superan o máximo do seu cargo e tipoloxía de centro; todos os datos e máximos deben estar identificados."},"Xefatura de estudos con máis liberación ca dirección":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES e EPAPU con dirección e xefatura de estudos","condition":"A implementación actual non emite Correcto nesta comprobación: sinala incumprimento se algunha xefatura supera a dedicación da dirección e mantén Pendiente se non detecta ese exceso."},"Horario lectivo por riba da referencia (privados)":{"scope":"CPR con horario privado sen resumo de formato público","condition":"As horas lectivas calculadas de cada horario non superan o máximo indicado no selector de centros privados, 25 por defecto."},"Horario do persoal non docente":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · con persoal non docente","condition":"Todo o persoal non docente identificado ten un horario semanal de 37:30 e non quedan totais sen ler."},"Materias con menos de cinco alumnos":{"scope":"IES, CPI, EPAPU, CIFP e CPR con táboas de materias dos apartados 8–10","condition":"Non hai materias das categorías revisadas con menos de 5 alumnos; exclúense as categorías que o analizador non somete a este mínimo, como Relixión, titoría, ámbitos ou reforzo."},"Materias con menos de dez alumnos":{"scope":"IES, CPI, EPAPU, CIFP e CPR con táboas de materias dos apartados 8–10","condition":"Non hai materias das categorías revisadas con 5 a 9 alumnos; as de menos de 5 revísanse na comprobación anterior."},"Totais do 11A e do 11B":{"scope":"IES, CPI, EPAPU, CIFP e CPR con resumo de secundaria","condition":"Os totais de docencia directa dos departamentos que se poden emparellar nos apartados 11A e 11B coinciden."},"Unidades concertadas":{"scope":"CPR con anexo de concertos","condition":"As unidades concertadas de EI, EP e ESO do anexo coinciden coas unidades en funcionamento contrastadas no apartado 4."},"Resumo: Coordinacións":{"scope":"Profesorado con resumos horarios individuais no apartado 6","condition":"As horas lectivas compáranse coas reducións da táboa interna por tipo de centro, que inclúe o cargo e a súa normativa; se non hai cargo con dereito a redución, recoñécense 0 sesións."},"Cómputo outras funcións en horario lectivo":{"scope":"Horarios individuais e resumos horarios semanais do apartado 6","condition":"En cada docente, cóntanse as aparicións de «Outras funcións» nas sesións lectivas de 45 a 80 minutos do horario individual. O resultado é Correcto se ese número coincide coa parte enteira do valor X.Y da fila «Outras actividades en horario lectivo» no resumo horario semanal."},"«Outras funcións» en horario lectivo sen concretar":{"scope":"Horarios individuais do apartado 6 e horarios dos grupos do apartado 5","condition":"Revísase o horario individual de cada docente só nas franxas nas que algún grupo do apartado 5 ten actividade lectiva. É Correcto se non aparece «Outras funcións»; se aparece, é Aviso e indícase o número de aparicións."},"Cómputo gardas de aula":{"scope":"Horarios individuais e resumos horarios semanais do apartado 6","condition":"En cada docente, o número de sesións de entre 45 e 80 minutos marcadas como «Garda de aula» no horario individual coincide con «Gardas» no resumo horario do corpo de mestres ou con «Gardas de aula» no resumo do resto de corpos; se o resumo non rexistra un valor, compútase como 0."},"Cómputo sesións de apoio":{"scope":"Horarios individuais e resumos horarios semanais do apartado 6","condition":"En cada docente, o número de sesións marcadas como «Apoio» no horario individual coincide co dato «Atención á diversidade» do resumo horario semanal."},"Resumo: Cargo directivo":{"scope":"Profesorado con resumo horario semanal no apartado 6.","condition":"Compárase a parte enteira da fila «Cargo directivo» coas horas que corresponden a cada cargo directivo e tipo de centro. Para IES e EPAPU aplícase a táboa do punto Terceiro.1; para CPI, a do punto Terceiro.2 da Resolución do 16/06/2026. Se coinciden, é Correcto; se as horas indicadas son menores, é Aviso; se son maiores ou figuran horas sen cargo directivo identificado, é Incumprimento. Se non hai cargo e non figuran horas, considéranse 0 e é Correcto."},"Resumo: Outras actividades/funcións en horario lectivo":{"scope":"Profesorado con resumo horario semanal no apartado 6","condition":"Revísase a parte enteira da fila «Outras actividades en horario lectivo» do resumo semanal. Se é 0, incluída a ausencia de valor, é Correcto; se é maior ca 0, é Aviso."},"Resumo: mínimo de 16 horas de clase":{"scope":"Profesorado do corpo de mestres con docencia en EI e EP; para o resto de corpos non é aplicable.","condition":"En cada docente do corpo de mestres con docencia en EI e EP, úsase a parte enteira X da fila «Horas de clase» do resumo horario semanal. Con X igual ou superior a 16 é Correcto; con X inferior a 16 é Incumprimento. A observación mostra «X horas de clase no resumo horario»."},"Resumo: Horario total fixo no centro de 23 sesións":{"scope":"Profesorado do resto de corpos","condition":"Tómase o valor X.Y da fila «Total horario fixo no centro (A+B)» do resumo semanal. É Correcto se o valor é 23,0; calquera outro valor é Incumprimento. A observación mostra «O total horario fixo no centro é de X sesións»."},"Resumo: Horario total permanecia no centro de 30 sesións":{"scope":"Profesorado do resto de corpos","condition":"Tómase o valor X.Y da fila «Total permanencia no centro (A+B+C)» do resumo semanal. É Correcto se o valor é 30,0; calquera outro valor é Incumprimento. A observación mostra «O total horario de permanencia no centro é de X sesións»."},"Resumo: Xefatura de departamento":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"En cada docente do resto de corpos, a fila «Xefatura de departamento» sen dato ou con 0 horas é Correcto; 1 sesión é Correcto se o diagnóstico de cargos identifica o nomeamento como xefe/a de departamento; 1 sesión sen nomeamento ou máis dunha sesión lectiva é Incumprimento."},"Resumo: Titoría sen alumnado":{"scope":"Profesorado do resto de corpos; para o corpo de mestres non é aplicable.","condition":"Revísase a fila «Titoría (sen alumnado)» do resumo horario semanal. Se non hai valor ou é 0, é Correcto. Con 1,0 sesión, é Correcto cando o diagnóstico local identifica o cargo Titor/a e Incumprimento se non o identifica. Con máis de 1,0 sesións é Incumprimento. Os valores positivos inferiores a 1,0 quedan pendentes de criterio."}};
+const DOC_CHECKS_OVERVIEW={"P":[],"1":["Composición do equipo directivo","Sesións de dedicación por cargo directivo","Períodos lectivos sen cargo directivo","Membros do Consello Escolar sen data de fin do nomeamento","Composición do Consello Escolar"],"2":["Adscrición funcional para o curso","Coordinacións de programas do centro"],"3":["Profesorado en gardas de clase","Gardas de clase desequilibradas","Gardas de recreo","Posibles gardas de transporte/recreo/biblioteca rexistradas como gardas de clase"],"4":["Unidades","Media de alumnado por grupo dentro da ratio"],"5":["Grupos sen titoría","Horas por área ou materia a partir do horario do grupo","Horas por área ou materia a partir da táboa do profesorado","Tempo diario de lectura en EP","Áreas de EI impartidas por profesorado doutras especialidades"],"6":["Resumo: Horario lectivo máximo de 20 sesións","Resumo: Horario complementario fixo máximo de 5 sesións","Resumo: Horario total fixo no centro de 23 sesións","Resumo: Horario total permanecia no centro de 30 sesións","Resumo: 18 sesións de clase","Resumo: Titoría sen alumnado","Resumo: mínimo de 16 horas de clase","Compensación por aumento lectivo","Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)","Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)","Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)","Resumo: Cargo directivo","Resumo: Coordinacións","Resumo: Outras actividades/funcións en horario lectivo","Cómputo titoría familias","Cómputo gardas de aula","Cómputo sesións de apoio","Cómputo outras funcións en horario lectivo","«Outras funcións» en horario lectivo sen concretar","Recreos rexistrados como área","PT ou AL sen coordinación de ciclo","PT ou AL sen gardas de clase","Titoría asignada a profesorado de Relixión","Profesorado de Relixión con outras materias","Resumo: Xefatura de departamento","Profesorado PROA+ con gardas","Profesorado PROA+ con titoría","Horario de reforzo PROA+","Liberacións do equipo directivo","Reducións por cargo directivo · IES/CPI","Xefatura de estudos con máis liberación ca dirección","Horario lectivo por riba da referencia (privados)"],"7":["Horario do persoal non docente"],"8":["Materias con menos de dez alumnos","Materias con menos de cinco alumnos","Cálculo total de horas en ESO","Cálculo total de horas en 1º de Bacharelato","Cálculo total de horas en 2º de Bacharelato"],"11":["Totais do 11A e do 11B","Xefaturas de departamento"],"A":["Unidades concertadas"]};
+const DOC_CHECK_CRITERIA={"Cálculo total de horas en 1º de Bacharelato": {"scope": "1º de Bacharelato · documento 9 do DOC", "condition": "Para cada materia, a suma de «Ord. · Gr.» e «Adult. · Gr.» do diagnóstico local multiplicada polas horas curriculares por grupo coincide con «Horas Xade». Se faltan datos ou non se identifica a referencia curricular, indícase na observación."}, "Cálculo total de horas en 2º de Bacharelato": {"scope": "2º de Bacharelato · documento 10 do DOC", "condition": "Para cada materia, a suma de «Ord. · Gr.» e «Adult. · Gr.» do diagnóstico local multiplicada polas horas curriculares por grupo coincide con «Horas Xade». Se faltan datos ou non se identifica a referencia curricular, indícase na observación."},"Cálculo total de horas en ESO": {"scope": "Centros con ESO · «Distribución do alumnado de ESO por materias» (apartado 8)", "condition": "En cada materia de 1º a 4º de ESO, «Gr» multiplicado polas horas curriculares por grupo coincide con «Horas Xade». Se non se poden ler os datos ou identificar a referencia curricular, indícase na observación."},"Coordinacións de programas do centro":{"scope":"Todos os centros con cargos de coordinación de programas no apartado 2","condition":"Lense exclusivamente as coordinacións da táboa «LISTA DE CARGOS» do apartado 2, compartida co diagnóstico local, e contrástanse cos programas sinalados na portada. É Correcto se todos figuran nela e Incumprimento se algún non figura. Sempre se listan as coordinacións comprobadas. Se non se identifica a táboa, a comprobación queda pendente."},"Composición do equipo directivo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todos os cargos identificados do equipo directivo teñen nome e apelidos, período de nomeamento completo e teléfono móbil."},"Sesións de dedicación por cargo directivo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES e EPAPU","condition":"A suma das sesións de dedicación coincide co máximo calculado para o tipo de centro, a suma das unidades autorizadas e habilitadas e os cargos identificados, segundo a normativa de referencia. Cada franxa de 45 a 80 minutos conta unha sesión por cargo."},"Períodos lectivos sen cargo directivo":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todas as sesións lectivas de entre 45 e 80 minutos, ambos incluídos, dos horarios dos grupos do apartado 5 teñen cobertura completa de polo menos un membro do equipo directivo segundo o horario de dedicación do apartado 1."},"Membros do Consello Escolar sen data de fin do nomeamento":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todos os membros revisados, agás os sectores excluídos pola comprobación (cargos directivos en centros públicos e representantes da titularidade en centros privados), teñen unha data de fin do nomeamento válida e non vencida."},"Composición do Consello Escolar":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CEE e CPR","condition":"O número de representantes de cada sector coincide coa composición de referencia segundo a normativa. Nos IES compárase co número de grupos do apartado 4; nos demais tipos de centro compárase coa suma das unidades autorizadas e habilitadas, segundo corresponda."},"Adscrición funcional para o curso":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Cada docente aparece unha soa vez na adscrición funcional e ten unha única especialidade identificada. As repeticións coa mesma especialidade son aviso; a ausencia de especialidade ou as especialidades distintas son incumprimento."},"Profesorado en gardas de clase":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Só se consideran sesións lectivas de entre 45 e 80 minutos, ambos incluídos. O resultado é Correcto se o número de docentes de garda coincide co mínimo configurable, Aviso se o supera e Incumprimento se queda por debaixo, segundo os datos do apartado 3."},"Gardas de clase desequilibradas":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Só se consideran as sesións lectivas de entre 45 e 80 minutos do horario dos grupos do apartado 5. A distribución está equilibrada se a diferenza entre o máximo e o mínimo de docentes de garda é inferior a 3."},"Gardas de recreo":{"scope":"CEIP, EEI, CRA, CEP, CPI e CPR con EI ou EP","condition":"En cada franxa de recreo de 15 a 30 minutos seleccionada manualmente no horario do apartado 5, as gardas R do apartado 3 cobren o mínimo durante toda a franxa. O mínimo calcúlase por separado: un docente por cada 25 alumnos ou fracción en EI e por cada 50 alumnos ou fracción en EP; os resultados súmanse."},"Posibles gardas de transporte/recreo/biblioteca rexistradas como gardas de clase":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Non se identifican franxas con 8 ou máis docentes rexistrados como garda de clase."},"Unidades":{"scope":"Centros públicos da provincia da Coruña incluídos nas referencias achegadas","condition":"As unidades autorizadas e habilitadas do apartado 4 coinciden, por código de centro, co Catálogo de unidades autorizadas 2026/27 e coa Resolución de habilitación de unidades 2026/27 da provincia da Coruña."},"Media de alumnado por grupo dentro da ratio":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CEE e CPR","condition":"En todos os cursos revisados, alumnado dividido entre grupos non supera 20 en EI, 25 en EP, 30 en ESO ou 33 en BAC. A media non comproba a ratio individual de cada grupo."},"Grupos sen titoría":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR","condition":"Todos os grupos identificados teñen persoa titora."},"Horas por área ou materia a partir do horario do grupo":{"scope":"Grupos de educación infantil, primaria, ESO, PDC e bacharelato; non aplicable a FP","condition":"Conta no horario do grupo as aparicións de cada abreviatura lida na táboa do profesorado, en sesións lectivas de 45 a 80 minutos, e compara o resultado co currículo oficial do curso. En educación infantil compárase a xornada semanal mínima de 25 horas, pois o Decreto 150/2022 non fixa unha distribución horaria semanal por áreas."},"Horas por área ou materia a partir da táboa do profesorado":{"scope":"CEIP, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR con EP, ESO, BAC ou ciclos GM/GS da oferta ordinaria","condition":"Agrúpanse as filas da táboa «Profesorado que imparte clase no grupo» pola columna «Abrev.» e súmanse as entradas da columna «Horas» de cada abreviatura para comparalas co currículo oficial do curso. Non se comproba «Lectura». En ciclos GM/GS da oferta ordinaria utilízase a proposta de distribución LOOIFP; módulos sen cifra semanal ou sen identificación segura requiren revisión manual."},"Tempo diario de lectura en EP":{"scope":"CEIP, CRA, CEP, CPI, CEE e CPR con EP","condition":"Cada grupo de educación primaria ten cada día unha franxa de «Lectura» de 20 a 30 minutos. Se falta nun día ou dura menos de 20 minutos, o resultado é Incumprimento; se supera os 30 minutos, é Aviso e indícanse o grupo, o día e a franxa longa. Se no mesmo día coinciden unha franxa longa e a ausencia dunha válida, prevalece Aviso."},"Áreas de EI impartidas por profesorado doutras especialidades":{"scope":"CEIP, EEI, CRA, CPI, CEE e CPR con EI","condition":"Non se detectan áreas propias de EI impartidas por profesorado doutras especialidades nas materias e docentes que se poden identificar, coas excepcións previstas para Relixión e lingua estranxeira."},"Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)":{"scope":"CEIP, CPI, CRA e EEI · corpo de mestres","condition":"Todos os totais lectivos lidos nos resumos horarios revisados son de 23 horas."},"Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)":{"scope":"CEIP, CPI, CRA e EEI · corpo de mestres","condition":"Todos os horarios non lectivos lidos nos resumos horarios revisados son de 5 horas."},"Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)":{"scope":"CEIP, CPI, CRA e EEI · corpo de mestres","condition":"Todos os totais presenciais lidos nos resumos horarios revisados son de 28 horas."},"PT ou AL sen coordinación de ciclo":{"scope":"Profesorado das especialidades PT e AL","condition":"Revísanse para cada docente os cargos lidos e a coordinación de ciclo no horario individual. É Correcto se non ten coordinación de ciclo e Incumprimento se a ten. Para outras especialidades é Non aplicable."},"PT ou AL sen gardas de clase":{"scope":"Profesorado das especialidades PT e AL","condition":"Revísase para cada docente a presenza de «Garda de aula» no horario individual, independentemente do resumo semanal. É Correcto se non aparece e Incumprimento se aparece. Para outras especialidades é Non aplicable."},"Titoría asignada a profesorado de Relixión":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado de Relixión","condition":"Ningún docente de Relixión identificado ten unha titoría asignada. Na aclaración inclúese a relación REL1, REL2… co nome e a páxina de cada horario revisado."},"Profesorado de Relixión con outras materias":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado de Relixión","condition":"Non se identifican no horario do profesorado de Relixión outras áreas ou actividades das categorías contrastadas, como apoio, lectura ou reforzo."},"Recreos rexistrados como área":{"scope":"CEIP, EEI, CRA, CEP, CPI, CEE e CPR · corpo de mestres","condition":"Non se detecta ningún recreo rexistrado como área nos horarios do corpo de mestres."},"Resumo: Horario lectivo máximo de 20 sesións":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"En cada docente, o TOTAL A do resumo horario semanal non supera 20 sesións lectivas; se supera, márcase como incumprimento."},"Resumo: Horario complementario fixo máximo de 5 sesións":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"En cada docente, o valor de «TOTAL B» no resumo horario semanal non supera 5 sesións complementarias fixas."},"Compensación por aumento lectivo":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"É Correcto se non aparecen sesións «Comp aumento lectivo» no horario semanal. Se aparecen e a parte enteira de «Sesións de clase» no resumo horario non é 19 nin 20, márcase como Aviso."},"Resumo: 18 sesións de clase":{"scope":"O mesmo profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"Para cada docente que o diagnóstico local identifica como «Outro corpo», úsase a parte enteira de «Sesións de clase»: 16, 17 ou 18 son Correcto; 19 ou 20 son Aviso; menos de 16 é Incumprimento. Os valores superiores a 20 revísanse na comprobación «Resumo: Horario lectivo máximo de 20 sesións»."},"Cómputo titoría familias":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"É Correcto se no horario individual figura unha sesión «Titoría familia» e no resumo horario semanal figura exactamente unha hora en «Titoría alumnado/responsables»."},"Profesorado PROA+ con gardas":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado PROA+ identificado","condition":"O profesorado identificado como PROA+ non ten gardas rexistradas."},"Profesorado PROA+ con titoría":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado PROA+ identificado","condition":"O profesorado identificado como PROA+ non ten titorías rexistradas."},"Horario de reforzo PROA+":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · profesorado PROA+ identificado","condition":"O reforzo identificado é de 10 sesións no formato de secundaria ou 11,5 horas no formato de primaria, coa marxe de lectura de 0,5 horas que utiliza o analizador."},"Liberacións do equipo directivo":{"scope":"CEIP, EEI, CRA e CEP","condition":"A implementación actual non emite Correcto nesta comprobación: sinala aviso se a suma supera o máximo global e mantén Pendiente nos demais casos. O contraste é coa táboa de dedicacións por unidades."},"Reducións por cargo directivo · IES/CPI":{"scope":"IES, CPI e EPAPU","condition":"As sesións de Cargo directivo de cada docente, lidas no resumo horario, non superan o máximo do seu cargo e tipoloxía de centro; todos os datos e máximos deben estar identificados."},"Xefatura de estudos con máis liberación ca dirección":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES e EPAPU con dirección e xefatura de estudos","condition":"A implementación actual non emite Correcto nesta comprobación: sinala incumprimento se algunha xefatura supera a dedicación da dirección e mantén Pendiente se non detecta ese exceso."},"Horario lectivo por riba da referencia (privados)":{"scope":"CPR con horario privado sen resumo de formato público","condition":"As horas lectivas calculadas de cada horario non superan o máximo indicado no selector de centros privados, 25 por defecto."},"Horario do persoal non docente":{"scope":"CEIP, EEI, CRA, CEP, CPI, IES, EPAPU, CIFP, CEE e CPR · con persoal non docente","condition":"Compróbase que o total semanal calculado a partir das quendas de luns a sábado da táboa «HORARIO QUE CUMPRE» é de 37:30 para cada persoa. Se falta algunha quenda por ler, non se dá por comprobada a xornada desa persoa."},"Materias con menos de cinco alumnos":{"scope":"IES, CPI, EPAPU, CIFP e CPR con táboas de materias dos apartados 8–10","condition":"Non hai materias das categorías revisadas con menos de 5 alumnos; exclúense as categorías que o analizador non somete a este mínimo, como Relixión, titoría, ámbitos ou reforzo."},"Materias con menos de dez alumnos":{"scope":"IES, CPI, EPAPU, CIFP e CPR con táboas de materias dos apartados 8–10","condition":"Non hai materias das categorías revisadas con 5 a 9 alumnos; as de menos de 5 revísanse na comprobación seguinte."},"Totais do 11A e do 11B":{"scope":"IES, CPI, EPAPU, CIFP e CPR con resumo de secundaria","condition":"Os totais de docencia directa dos departamentos que se poden emparellar nos apartados 11A e 11B coinciden."},"Unidades concertadas":{"scope":"CPR con anexo de concertos","condition":"As unidades concertadas de EI, EP e ESO do anexo coinciden coas unidades en funcionamento contrastadas no apartado 4."},"Resumo: Coordinacións":{"scope":"Profesorado con resumos horarios individuais no apartado 6","condition":"As horas lectivas compáranse coas reducións da táboa interna por tipo de centro, que inclúe o cargo e a súa normativa; se non hai cargo con dereito a redución, recoñécense 0 sesións."},"Cómputo outras funcións en horario lectivo":{"scope":"Horarios individuais e resumos horarios semanais do apartado 6","condition":"En cada docente, cóntanse as aparicións de «Outras funcións» nas sesións lectivas de 45 a 80 minutos do horario individual. O resultado é Correcto se ese número coincide coa parte enteira do valor X.Y da fila «Outras actividades en horario lectivo» no resumo horario semanal."},"«Outras funcións» en horario lectivo sen concretar":{"scope":"Horarios individuais do apartado 6 e horarios dos grupos do apartado 5","condition":"Revísase o horario individual de cada docente só nas franxas nas que algún grupo do apartado 5 ten actividade lectiva. É Correcto se non aparece «Outras funcións»; se aparece, é Aviso e indícase o número de aparicións."},"Cómputo gardas de aula":{"scope":"Horarios individuais e resumos horarios semanais do apartado 6","condition":"En cada docente, o número de sesións de entre 45 e 80 minutos marcadas como «Garda de aula» no horario individual coincide con «Gardas» no resumo horario do corpo de mestres ou con «Gardas de aula» no resumo do resto de corpos; se o resumo non rexistra un valor, compútase como 0."},"Cómputo sesións de apoio":{"scope":"Horarios individuais e resumos horarios semanais do apartado 6","condition":"En cada docente, o número de sesións marcadas como «Apoio» no horario individual coincide co dato «Atención á diversidade» do resumo horario semanal."},"Resumo: Cargo directivo":{"scope":"Profesorado con resumo horario semanal no apartado 6.","condition":"Compárase a parte enteira da fila «Cargo directivo» coas horas que corresponden a cada cargo directivo e tipo de centro. Para IES e EPAPU aplícase a táboa do punto Terceiro.1; para CPI, a do punto Terceiro.2 da Resolución do 16/06/2026. Se coinciden, é Correcto; se as horas indicadas son menores, é Aviso; se son maiores ou figuran horas sen cargo directivo identificado, é Incumprimento. Se non hai cargo e non figuran horas, considéranse 0 e é Correcto."},"Resumo: Outras actividades/funcións en horario lectivo":{"scope":"Profesorado con resumo horario semanal no apartado 6","condition":"Revísase a parte enteira da fila «Outras actividades en horario lectivo» do resumo semanal. Se é 0, incluída a ausencia de valor, é Correcto; se é maior ca 0, é Aviso."},"Resumo: mínimo de 16 horas de clase":{"scope":"Profesorado do corpo de mestres con docencia en EI e EP; para o resto de corpos non é aplicable.","condition":"En cada docente do corpo de mestres con docencia en EI e EP, úsase a parte enteira X da fila «Horas de clase» do resumo horario semanal. Se o resumo se le e a cela está baleira, considérase 0. Con X igual ou superior a 16 é Correcto; con X inferior a 16 é Incumprimento. A observación mostra «X horas de clase no resumo horario»."},"Resumo: Horario total fixo no centro de 23 sesións":{"scope":"Profesorado do resto de corpos","condition":"Tómase o valor X.Y da fila «Total horario fixo no centro (A+B)» do resumo semanal. É Correcto se o valor é 23,0; calquera outro valor é Incumprimento. A observación mostra «O total horario fixo no centro é de X sesións»."},"Resumo: Horario total permanecia no centro de 30 sesións":{"scope":"Profesorado do resto de corpos","condition":"Tómase o valor X.Y da fila «Total permanencia no centro (A+B+C)» do resumo semanal. É Correcto se o valor é 30,0; calquera outro valor é Incumprimento. A observación mostra «O total horario de permanencia no centro é de X sesións»."},"Resumo: Xefatura de departamento":{"scope":"Profesorado que o diagnóstico local identifica como «Outro corpo»","condition":"En cada docente do resto de corpos, a fila «Xefatura de departamento» sen dato ou con 0 horas é Correcto; 1 sesión é Correcto se o diagnóstico de cargos identifica o nomeamento como xefe/a de departamento; 1 sesión sen nomeamento ou máis dunha sesión lectiva é Incumprimento."},"Resumo: Titoría sen alumnado":{"scope":"Profesorado do resto de corpos; para o corpo de mestres non é aplicable.","condition":"Revísase a columna «Sesións (manuais)» da fila «Titoría (sen alumnado)» do resumo horario semanal. Se non hai valor ou é 0, é Incumprimento cando o docente é titor/a e Correcto cando non o é. Recoñécense as titorías de grupo, ciclo e FCT nos cargos lidos ou na asignación de titoría do grupo. Con 1,0 sesión, é Correcto se o docente é titor/a e Incumprimento se non o é. Con máis de 1,0 sesións é Incumprimento. Os valores positivos inferiores a 1,0 quedan pendentes de criterio."},"Xefaturas de departamento":{"scope":"Centros aos que corresponde o apartado de departamentos 11A e 11B","condition":"Contrástanse todos os departamentos de 11A e 11B coas xefaturas identificadas nas fichas e na lista de cargos. É Correcto se todos teñen xefatura e Incumprimento se falta algunha; neste caso lístanse os departamentos afectados. Nos centros sen este apartado é Non aplicable; se corresponde pero non se pode ler, queda pendente."}};
 const DOC_CHECK_DISPLAY_NAMES={'Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)':'Resumo: Horario lectivo de 23 horas','Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)':'Resumo: Horario non lectivo de 5 horas','Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)':'Resumo: Horario total presencial de 28 horas','Resumo: Coordinacións':'Resumo: Coordinacións lectivas','Horas por área ou materia':'Horas por área ou materia a partir da táboa do profesorado'};function docCheckDisplayName(title){return DOC_CHECK_DISPLAY_NAMES[title]||title;}
+
+// Coincidencias de criterio coa Guía de supervisión do DOC 2026/27.
+// Non se marcan as coincidencias só temáticas nin se modifican os resultados.
+const DOC_GUIDE_MATCHES = {
+ "Cálculo total de horas en ESO": [5],
+ "Cálculo total de horas en 1º de Bacharelato": [5],
+ "Cálculo total de horas en 2º de Bacharelato": [5],
+ "Totais do 11A e do 11B": [5],
+ "Materias con menos de dez alumnos": [5],
+ "Horario do persoal non docente": [4],
+ "Sesións de dedicación por cargo directivo": [2, 9],
+ "Coordinacións de programas do centro": [2],
+ "Composición do Consello Escolar": [
+  2
+ ],
+ "Profesorado en gardas de clase": [
+  2
+ ],
+ "Gardas de recreo": [
+  2
+ ],
+ "Grupos sen titoría": [
+  3
+ ],
+ "Horas por área ou materia a partir do horario do grupo": [
+  3
+ ],
+ "Horas por área ou materia a partir da táboa do profesorado": [
+  3
+ ],
+ "Resumo: Horario lectivo máximo de 20 sesións": [
+  8
+ ],
+ "Resumo: Horario total fixo no centro de 23 sesións": [
+  4,
+  7
+ ],
+ "Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)": [
+  4
+ ],
+ "Resumo: Horario non lectivo de 5 horas (mestres en CEIP, CPI, CRA e EEI)": [
+  4
+ ],
+ "Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)": [
+  4
+ ],
+ "Resumo: Titoría sen alumnado": [
+  4,
+  8
+ ],
+ "PT ou AL sen coordinación de ciclo": [
+  4
+ ],
+ "PT ou AL sen gardas de clase": [
+  4
+ ],
+ "Profesorado itinerante/compartido": [
+  2
+ ],
+ "Distribución lingüística": [
+  3
+ ],
+ "Ámbitos e PDC": [
+  3
+ ],
+ "Privados: correspondencia con CentrosPrivados": [
+  4
+ ],
+ "Redución por desprazamento": [
+  2
+ ],
+ "Xefaturas de departamento": [
+  5
+ ]
+};
+function docGuideBadge(title){
+ const pages=Object.hasOwn(DOC_GUIDE_MATCHES,title)?DOC_GUIDE_MATCHES[title]:null;
+ if(!pages)return '';
+ const hint=title==='Horario do persoal non docente'?'A guía recolle a comprobación da xornada laboral · páx. 4':title==='Materias con menos de dez alumnos'?'A guía recolle a comprobación do número mínimo de alumnado por materia · páx. 5':'Criterio coincidente coa guía de supervisión · '+(pages.length===1?'páx. ':'páxs. ')+pages.join(', ');
+ return '<span class="guide-match-badge" title="'+esc(hint)+'" aria-label="'+esc(hint)+'" style="display:inline-block;vertical-align:middle;margin:2px 0 2px 8px;padding:2px 7px;border:1px solid #ddc8f3;border-radius:5px;background:#f0e4ff;color:#60368a;font-size:11px;font-weight:600;line-height:1.4;white-space:nowrap;print-color-adjust:exact;-webkit-print-color-adjust:exact">Guía de supervisión</span>';
+}
+function docGuideLegendHTML(){return '<p class="note">'+docGuideBadge('Composición do Consello Escolar').replace(/ title="[^"]*"/, '')+' Comprobación recollida na guía de supervisión do DOC 2026/27. Ao pasar o rato pola etiqueta indícase a páxina da guía.</p>';}
+
 const checksSection6=DOC_CHECKS_OVERVIEW['6'];const directiveChargeCheckIndex=checksSection6.indexOf('Resumo: Cargo directivo'),updatedCoordinationCheckIndex=checksSection6.indexOf('Resumo: Coordinacións');if(directiveChargeCheckIndex>=0&&updatedCoordinationCheckIndex>=0&&directiveChargeCheckIndex>updatedCoordinationCheckIndex){const [directiveChargeCheck]=checksSection6.splice(directiveChargeCheckIndex,1);checksSection6.splice(checksSection6.indexOf('Resumo: Coordinacións'),0,directiveChargeCheck);}const finalDirectiveChargeIndex=checksSection6.indexOf('Resumo: Cargo directivo'),mastersPresentialIndex=checksSection6.indexOf('Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)');if(finalDirectiveChargeIndex>=0&&mastersPresentialIndex>=0&&finalDirectiveChargeIndex!==mastersPresentialIndex+1){const [directiveChargeCheck]=checksSection6.splice(finalDirectiveChargeIndex,1);checksSection6.splice(checksSection6.indexOf('Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)')+1,0,directiveChargeCheck);}
 
-function docChecksOverviewHTML(){return ORD.map(ap=>{const number=ap==='P'?'0':ap==='8'?'8–10':ap;const prefix=ap==='P'?'0':ap;const items=[...(DOC_CHECKS_OVERVIEW[ap]||[]).map(title=>({title,kind:'Automática',criteria:DOC_CHECK_CRITERIA[title]})),...MANUAL.filter(item=>item[0]===ap).map(item=>({title:item[1],kind:'Manual'}))];return '<section><h3>'+esc(number+' '+AP[ap])+'</h3>'+items.map((item,index)=>'<div class="check-item"><span class="check-number">'+esc(prefix+'.'+(index+1))+'</span>'+esc(docCheckDisplayName(item.title))+(item.criteria?' <span class="check-scope">('+esc(item.criteria.scope)+')</span>: '+esc(item.criteria.condition):'')+'<span class="check-kind'+(item.kind==='Manual'?' manual-kind':'')+'">'+item.kind+'</span></div>').join('')+'</section>';}).join('');}
+function docChecksOverviewHTML(){return docGuideLegendHTML()+ORD.map(ap=>{const number=ap==='P'?'0':ap==='8'?'8–10':ap;const prefix=ap==='P'?'0':ap;const items=[...(DOC_CHECKS_OVERVIEW[ap]||[]).map(title=>({title,kind:'Automática',criteria:DOC_CHECK_CRITERIA[title]})),...MANUAL.filter(item=>item[0]===ap).map(item=>({title:item[1],kind:'Manual'}))];return '<section><h3>'+esc(number+' '+AP[ap])+'</h3>'+items.map((item,index)=>'<div class="check-item"><span class="check-number">'+esc(prefix+'.'+(index+1))+'</span>'+esc(docCheckDisplayName(item.title))+docGuideBadge(item.title)+(item.criteria?' <span class="check-scope">('+esc(item.criteria.scope)+')</span>: '+esc(item.criteria.condition):'')+'<span class="check-kind'+(item.kind==='Manual'?' manual-kind':'')+'">'+item.kind+'</span></div>').join('')+'</section>';}).join('');}
 $('#doc-checks-overview').innerHTML=docChecksOverviewHTML();
 function normalizedTeacherName(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9ñ]+/g,' ').replace(/\s+/g,' ').trim();}
 function summaryForDiagnosticTeacher(r,name){const summaries=r.a6.summaries||[];let matches=summaries.filter(table=>normalizedTeacherName(table.nome)===normalizedTeacherName(name));if(matches.length!==1){if(matches.length)return null;matches=summaries.filter(table=>DOCENGINE.sameName(name,table.nome));if(matches.length!==1)return null;}const rows=(r.a2.diagnosticRows||[]).filter(row=>row.name&&DOCENGINE.sameName(row.name,matches[0].nome));return rows.length===1&&DOCENGINE.sameName(rows[0].name,name)?matches[0]:null;}
@@ -1950,8 +2748,140 @@ function renderSummaryReadingWarning(){const box=$('#summary-reading-warning');c
  box.innerHTML='<b>Aviso · Lectura dos resumos horarios</b><p>Profesorado: '+data.expected+' · Resumos horarios lidos: '+data.count+'.</p>'+(data.missing.length?'<p>Non se puido identificar o resumo horario do seguinte profesorado:</p><ul>'+data.missing.map(name=>{const replacement=data.replacements.find(item=>DOCENGINE.sameName(item.original,name));return '<li>'+esc(name)+(replacement?' — Persoa substituída por '+esc(replacement.substitute)+' (**). Non se espera un resumo horario propio mentres dure a substitución.':' — Resumo horario non identificado.')+'</li>';}).join('')+'</ul>':'<p>Os recontos non coinciden, pero non se puido identificar profesorado sen resumo. Revisa as táboas duplicadas ou os nomes non identificados.</p>');
 }
 function renderUnclassifiedSummaryWarning(){const box=$('#summary-body-warning');const data=DOCCHECKS.summaryCountsByBody(R);const items=data.unclassifiedSummaries||[];box.hidden=!items.length;if(!items.length){box.innerHTML='';return;}box.innerHTML='<b>Aviso · Resumos horarios sen clasificar</b><p>Non se puido identificar o corpo docente dos seguintes resumos horarios:</p><ul>'+items.map(item=>'<li>'+esc(item.name)+(item.page!=null?' — Páxina '+esc(item.page):'')+'</li>').join('')+'</ul>';}
+// Anexo IV do Decreto 157/2022 e Orde do 9 de agosto de 2023 (Tecnoloxías Intelixentes).
+const BACH_SECTION_HOURS_FOUR=[
+ new Set([
+  'debuxo artistico','analise musical','artes escenicas','matematicas','matematicas aplicadas as ciencias sociais','matematicas xerais',
+  'cultura audiovisual','debuxo tecnico aplicado as artes plasticas e ao deseno','proxectos artisticos','volume','coro e tecnica vocal',
+  'linguaxe e practica musical','bioloxia xeoloxia e ciencias ambientais','debuxo tecnico','fisica e quimica','tecnoloxia e enxenaria',
+  'economia','grego','historia do mundo contemporaneo','latin','literatura universal','economia emprendemento e actividade empresarial',
+  'anatomia aplicada','antropoloxia','cultura cientifica','literatura galega do seculo xx e da actualidade','segunda lingua estranxeira',
+  'tecnoloxias da informacion e da comunicacion','tecnoloxias intelixentes'
+ ]),
+ new Set([
+  'debuxo artistico','analise musical','artes escenicas','matematicas','matematicas aplicadas as ciencias sociais','latin','ciencias xerais',
+  'debuxo tecnico aplicado as artes plasticas e ao deseno','deseno','fundamentos artisticos','tecnicas de expresion grafico plastica',
+  'coro e tecnica vocal','historia da musica e da danza','literatura dramatica','bioloxia','debuxo tecnico','fisica','quimica',
+  'tecnoloxia e enxenaria','xeoloxia e ciencias ambientais','empresa e deseno de modelos de negocio','grego','historia da arte',
+  'xeografia','movementos culturais e artisticos','metodos estatisticos e numericos','psicoloxia','segunda lingua estranxeira',
+  'tecnoloxias da informacion e da comunicacion','xeografia historia arte e patrimonio de galicia'
+ ])
+];
+function section8BachCurriculumHours(course,key,name){
+ const subject=name.replace(/\(\s*\*?\s*\d+\s*\)\s*$/u,'')
+  .replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
+ // O ordinal pode ir antes ou despois do idioma, segundo a denominación de XADE.
+ const ordinal=subject.match(/\b(i|ii)\b/);
+ if(ordinal&&((ordinal[1]==='i'?1:2)!==course))return null;
+ const clean=subject.replace(/\b(?:ii|i)\b/g,' ').replace(/\s+/g,' ').trim()
+  .replace(/\bbioloxia xeoloxia e c ambientais\b/,'bioloxia xeoloxia e ciencias ambientais')
+  .replace(/\bmatematicas aplicadas (?:as|a) c c s s\b/,'matematicas aplicadas as ciencias sociais')
+  .replace(/\btecnoloxias da informacion e comunicacion\b/,'tecnoloxias da informacion e da comunicacion');
+ if(/^(?:libre disposicion|relixion|religion|atencion educativa)\b/.test(clean))return 1;
+ if(/^(?:segunda|2a|2ª|2) (?:lingua|lengua) (?:estranxeira|extranjera)\b/.test(clean))return 4;
+ if(/^(?:primeira |1a |1ª )?(?:lingua|lengua) (?:estranxeira|extranjera)\b/.test(clean))return 3;
+ if(BACH_SECTION_HOURS_FOUR[course-1]?.has(clean))return 4;
+ if(/^(?:(?:materia )?(?:optativa|obrigatoria de modalidade|de opcion de modalidade)(?: \d+)?|tics?)$/.test(clean))return 4;
+ if(['castela','galega','ef','filosofia','historiafilosofia','historiaespana'].includes(key)){
+  return DOC_HOURS_REFERENCE['BACH'+course]?.[key]??null;
+ }
+ return null;
+}
+
+function section8BachGroups(row){
+ const group=(key,other)=>{
+  if(Number.isInteger(row[key])&&row[key]>=0)return row[key];
+  const enrollment=row[key+'Al'];
+  // Só os réximes sen matrícula, con celas baleiras ou con guión, poden sumar cero.
+  const inactive=row.blank?.[key+'Gr']&&(enrollment===0||(enrollment==null&&row.blank?.[key+'Al']));
+  return inactive&&Number.isInteger(row[other])&&row[other]>=0?0:null;
+ };
+ const ord=group('ord','adult'),adult=group('adult','ord');
+ return {ord,adult,groups:ord!=null&&adult!=null?ord+adult:null,
+  assumedEmpty:(ord===0&&row.ord==null)||(adult===0&&row.adult==null)};
+}
+function section8BachHoursFromDiagnostic(data,course){
+ const subjects=(data?.rows||[]).filter(row=>row.perSubject),pages=data?.pages||[];
+ const rows=subjects.map(row=>({materia:row.label,course,page:row.page,hours:row.xade,...section8BachGroups(row)}));
+ return {found:subjects.length>0||pages.some(page=>page.foundTotal),rows,
+  unreadPages:[...new Set(pages.filter(page=>page.foundTotal&&!subjects.some(row=>row.page===page.page)).map(page=>page.page))]};
+}
+
+function section8EsoHoursFinding(table,hasESO,bachCourse=0){
+ const stage=bachCourse?'Bacharelato':'ESO';
+ const finding={ap:'8',tit:bachCourse?`Cálculo total de horas en ${bachCourse}º de Bacharelato`:'Cálculo total de horas en ESO',sev:'info',txt:'',det:''};
+ if(!table?.found){
+  finding.notApplicable=!hasESO;
+  finding.det=bachCourse?(hasESO?`Non se localizou a táboa de materias do documento ${8+bachCourse}.`:`Non aplicable: non se identificou ${bachCourse}º de Bacharelato no DOC.`):hasESO?'Non se localizou a táboa «Distribución do alumnado de ESO por materias».':'Non aplicable: non se identificou a etapa de ESO no DOC.';
+  return finding;
+ }
+ const differences=new Map(),pending=[];let checkDiscretionaryHours=false;
+ const format=n=>n==null?'non lido':String(n).replace('.',',');
+ let checked=0,inferred=0;
+ for(const {materia,course,groups,hours,page,ord,adult,assumedEmpty} of table.rows){
+  const label=`${course}º ${stage} · ${materia}`;
+  const data='Grupos: '+format(groups)+(bachCourse?' (Ord.: '+format(ord)+' · Adult.: '+format(adult)+')':'')+' · Horas Xade: '+format(hours);
+  const missing=!Number.isInteger(groups)||groups<0||hours==null||hours<0;
+  if(missing){
+   if((groups===0&&hours==null)||(!bachCourse&&groups==null&&hours===0))continue;
+   const reason=bachCourse?[!Number.isInteger(groups)||groups<0?'grupos incompletos':null,hours==null||hours<0?'horas XADE non lidas':null].filter(Boolean).join(', '):'';
+   pending.push('• '+label+' · '+data+(reason?' · '+reason:'')+' (páx. '+page+').');continue;
+  }
+  const name=docHoursNorm(materia),pdc=/\bambito\b.*\b(?:cientifico|linguistico)\b/.test(name);
+  const key=docHoursSubject(materia);
+  const perGroup=(bachCourse?section8BachCurriculumHours(course,key,name):section8EsoCurriculumHours(course,key,name,pdc))??(groups===0?0:null);
+  if(perGroup==null){
+   pending.push(`• ${label} · ${data} · sen referencia curricular identificada (páx. ${page}).`);continue;
+  }
+  const expected=groups*perGroup;
+  checked++;
+  if(assumedEmpty)inferred++;
+  if(Math.abs(expected-hours)>1e-8){
+   if(!differences.has(name))differences.set(name,{materia,courses:new Map()});
+   const courses=differences.get(name).courses;
+   if(!courses.has(course))courses.set(course,new Set());
+   courses.get(course).add(`${data} · Horas curriculares por grupo: ${format(perGroup)} · Horas esperadas: ${format(expected)}`);
+   if(!bachCourse&&course<=2&&hours>expected)checkDiscretionaryHours=true;
+  }
+ }
+ for(const page of table.unreadPages)pending.push(`• Non se puideron ler as columnas «Gr» e «Horas Xade» na páxina ${page}.`);
+ if(differences.size){
+  finding.sev='inc';
+  const sections=[...differences.values()]
+   .sort((a,b)=>a.materia.localeCompare(b.materia,'gl'))
+   .map(({materia,courses})=>materia+':\n'+[...courses.entries()]
+    .sort(([a],[b])=>a-b)
+    .map(([course,rows])=>`• ${course}º ${stage} · ${[...rows].join('; ')}.`).join('\n'));
+  finding.txt='O produto do número de grupos polas horas curriculares non coincide co número total de horas nas seguintes materias:\n\n'+sections.join('\n\n');
+ }else if(checked&&!pending.length)finding.sev='ok';
+ finding.det=`Combinacións de materia e curso comprobadas: ${checked}.`+(inferred?'\nCómputos con 0 grupos nun réxime sen matrícula: '+inferred+'.':'')+(pending.length?'\nSen comprobar:\n'+pending.join('\n'):'')+(checkDiscretionaryHours?'\nEn 1º e 2º, cómpre contrastar os excesos coa asignación das sesións de libre disposición na concreción curricular do centro.':'');
+ return finding;
+}
+function section8EsoCurriculumHours(course,key,name,pdc){
+ if(pdc)return DOC_HOURS_REFERENCE.PDC[key]?.[course-3]??null;
+ // Anexo IV do Decreto 156/2022. Mantense a referencia base; a libre disposición de 1º e 2º require contrastar a concreción curricular do centro.
+ const special=[
+  [/^(?:taller|obradoiro) de aprendizaxe\b|^reforzo.*(?:exent|lingua estranxeira)/,[2,2,null,null]],
+  [/^libre disposicion\b/,[2,2,null,null]],
+  [/^proxecto competencial\b/,[1,1,1,1]],
+  [/^(?:cultura clasica|oratoria|optativa)\b/,[null,null,3,3]],
+  [/^(?:educacion dixital|educacion digital)\b/,[null,null,3,null]],
+  [/^(?:dixitalizacion|digitalizacion|economia e emprendemento|expresion artistica|formacion e orientacion persoal e profesional|latin|filosofia|(?:materia )?de opcion)\b/,[null,null,null,3]],
+  [/^segunda lingua estranxeira\b|^2[ªaºo]?\s*lingua estranxeira\b|^frances\b/,[2,2,3,3]]
+ ];
+ const ref=special.find(([pattern])=>pattern.test(name));
+ if(ref)return ref[1][course-1]??null;
+ return DOC_HOURS_REFERENCE.ESO[key]?.[course-1]||null;
+}
+
 function analyse(){renderSummaryReadingWarning();renderUnclassifiedSummaryWarning();const o=opts();o.recessSlots=[...selectedRecessSlots];const prev={};F.forEach(f=>prev[f.ap+'|'+f.tit]={inc:f.inc,ignoreReport:!!f.ignoreReport,sev:f.sev,txt:f.txt,edited:f.edited});
  let results=DOCCHECKS.run(R,o);const stages=docPresentStages();
+ const esoHours=section8EsoHoursFinding(R.esoSubjectHours,R.apartados.includes('8')||(R.a5.grupos||[]).some(g=>docHoursGroup(g)?.stage==='ESO'));
+ const afterSection8=results.findLastIndex(f=>f.ap==='8')+1;results.splice(afterSection8,0,esoHours,...[1,2].map(course=>section8EsoHoursFinding(
+  section8BachHoursFromDiagnostic(R.bachEnrollmentTotals?.[String(8+course)],course),
+  R.apartados.includes(String(8+course))||(R.a5.grupos||[]).some(g=>{const info=docHoursGroup(g);return info?.stage==='BACH'&&info.n===course;}),
+  course
+ )));
  const stageTitles={EP:'Tempo diario de lectura en EP',EI:'Áreas de EI impartidas por profesorado doutras especialidades'};
  for(const [stage,title] of Object.entries(stageTitles))if(!stages[stage]){const item=results.find(f=>f.tit===title);if(item){item.sev='info';item.txt='';item.det='Comprobación sen realizar: non se detecta a etapa de '+stage+' no centro.';}}
  const scheduleHours=scheduleHoursAutomaticFinding(),hours=hoursAutomaticFinding();const anchor=results.findIndex(f=>f.ap==='5'&&f.tit==='Grupos sen titoría');results.splice(anchor>=0?anchor+1:results.length,0,scheduleHours,hours);
@@ -2019,6 +2949,7 @@ function section6ByTeacherHTML(fs,ms){
   const nonLectiveForEachTeacher=finding.tit===nonLectiveTitle,coordinationForEachTeacher=finding.tit===coordinationTitle;
   if(finding.notApplicable&&TEACHER_SUMMARY_CHECKS.has(finding.tit)){for(const teacher of profiles){const isOtherBody=section6TeacherBodyLabel(teacher)==='Resto de corpos';groups.get(teacher).push({finding,status:'na',affected:false,observationOverride:isOtherBody?'Non aplicable: o diagnóstico local identifica este docente como Resto de corpos.':'Esta comprobación non se aplica a este docente.'});}continue;}
   if(finding.notApplicable){globalFindings.push(finding);continue;}
+   if(supportTitles.has(finding.tit)){for(const teacher of profiles){const results=finding.teacherResults||[],result=results.find(item=>item.teacher===teacher)||results.find(item=>normalizedTeacherName(item.name)===normalizedTeacherName(teacher.nome));groups.get(teacher).push({finding,status:result?.status||'info',affected:result?.status==='inc',observationOverride:result?.observation||'Non se puido determinar a comprobación deste docente.'});}continue;}
    if(supportTitles.has(finding.tit)||religionTitles.has(finding.tit)){const isSupport=supportTitles.has(finding.tit);for(const teacher of profiles){const belongs=isSupport?!!DOCCHECKS.supportTeachingType(teacher.esp):/relix/i.test(String(teacher.corpo||'')+' '+String(teacher.esp||''));if(!belongs){groups.get(teacher).push({finding,status:'na',affected:false,observationOverride:isSupport?'Non aplicable: este docente non pertence ás especialidades PT ou AL.':'Non aplicable: este docente non pertence ao profesorado de Relixión.'});continue;}const relevant=linesFor(finding.txt,teacher.nome),affected=relevant.length>0,status=finding.sev==='info'?'info':affected?finding.sev:'ok';let observationOverride='';if(status==='info')observationOverride='Comprobación pendente para este docente.';else if(affected&&finding.tit===recessTitle){const match=relevant.join(' ').match(/:\s*(\d+)\s+veces/i);observationOverride=(match?match[1]:'1')+' veces';}else if(affected)observationOverride=finding.tit==='PT ou AL sen gardas de clase'&&status==='inc'?'O profesorado de PT ou AL debe dedicar o seu horario ás funcións propias da súa especialidade (Resolución do 16 de xuño de 2026).':relevant.join('\n');groups.get(teacher).push({finding,status,affected:status==='inc'||status==='av',observationOverride});}continue;}
    if(finding.tit==='Resumo: Outras actividades/funcións en horario lectivo'){for(const teacher of profiles){const result=(finding.teacherResults||[]).find(item=>DOCENGINE.sameName(item.name,teacher.nome));if(result)groups.get(teacher).push({finding,status:result.status,affected:result.status==='av',observationOverride:result.observation});else groups.get(teacher).push({finding,status:'info',affected:false,observationOverride:'Non se puido determinar a comprobación deste docente.'});}continue;}
    if(finding.tit==='Resumo: Titoría sen alumnado'){for(const teacher of profiles){const result=(finding.teacherResults||[]).find(item=>DOCENGINE.sameName(item.name,teacher.nome));if(result)groups.get(teacher).push({finding,status:result.status,affected:result.status==='inc',observationOverride:result.observation});else groups.get(teacher).push({finding,status:'info',affected:false,observationOverride:'Non se puido determinar a comprobación deste docente.'});}continue;}
@@ -2048,7 +2979,7 @@ function section6ByTeacherHTML(fs,ms){
   return status==='inc'?`<details class="manual teacher-finding-controls"><summary>Editar texto para o informe</summary><textarea data-k="tt" data-key="${esc(key)}" rows="3">${esc(teacherFindingTexts[key])}</textarea></details>`:`<div class="teacher-finding-controls"><label class="chk"><input type="checkbox" ${teacherFindingSelections[key]?'checked':''} data-k="tf" data-id="${finding.id}" data-key="${esc(key)}"><span>Incluír no informe</span></label><details class="manual"><summary>Editar texto para o informe</summary><textarea data-k="tt" data-key="${esc(key)}" rows="3">${esc(teacherFindingTexts[key])}</textarea></details></div>`;
  };
  const manualHTML=ms.length?`<details class="manual"${ms.some(item=>item.status==='av'||item.status==='inc')?' open':''}><summary>Comprobacións manuais do apartado 6 (${ms.length})</summary>${ms.map(item=>`<div class="mrow${item.status==='inc'?' on':''}"><label>${esc(item.tit)}</label><select class="manual-status" data-k="ms" data-id="${item.id}" aria-label="Resultado de ${esc(item.tit)}"><option value="" ${!item.status?'selected':''}>Pendiente</option><option value="ok" ${item.status==='ok'?'selected':''}>Correcto</option><option value="av" ${item.status==='av'?'selected':''}>Aviso</option><option value="inc" ${item.status==='inc'?'selected':''}>Incumprimento</option></select>${item.status==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="manual-report-${item.id}" value="include" ${!item.ignoreReport?'checked':''} data-k="mir" data-id="${item.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="manual-report-${item.id}" value="ignore" ${item.ignoreReport?'checked':''} data-k="mir" data-id="${item.id}"><span>Facer a vista gorda</span></label></div>`:''}${['av','inc'].includes(item.status)?`<textarea data-k="mt" data-id="${item.id}" rows="2" placeholder="Indica o problema">${esc(item.txt||'')}</textarea>`:''}</div>`).join('')}</details>`:'';
- const globalHTML=globalFindings.length?`<details class="manual"><summary>Comprobacións do apartado 6 sen atribución individual (${globalFindings.length})</summary>${globalFindings.map(finding=>finding.notApplicable?`<article class="f info"><header><span class="pill info">Non aplicable</span><h4>${esc(docCheckDisplayName(finding.tit))}</h4></header><p class="det">${linkedFindingText(finding,finding.det)}</p></article>`:`<article class="f ${finding.sev}${finding.inc?' on':''}"><header>${pill(finding.sev)}<h4>${esc(docCheckDisplayName(finding.tit))}</h4>${finding.sev==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="finding-report-${finding.id}" value="include" ${finding.inc&&!finding.ignoreReport?'checked':''} data-k="fir" data-id="${finding.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="finding-report-${finding.id}" value="ignore" ${finding.ignoreReport?'checked':''} data-k="fir" data-id="${finding.id}"><span>Facer a vista gorda</span></label></div>`:`<label class="chk"><input type="checkbox" ${finding.inc?'checked':''} data-k="f" data-id="${finding.id}"><span>Incluír</span></label>`}</header>${finding.normativeReference?`<div class="normative-editor" contenteditable="true" role="textbox" aria-multiline="true" data-k="t" data-id="${finding.id}">${linkedFindingText(finding,finding.txt||finding.det)}</div>`:`<textarea data-k="t" data-id="${finding.id}" rows="3">${esc(finding.txt||finding.det||'')}</textarea>`}<p class="det">${linkedFindingText(finding,finding.det||'')}</p></article>`).join('')}</details>`:'';
+ const globalHTML=globalFindings.length?`<details class="manual"><summary>Comprobacións do apartado 6 sen atribución individual (${globalFindings.length})</summary>${globalFindings.map(finding=>finding.notApplicable?`<article class="f info"><header><span class="pill info">Non aplicable</span><h4>${esc(docCheckDisplayName(finding.tit))}${docGuideBadge(finding.tit)}</h4></header><p class="det">${linkedFindingText(finding,finding.det)}</p></article>`:`<article class="f ${finding.sev}${finding.inc?' on':''}"><header>${pill(finding.sev)}<h4>${esc(docCheckDisplayName(finding.tit))}${docGuideBadge(finding.tit)}</h4>${finding.sev==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="finding-report-${finding.id}" value="include" ${finding.inc&&!finding.ignoreReport?'checked':''} data-k="fir" data-id="${finding.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="finding-report-${finding.id}" value="ignore" ${finding.ignoreReport?'checked':''} data-k="fir" data-id="${finding.id}"><span>Facer a vista gorda</span></label></div>`:`<label class="chk"><input type="checkbox" ${finding.inc?'checked':''} data-k="f" data-id="${finding.id}"><span>Incluír</span></label>`}</header>${finding.normativeReference?`<div class="normative-editor" contenteditable="true" role="textbox" aria-multiline="true" data-k="t" data-id="${finding.id}">${linkedFindingText(finding,finding.txt||finding.det)}</div>`:`<textarea data-k="t" data-id="${finding.id}" rows="3">${esc(finding.txt||finding.det||'')}</textarea>`}<p class="det">${linkedFindingText(finding,finding.det||'')}</p></article>`).join('')}</details>`:'';
  const summaryTitles=new Set([under20Title,'Resumo: Titoría sen alumnado',fixedComplementaryTitle,fixedCenterTitle,presenceCenterTitle,eighteenClassTitle,minimumMasterClassTitle,'Resumo: Horario lectivo de 23 horas (mestres en CEIP, CPI, CRA e EEI)',nonLectiveTitle,'Resumo: Horario total presencial de 28 horas (mestres en CEIP, CPI, CRA e EEI)','Resumo: Cargo directivo',coordinationTitle,'Resumo: Outras actividades/funcións en horario lectivo','Resumo: Xefatura de departamento']);
  const computationTitles=new Set([compensationLectiveTitle,familyTutoringTitle,classroomGuardTitle,supportSessionTitle,otherFunctionsTitle]);
  const groupsFor=title=>summaryTitles.has(title)?'summary':computationTitles.has(title)?'computation':'other';
@@ -2068,7 +2999,7 @@ function section6ByTeacherHTML(fs,ms){
    if(!references.has(finding.id)){references.add(finding.id);if(!TEACHER_SUMMARY_CHECKS.has(finding.tit)&&finding.tit!==nonLectiveTitle&&finding.tit!==coordinationTitle&&finding.tit!==classroomGuardTitle&&finding.tit!==supportSessionTitle&&finding.tit!==recessTitle&&!supportTitles.has(finding.tit)&&!religionTitles.has(finding.tit)){const detail=String(finding.det||'').replace(/^Resumos horarios semanais revisados:\s*\d+\s*\n?/,'').trim();if(detail)observation+=(observation?'\n':'')+detail;}}
    const checkStatus=status==='na'?'na':status;
    const key=finding.ap+'|'+finding.tit+'|'+normalizedTeacherName(teacher.nome),controls=editControl(finding,status,teacher,observation),reportChoice=status==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="teacher-report-${esc(key)}" value="include" ${teacherFindingSelections[key]&&!teacherFindingIgnoreReport[key]?'checked':''} data-k="tir" data-key="${esc(key)}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="teacher-report-${esc(key)}" value="ignore" ${teacherFindingIgnoreReport[key]?'checked':''} data-k="tir" data-key="${esc(key)}"><span>Facer a vista gorda</span></label></div>`:'';
-   return `<article class="teacher-check-row ${checkStatus}"><div class="teacher-check-row-head">${badge}<strong>${esc(docCheckDisplayName(finding.tit))}</strong>${reportChoice}</div><p class="teacher-check-row-observation">${linkedFindingText(finding,observation)}</p>${controls}</article>`;
+   return `<article class="teacher-check-row ${checkStatus}"><div class="teacher-check-row-head">${badge}<strong>${esc(docCheckDisplayName(finding.tit))}${docGuideBadge(finding.tit)}</strong>${reportChoice}</div><p class="teacher-check-row-observation">${linkedFindingText(finding,observation)}</p>${controls}</article>`;
   };
   const blockDefinitions=[['summary','Comprobacións sobre o resumo','summary'],['computation','Comprobacións sobre o horario','computation'],['other','Outras comprobacións','other']];
   const blocks=blockDefinitions.map(([key,title,kind])=>{
@@ -2114,11 +3045,12 @@ function render(){const opened=new Set([...document.querySelectorAll('#findings 
   const totals=sectionCounts(ap,fs,ms);
   h+=`<details class="ap doc-section" data-section="${ap}" ${opened.has(ap)?'open':''}><summary><h3><span class="apn">${ap==='P'||ap==='A'?'':ap}</span>${esc(AP[ap])}</h3>${ap==='6'?section6HeaderCountsHTML():sectionCountsHTML(totals.automatic,'automáticas')+sectionCountsHTML(totals.manual,'manuais')}</summary><div class="section-content">`;
   if(ap==='6'){h+=section6ByTeacherHTML(fs,ms);h+='</div></details>';continue;}
-  for(const f of fs){const coverageDetails=directiveCoverageHTML(f)+classGuardCoverageHTML(f);const possibleCodocenciaHTML=f.tit==='Horas por área ou materia a partir da táboa do profesorado'&&f.possibleCodocencia?.length?'<div role="note" style="margin:8px 0;padding:8px 10px;border:1px solid #e9cf72;border-radius:7px;background:#fff2cc;color:#725710;font-weight:700">Posible codocencia · '+esc(f.possibleCodocencia.join('; '))+'</div>':'';if(f.notApplicable){h+=`<article class="f info"><header><span class="pill info">No aplicable</span><h4>${esc(docCheckDisplayName(f.tit))}</h4></header><p class="det">${linkedFindingText(f,f.det)}</p>${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}if(f.ap==='5'&&f.sev==='info'&&/^Comprobación sen realizar:/.test(f.det||'')){h+=`<article class="f info"><header><span class="pill info">Sen realizar</span><h4>${esc(docCheckDisplayName(f.tit))}</h4></header><p class="det">${linkedFindingText(f,f.det)}</p>${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}if(f.sev==='info'){h+=`<article class="f info"><header>${pill('info')}<h4>${esc(docCheckDisplayName(f.tit))}</h4></header>${f.det?`<p class="det" style="white-space:pre-wrap">${linkedFindingText(f,f.det)}</p>`:''}${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}if(f.sev==='ok'){h+=`<article class="f ok"><header>${pill('ok')}<h4>${esc(docCheckDisplayName(f.tit))}</h4></header>${f.det?`<p class="det" style="white-space:pre-wrap">${f.normativeReference&&f.det.includes(f.normativeReference.text)?esc(f.det.slice(0,f.det.indexOf(f.normativeReference.text)))+'<a href="'+esc(f.normativeReference.url)+'" target="_blank" rel="noopener noreferrer">'+esc(f.normativeReference.text)+'</a>'+esc(f.det.slice(f.det.indexOf(f.normativeReference.text)+f.normativeReference.text.length)):esc(f.det)}</p>`:''}${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}
-   h+=`<article class="f ${f.sev}${f.inc?' on':''}"><header>${pill(f.sev)}<h4>${esc(docCheckDisplayName(f.tit))}</h4>${f.sev==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="finding-report-${f.id}" value="include" ${f.inc&&!f.ignoreReport?'checked':''} data-k="fir" data-id="${f.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="finding-report-${f.id}" value="ignore" ${f.ignoreReport?'checked':''} data-k="fir" data-id="${f.id}"><span>Facer a vista gorda</span></label></div>`:`<label class="chk"><input type="checkbox" ${f.inc?'checked':''} data-k="f" data-id="${f.id}"><span>Incluír</span></label>`}</header>${f.normativeReference?`<div class="normative-editor" contenteditable="true" role="textbox" aria-multiline="true" data-k="t" data-id="${f.id}">${linkedFindingText(f,f.txt||f.det)}</div>`:`<textarea data-k="t" data-id="${f.id}" rows="3">${esc(f.txt||f.det)}</textarea>`}${f.det&&f.txt?`<p class="det" style="white-space:pre-wrap">${linkedFindingText(f,f.det)}</p>`:''}${coverageDetails}</article>`;}
-  if(ms.length)h+=`<details class="manual"${ms.some(m=>m.status==='av'||m.status==='inc')?' open':''}><summary>Comprobacións manuais (${ms.length})</summary>${ms.map(m=>`<div class="mrow${m.status==='inc'?' on':''}"><label>${esc(m.tit)}</label><select class="manual-status" data-k="ms" data-id="${m.id}" aria-label="Resultado de ${esc(m.tit)}"><option value="" ${!m.status?'selected':''}>Pendiente</option><option value="ok" ${m.status==='ok'?'selected':''}>Correcto</option><option value="av" ${m.status==='av'?'selected':''}>Aviso</option><option value="inc" ${m.status==='inc'?'selected':''}>Incumprimento</option></select>${m.status==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="manual-report-${m.id}" value="include" ${!m.ignoreReport?'checked':''} data-k="mir" data-id="${m.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="manual-report-${m.id}" value="ignore" ${m.ignoreReport?'checked':''} data-k="mir" data-id="${m.id}"><span>Facer a vista gorda</span></label></div>`:''}${m.status==='av'||m.status==='inc'?`<textarea data-k="mt" data-id="${m.id}" rows="2" aria-label="Problema detectado en ${esc(m.tit)}">${esc(m.txt)}</textarea>`:''}</div>`).join('')}</details>`;
+  for(const f of fs){const coverageDetails=directiveCoverageHTML(f)+classGuardCoverageHTML(f);const possibleCodocenciaHTML=f.tit==='Horas por área ou materia a partir da táboa do profesorado'&&f.possibleCodocencia?.length?'<div role="note" style="margin:8px 0;padding:8px 10px;border:1px solid #e9cf72;border-radius:7px;background:#fff2cc;color:#725710;font-weight:700">Posible codocencia · '+esc(f.possibleCodocencia.join('; '))+'</div>':'';if(f.notApplicable){h+=`<article class="f info"><header><span class="pill info">No aplicable</span><h4>${esc(docCheckDisplayName(f.tit))}${docGuideBadge(f.tit)}</h4></header><p class="det">${linkedFindingText(f,f.det)}</p>${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}if(f.ap==='5'&&f.sev==='info'&&/^Comprobación sen realizar:/.test(f.det||'')){h+=`<article class="f info"><header><span class="pill info">Sen realizar</span><h4>${esc(docCheckDisplayName(f.tit))}${docGuideBadge(f.tit)}</h4></header><p class="det">${linkedFindingText(f,f.det)}</p>${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}if(f.sev==='info'){h+=`<article class="f info"><header>${pill('info')}<h4>${esc(docCheckDisplayName(f.tit))}${docGuideBadge(f.tit)}</h4></header>${f.det?`<p class="det" style="white-space:pre-wrap">${linkedFindingText(f,f.det)}</p>`:''}${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}if(f.sev==='ok'){h+=`<article class="f ok"><header>${pill('ok')}<h4>${esc(docCheckDisplayName(f.tit))}${docGuideBadge(f.tit)}</h4></header>${f.det?`<p class="det" style="white-space:pre-wrap">${f.normativeReference&&f.det.includes(f.normativeReference.text)?esc(f.det.slice(0,f.det.indexOf(f.normativeReference.text)))+'<a href="'+esc(f.normativeReference.url)+'" target="_blank" rel="noopener noreferrer">'+esc(f.normativeReference.text)+'</a>'+esc(f.det.slice(f.det.indexOf(f.normativeReference.text)+f.normativeReference.text.length)):esc(f.det)}</p>`:''}${possibleCodocenciaHTML}${coverageDetails}</article>`;continue;}
+   h+=`<article class="f ${f.sev}${f.inc?' on':''}"><header>${pill(f.sev)}<h4>${esc(docCheckDisplayName(f.tit))}${docGuideBadge(f.tit)}</h4>${f.sev==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="finding-report-${f.id}" value="include" ${f.inc&&!f.ignoreReport?'checked':''} data-k="fir" data-id="${f.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="finding-report-${f.id}" value="ignore" ${f.ignoreReport?'checked':''} data-k="fir" data-id="${f.id}"><span>Facer a vista gorda</span></label></div>`:`<label class="chk"><input type="checkbox" ${f.inc?'checked':''} data-k="f" data-id="${f.id}"><span>Incluír</span></label>`}</header>${f.normativeReference?`<div class="normative-editor" contenteditable="true" role="textbox" aria-multiline="true" data-k="t" data-id="${f.id}">${linkedFindingText(f,f.txt||f.det)}</div>`:`<textarea data-k="t" data-id="${f.id}" rows="3">${esc(f.txt||f.det)}</textarea>`}${f.det&&f.txt?`<p class="det" style="white-space:pre-wrap">${linkedFindingText(f,f.det)}</p>`:''}${coverageDetails}</article>`;}
+  if(ms.length)h+=`<details class="manual"${ms.some(m=>m.status==='av'||m.status==='inc')?' open':''}><summary>Comprobacións manuais (${ms.length})</summary>${ms.map(m=>`<div class="mrow${m.status==='inc'?' on':''}"><label>${esc(m.tit)}${docGuideBadge(m.tit)}</label><select class="manual-status" data-k="ms" data-id="${m.id}" aria-label="Resultado de ${esc(m.tit)}"><option value="" ${!m.status?'selected':''}>Pendiente</option><option value="ok" ${m.status==='ok'?'selected':''}>Correcto</option><option value="av" ${m.status==='av'?'selected':''}>Aviso</option><option value="inc" ${m.status==='inc'?'selected':''}>Incumprimento</option></select>${m.status==='inc'?`<div class="ignore-choice"><label class="chk"><input type="radio" name="manual-report-${m.id}" value="include" ${!m.ignoreReport?'checked':''} data-k="mir" data-id="${m.id}"><span>Incluír no informe</span></label><label class="chk"><input type="radio" name="manual-report-${m.id}" value="ignore" ${m.ignoreReport?'checked':''} data-k="mir" data-id="${m.id}"><span>Facer a vista gorda</span></label></div>`:''}${m.status==='av'||m.status==='inc'?`<textarea data-k="mt" data-id="${m.id}" rows="2" aria-label="Problema detectado en ${esc(m.tit)}">${esc(m.txt)}</textarea>`:''}</div>`).join('')}</details>`;
   h+='</div></details>';}
- $('#findings').innerHTML=h+directiveDiagnosticHTML();syncAllWarningsControl();report();}
+ const openedDiagnostics=new Set([...document.querySelectorAll('#findings details[data-reading-diagnostic][open]')].map(el=>el.dataset.readingDiagnostic));
+ $('#findings').innerHTML=h+directiveDiagnosticHTML()+subjectReadingDiagnosticsHTML(openedDiagnostics);syncAllWarningsControl();report();}
 
 function executiveScheduleDiagnosticHTML(){if(!R)return '';const grid=R.a1?.grid||[],schedule=DOCCHECKS.directiveSchedule(grid),days=['Luns','Martes','Mércores','Xoves','Venres'];const roleNames={dir:'Director/a',xe:'Xefe/a de estudos',sec:'Secretario/a',vd:'Vicedirector/a'};
  return `<details class="ap" style="margin-top:16px"><summary><h3>Diagnóstico local · HORARIO DE DEDICACIÓN AO CARGO DO EQUIPO DIRECTIVO</h3></summary><p><b>${schedule.total} dedicacións computadas en franxas de entre 45 e 80 minutos (DIR: ${schedule.totals.dir}, XDE: ${schedule.totals.xe}, SEC: ${schedule.totals.sec}, VCD: ${schedule.totals.vd}).</b></p><div style="max-height:450px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Día</th><th>Sesión</th><th>Membros sinalados · texto lido</th><th>Cargos recoñecidos</th><th>Cómputo</th></tr></thead><tbody>${schedule.cells.map(cell=>{const slot=grid[cell.index];const roles=Object.entries(cell.recognized).filter(([,count])=>count>0).map(([role,count])=>roleNames[role]+' × '+count).join(' · ');return `<tr><td style="padding:8px">${days[cell.day]}</td><td>${esc(slot.ini)}–${esc(slot.fin)}</td><td style="white-space:pre-wrap">${esc(cell.text.join('\n')||'Sen texto')}</td><td>${esc(roles||'Sen cargo recoñecido')}</td><td>${cell.included?'Incluída · 1 sesión · '+cell.minutes+' min':'Excluída · '+cell.minutes+' min'}</td></tr>`;}).join('')||'<tr><td colspan="5">Non se identificou o horario do equipo directivo.</td></tr>'}</tbody></table></div></details>`;}
@@ -2168,6 +3100,39 @@ function directiveDiagnosticHTML(){if(!R)return '';const rows=R.a2?.diagnosticRo
  const first=`<details class="ap" style="margin-top:16px"><summary><h3>Diagnóstico local · Docentes e resultado da lista de cargos</h3></summary><div style="max-height:420px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Nº</th><th>Datos do docente</th><th>Información recuperada de LISTA DE CARGOS</th></tr></thead><tbody>${rows.map(row=>{const lookup=DOCCHECKS.teacherCargoLookup(R,row.name,R.meta?.tipo,opts().unidades);const cargos=lookup.cargos;return `<tr><td style="padding:8px">${esc(row.marker)}</td><td>${esc(row.name)}</td><td style="white-space:pre-wrap">${esc(cargos.length?cargos.join('\n'):'Sen cargo')}<div style="font-size:12px;margin-top:6px">${lookup.valid?'Cargo válido para Coordinacións'+(lookup.entitlements.length?' · '+lookup.entitlements.join('; '):''):'Sen cargo de Coordinador/a, Coordinación de…, Dinamizador/a ou Responsable'}</div></td></tr>`;}).join('')||'<tr><td colspan="3">Non se identificaron docentes.</td></tr>'}</tbody></table></div></details>`;
  const second=`<details class="ap" style="margin-top:16px"><summary><h3>Diagnóstico local · LISTA DE CARGOS · Lectura directa</h3></summary><p class="note">Columnas 1 e 2. As liñas de continuación únense ao mesmo cargo sen mesturarse coa columna do docente.</p><div style="max-height:450px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Cargo · columna 1</th><th>Apelidos e nome · columna 2</th></tr></thead><tbody>${raw.map(row=>`<tr><td style="padding:8px">${esc(row.cargo||'—')}</td><td>${esc(row.docente||'—')}</td></tr>`).join('')||'<tr><td colspan="2">Non se identificaron filas na lista de cargos.</td></tr>'}</tbody></table></div></details>`;return first+second+executiveScheduleDiagnosticHTML()+assignmentSpecialtyDiagnosticHTML()+classroomGuardDiagnosticHTML()+areaHoursDiagnosticHTML();
 }
+function subjectReadingTableHTML(headers,rows){
+ const t=value=>value==null?'<span class="note">Non lido</span>':esc(value);
+ return `<div style="max-height:420px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>${headers.map((label,i)=>`<th scope="col" style="padding:8px;text-align:${i?'center':'left'}">${esc(label)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>`<td style="padding:8px;text-align:${i?'center':'left'}">${t(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function subjectReadingDiagnosticsHTML(opened){
+ if(!R)return '';
+ const docs=[['8','ESO'],['9','1º de Bacharelato'],['10','2º de Bacharelato']];
+ const panel=(id,title,note,body)=>`<details class="ap" data-reading-diagnostic="${id}"${opened.has(id)?' open':''} style="margin-top:16px"><summary><h3>Diagnóstico local · ${esc(title)}</h3></summary><p class="note">${esc(note)}</p>${body}</details>`;
+ const section=(doc,stage,content)=>`<section style="padding:8px 0"><h4 style="margin:6px 0">Documento ${doc} · ${esc(stage)}</h4>${content}</section>`;
+ const note=s=>`<p class="note">${esc(s)}</p>`;
+ const enrollment=docs.map(([doc,stage])=>{
+  if(doc!=='8'){
+   const data=R.bachEnrollmentTotals?.[doc],rows=data?.rows||[],pages=data?.pages||[];
+   const messages=pages.filter(p=>!p.count).map(p=>note(p.foundTotal?(p.foundColumns?`Páxina ${p.page}: non se atoparon filas de datos no total.`:`Páxina ${p.page}: atopouse «TOTAL ALUMNADO, GRUPOS E HORAS», pero non se identificaron as columnas Gr. de Ord. e Adult.`):`Páxina ${p.page}: non se atopou «TOTAL ALUMNADO, GRUPOS E HORAS».`));
+   const table=rows.length?subjectReadingTableHTML(['Materia ou modalidade','Ord. · Al.','Ord. · Gr.','Adult. · Al.','Adult. · Gr.','Gr. para o cálculo','Horas · (1) Xade','Páxina'],rows.map(row=>[row.label,row.ordAl,row.ord,row.adultAl,row.adult,row.perSubject?section8BachGroups(row).groups:null,row.xade==null?null:new Intl.NumberFormat('gl-ES',{useGrouping:false,maximumFractionDigits:20}).format(row.xade),row.page])):note(pages.length?'Non se leron as cifras de alumnado, grupos ou horas do total.':'Non se localizou este documento.');
+   const status=value=>value==null?'Sen comprobar':value?'Atopada':'Non atopada';
+   const headings=pages.flatMap(p=>p.foundTotal?(p.subheaders||[]).map(h=>[p.page,'Atopada',status(h.ord),status(h.adult),status(h.hours)]):[[p.page,'Non atopada',status(null),status(null),status(null)]]);
+   const headerStatus=headings.length?subjectReadingTableHTML(['Páxina','TOTAL ALUMNADO, GRUPOS E HORAS','Ord.','Adult.','Horas'],headings):'';
+   const subcolumns=pages.flatMap(p=>p.foundTotal?(p.subheaders||[]).map(h=>[p.page,...['ordAl','ordGr','adultAl','adultGr','xade'].map(k=>status(h.leaves?.[k]))]):[]);
+   const leafStatus=subcolumns.length?'<h5 style="margin:12px 0 4px">Cabeceiras debaixo de Ord., Adult. e Horas</h5>'+subjectReadingTableHTML(['Páxina','Ord. · Al.','Ord. · Gr.','Adult. · Al.','Adult. · Gr.','Horas · (1) Xade'],subcolumns):'';
+   return section(doc,stage,headerStatus+leafStatus+table+messages.join(''));
+  }
+  const pages=(R.enrollmentDiagnostic?.pages||[]).filter(p=>p.doc===doc);
+  const rows=(R.enrollmentDiagnostic?.rows||R.a8||[]).filter(row=>row.ap===doc);
+  const messages=pages.filter(p=>!p.count).map(p=>p.reason==='header'?`Páxina ${p.page}: non se identificou a cabeceira de alumnado («Al»).`:p.reason==='notUsed'?`Páxina ${p.page}: o documento está identificado, pero a comprobación non procesou esta páxina.`:`Páxina ${p.page}: non se leron cifras de matrícula.`);
+  const table=rows.length?subjectReadingTableHTML(['Materia','Curso ou columna','Alumnado matriculado','Páxina'],rows.map(row=>[row.materia,row.curso,row.al,row.page])):note(pages.length?'Non se leron datos de matrícula.':'Non se localizou este documento.');
+  const esoHours=R.esoSubjectHours?.rows||[];
+  const hourTable=esoHours.length?'<h5 style="margin:12px 0 4px">Grupos e horas · ESO</h5>'+subjectReadingTableHTML(['Materia','Curso','Grupos (Gr.)','Horas Xade','Páxina'],esoHours.map(row=>[row.materia,row.course+'º ESO',row.groups,row.hours,row.page])):'';
+  return section(doc,stage,table+messages.map(note).join('')+hourTable);
+ }).join('');
+ return panel('enrollment','Materias con pouco alumnado','As comprobacións de matrícula usan o alumnado lido. En Bacharelato a matrícula revísase por réxime; para o cálculo de horas súmanse os grupos de Ord. e Adult. do bloque «TOTAL ALUMNADO, GRUPOS E HORAS». Un réxime sen matrícula, con celas baleiras ou con guión, suma 0 grupos cando se puido ler o outro réxime.',enrollment);
+}
+
 function directora(){const ed=R.a1.ed;const d=ed.find(e=>/direct|responsable/i.test(e.cargo))||ed[0];return d?d.nome:'';}
 function apTitle(ap){if(ap==='P')return 'Portada';if(ap==='A')return 'Anexo ao DOC';return 'Apartado '+ap+' ('+AP[ap].charAt(0).toLowerCase()+AP[ap].slice(1)+')';}
  function report(){
