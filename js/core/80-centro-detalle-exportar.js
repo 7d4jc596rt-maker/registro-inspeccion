@@ -26,10 +26,11 @@ function centerDetail(id,tab=activeCenterTab){
  activeCenterTab=tab;
 }
 
+/* Versión 4.16: «Personal auxiliar cuidador» con nº de cuidadores (compartidos o no), «Adaptaciones curriculares» y «Alumnado en combinada». */
 /* Versión 4.7: «Otros datos» del centro, justo debajo de «Datos del centro». Sin «Días no lectivos» y con el
    bloque «Comedor» (Gestión, Nº comensales, Observaciones), que se guarda en la ficha del centro (c.comedor). */
 function centerOtrosHTML(c){
- return `<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerComedorCard(c)}${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${centerSpecialCard(c,'PAC - ILS','Personal auxiliar cuidador')}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}</div>`;
+ return `<h3>Otros datos del centro</h3><div class="center-extra-grid">${centerComedorCard(c)}${centerSpecialCard(c,'Prof. Prácticas','Profesorado en prácticas')}${pacCenterCard(c)}${centerSpecialCard(c,'Dep. Orientación','Departamento de orientación')}${acCenterCard(c)}${centerSpecialCard(c,'Combinada','Alumnado en combinada')}${centerSpecialCard(c,'Relixión','Religión')}${centerSpecialCard(c,'EscolarizaciónExtraordinarias-B','Escolarizaciones extraordinarias')}${centerSpecialCard(c,'EscolarizaciónCursoInferior','Escolarización curso inferior')}${centerSpecialCard(c,'EOE_At.Dom_Cambio mod_Flexibili','Atención educativa domiciliaria')}</div>`;
 }
 const COMEDOR_FIELDS=[['gestion','Gestión'],['comensales','Nº comensales'],['obs','Observaciones']];
 function centerComedorCard(c){

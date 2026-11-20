@@ -199,6 +199,8 @@ function dashboard(){
  /* Versión 4.10: sin el recuadro «Actuaciones pendientes»; el bloque desplegable ocupa su lugar, arriba del todo */
  /* Versión 4.12: avisos de actuaciones aplazadas cuya fecha ha llegado, arriba del todo; las aplazadas, en su propio bloque */
  /* Versión 4.15: centros cerrados hoy (días no lectivos de libre disposición y festivos locales) */
+ /* Versión 4.16: buscador general, arriba del todo */
+ (typeof homeSearchBlock==='function'?homeSearchBlock():'')+
  (typeof closedHomeBlock==='function'?closedHomeBlock():'')+
  remindHomeBlock()+
  homeBlock('pending','Actuaciones pendientes',`<span class="pill ${pending?'warn':''}">${pending}</span><button class="btn small" onclick="stopEv(event);registroPending()">Ver pendientes</button>`,pendingBody)+

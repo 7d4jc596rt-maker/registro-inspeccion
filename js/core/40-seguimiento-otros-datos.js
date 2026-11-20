@@ -76,6 +76,7 @@ function specialRecordFields(name,m,row,prefix,centerId,rowIndex){
    const legacy=selected&&!options.some(o=>o.value===selected)?`<option value="${esc(selected)}" selected>${esc(selected)} (dato anterior)</option>`:'';
    return `<div class="field ${m.headers.length>6?'':'full'}"><label for="${prefix}${i}">${label}</label><select id="${prefix}${i}" class="select" style="width:100%" onchange="syncSpecialCenter(this,'${prefix}',${codeIndex},${nameIndex})"><option value="" ${selected?'':'selected'}>— Seleccionar centro —</option>${legacy}${options.map(o=>`<option value="${esc(o.value)}" ${o.value===selected?'selected':''}>${esc(o.label)}</option>`).join('')}</select></div>`;
   }
+  if(name==='Combinada'&&['Informe del EOE','Situación'].includes(header))return combSelectField(header,prefix,i,value);
   if(name==='Días no lectivos'&&header==='Estado'){return `<div class="field"><label for="${prefix}${i}">${label}</label><select id="${prefix}${i}" class="select" style="width:100%">${NON_TEACHING_STATES.map(state=>`<option value="${esc(state)}" ${state===(value||NON_TEACHING_STATES[0])?'selected':''}>${esc(state)}</option>`).join('')}</select></div>`;}
   if((name==='Días no lectivos'&&header==='Fecha')||(name==='Prof. Prácticas'&&String(header).trim().toLocaleLowerCase('es')==='visita')||(['EscolarizaciónExtraordinarias-B','EscolarizaciónCursoInferior'].includes(name)&&['Fecha sol','Fecha res'].includes(header))){
    const parsed=String(value).match(/^\d{4}-\d{2}-\d{2}/)?.[0]||'';
@@ -93,6 +94,7 @@ function syncSpecialCenter(select,prefix,codeIndex,nameIndex){
  if(code)code.value=String(c.code);if(name)name.value=c.name;
 }
 function newSpecialRecord(name,centerId){
+ if(name==='PAC - ILS')return pacEdit(null,centerId);
  const m=db.specials[name];if(!m)return;
  openModal('Añadir registro · '+specialLabel(name),`<div class="formgrid">${specialRecordFields(name,m,null,'sp_',centerId)}</div>`,()=>{
   m.rows.push(m.headers.map((_,i)=>document.getElementById('sp_'+i)?.value||''));
@@ -101,6 +103,7 @@ function newSpecialRecord(name,centerId){
  });
 }
 function editSpecialRecord(name,rowIndex,centerId){
+ if(name==='PAC - ILS')return pacEdit(rowIndex,centerId);
  const m=db.specials[name];if(!m||!m.rows[rowIndex])return;
  openModal('Editar registro · '+specialLabel(name),`<div class="formgrid">${specialRecordFields(name,m,m.rows[rowIndex],'spe_',centerId,rowIndex)}</div>`,()=>{
   m.rows[rowIndex]=m.headers.map((_,i)=>document.getElementById('spe_'+i)?.value||'');
@@ -113,7 +116,7 @@ function deleteSpecialRecord(name,rowIndex){
  const row=m.rows[rowIndex];
  const summary=row.find(value=>value!==null&&value!==undefined&&String(value).trim())||'sin identificar';
  if(!confirm(`¿Eliminar este registro de «${specialLabel(name)}» (${String(summary).trim()})? Esta acción no se puede deshacer.`))return;
- m.rows.splice(rowIndex,1);if(name==='Dep. Orientación'){if(Array.isArray(m.nonOccupied))m.nonOccupied.splice(rowIndex,1);if(Array.isArray(m.catalogMismatch))m.catalogMismatch.splice(rowIndex,1);}save();especiales();
+ m.rows.splice(rowIndex,1);if(name==='PAC - ILS'&&Array.isArray(m.cuidadores))m.cuidadores.splice(rowIndex,1);if(name==='Dep. Orientación'){if(Array.isArray(m.nonOccupied))m.nonOccupied.splice(rowIndex,1);if(Array.isArray(m.catalogMismatch))m.catalogMismatch.splice(rowIndex,1);}save();especiales();
 }
 function openModal(title,body,onSave){document.getElementById('modalDelete')?.remove();document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('show');document.getElementById('modalSave').textContent='Guardar';document.getElementById('modalSave').onclick=onSave;const mb=document.querySelector('#modal .modalbox');if(mb)mb.scrollTop=0;document.getElementById('modalBody').scrollTop=0}
 function closeModal(){document.getElementById('modal').classList.remove('show');if(typeof pdfFormDiscard==='function')pdfFormDiscard()}
